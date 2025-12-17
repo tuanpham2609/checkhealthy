@@ -1,10 +1,10 @@
 /**
- * Copyright (c) 2025 NEXSOFT. All rights reserved.
+ * Copyright (c) 2025 Mythuatcmc. All rights reserved.
  *
  * This source code is proprietary and confidential.
  * Unauthorized copying, distribution, or modification of this file,
  * in whole or in part, is strictly prohibited without prior written consent
- * from NEXSOFT.
+ * from Mythuatcmc.
  */
 
 'use client'
@@ -46,7 +46,7 @@ const Footer = () => {
           <div className='col-span-full flex flex-col items-center gap-4 md:col-span-2'>
             <Logo classNameIcon='size-16 md:size-24' />
             <p className='isolate text-center text-5xl font-black text-black mix-blend-normal dark:text-white'>
-              TBC Wallet
+              MỸ THUẬT CMC
             </p>
           </div>
 
@@ -65,7 +65,7 @@ const Footer = () => {
           <span className='text-neutral-500'>
             © 2025{' '}
             <NavigationLink href='#' className='hover:text-primary'>
-              TBC Wallet
+              MỸ THUẬT CMC
             </NavigationLink>{' '}
             <Trans>. All rights reserved.</Trans>
           </span>

@@ -1,17 +1,17 @@
 /**
- * Copyright (c) 2025 NEXSOFT. All rights reserved.
+ * Copyright (c) 2025 Mythuatcmc. All rights reserved.
  *
  * This source code is proprietary and confidential.
  * Unauthorized copying, distribution, or modification of this file,
  * in whole or in part, is strictly prohibited without prior written consent
- * from NEXSOFT.
+ * from Mythuatcmc.
  */
 
 import React from 'react'
 import { MessageDescriptor } from '@lingui/core'
 
 /**
- * Type definitions for TBC Wallet landing page
+ * Type definitions for Art Supply Store landing page
  */
 
 export interface Feature {
@@ -28,7 +28,7 @@ export interface Feature {
 }
 
 export interface Chain {
-  readonly id: 'TBC' | 'BTC' | 'ETH' | 'SOL' | 'TRX'
+  readonly id: 'WATERCOLOR' | 'OIL' | 'ACRYLIC' | 'PENCIL' | 'TBC' | 'BTC' | 'ETH' | 'SOL' | 'TRX'
   readonly title: MessageDescriptor
   readonly logo?: React.FC<React.SVGProps<SVGSVGElement>>
   readonly url?: string
@@ -63,4 +63,15 @@ export interface Download {
     mobile?: string
     tablet?: string
   }
+}
+
+export interface Product {
+  readonly id: string
+  readonly title: string
+  readonly image: string
+  readonly originalPrice: number
+  readonly salePrice: number
+  readonly discount?: number
+  readonly badge?: string
+  readonly brand?: string
 }

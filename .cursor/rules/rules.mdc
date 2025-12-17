@@ -1190,19 +1190,19 @@ Every component file should follow this structure:
 
 **Usage:**
 - Run `npm run copyright` to add copyright headers to all source files
-- Headers are automatically generated with NEXSOFT copyright
+- Headers are automatically generated with Mythuatcmc copyright
 - Applied to TypeScript, JavaScript, TSX, JSX files
 - Excludes node_modules, .next, and other build directories
 
 **Format:**
 ```typescript
 /**
- * Copyright (c) 2025 NEXSOFT. All rights reserved.
+ * Copyright (c) 2025 Mythuatcmc. All rights reserved.
  *
  * This source code is proprietary and confidential.
  * Unauthorized copying, distribution, or modification of this file,
  * in whole or in part, is strictly prohibited without prior written consent
- * from NEXSOFT.
+ * from Mythuatcmc.
  */
 ```
 

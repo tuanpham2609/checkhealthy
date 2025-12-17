@@ -1,10 +1,10 @@
 /**
- * Copyright (c) 2025 NEXSOFT. All rights reserved.
+ * Copyright (c) 2025 Mythuatcmc. All rights reserved.
  *
  * This source code is proprietary and confidential.
  * Unauthorized copying, distribution, or modification of this file,
  * in whole or in part, is strictly prohibited without prior written consent
- * from NEXSOFT.
+ * from Mythuatcmc.
  */
 
 'use strict'
@@ -12,14 +12,14 @@
 const fs = require('fs')
 const glob = require('glob')
 
-const NEXSOFT_COPYRIGHT_COMMENT_BLOCK =
+const Mythuatcmc_COPYRIGHT_COMMENT_BLOCK =
   `/**
- * Copyright (c) 2025 NEXSOFT. All rights reserved.
+ * Copyright (c) 2025 Mythuatcmc. All rights reserved.
  *
  * This source code is proprietary and confidential.
  * Unauthorized copying, distribution, or modification of this file,
  * in whole or in part, is strictly prohibited without prior written consent
- * from NEXSOFT.
+ * from Mythuatcmc.
  */`.trim() + '\n\n'
 
 const files = glob.sync('**/*.{js,ts,tsx,jsx,rs}', {
@@ -67,13 +67,13 @@ function processFile(file) {
     }
   }
 
-  if (source.indexOf(NEXSOFT_COPYRIGHT_COMMENT_BLOCK) === 0) {
+  if (source.indexOf(Mythuatcmc_COPYRIGHT_COMMENT_BLOCK) === 0) {
     return null
   }
   if (/^\/\*\*/.test(source)) {
-    source = source.replace(/\/\*\*[^\/]+\/\s+/, NEXSOFT_COPYRIGHT_COMMENT_BLOCK)
+    source = source.replace(/\/\*\*[^\/]+\/\s+/, Mythuatcmc_COPYRIGHT_COMMENT_BLOCK)
   } else {
-    source = `${NEXSOFT_COPYRIGHT_COMMENT_BLOCK}${source}`
+    source = `${Mythuatcmc_COPYRIGHT_COMMENT_BLOCK}${source}`
   }
 
   if (shebang) {

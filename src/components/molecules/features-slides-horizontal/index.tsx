@@ -1,10 +1,10 @@
 /**
- * Copyright (c) 2025 NEXSOFT. All rights reserved.
+ * Copyright (c) 2025 Mythuatcmc. All rights reserved.
  *
  * This source code is proprietary and confidential.
  * Unauthorized copying, distribution, or modification of this file,
  * in whole or in part, is strictly prohibited without prior written consent
- * from NEXSOFT.
+ * from Mythuatcmc.
  */
 
 'use client'
@@ -28,7 +28,6 @@ interface HorizontalSlidesProps {
 export default function FeaturesSlidesHorizontal({ children }: HorizontalSlidesProps) {
   const isTablet = useIsTablet()
   const { width: windowWidth } = useWindowSize()
-  const setScreenIphone = useStore((state) => state.setScreenIphone)
 
   const [step, setStep] = useState<number>(0)
   const triggerRef = useRef<HTMLDivElement | null>(null)
@@ -88,11 +87,9 @@ export default function FeaturesSlidesHorizontal({ children }: HorizontalSlidesP
             containerAnimation: scrollTrack,
             onLeave: () => {
               setStep(idx + 1)
-              setScreenIphone((prev) => `${Number(prev) + 1}`)
             },
             onEnterBack: () => {
               setStep(idx)
-              setScreenIphone((prev) => `${Number(prev) - 1}`)
             },
           },
         })
@@ -107,7 +104,7 @@ export default function FeaturesSlidesHorizontal({ children }: HorizontalSlidesP
     return () => {
       ctx.revert()
     }
-  }, [windowWidth, isTablet, setScreenIphone])
+  }, [windowWidth, isTablet])
 
   return (
     <div data-slot='trigger' ref={triggerRef} className='relative lg:z-[-1]'>

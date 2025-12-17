@@ -1,10 +1,10 @@
 /**
- * Copyright (c) 2025 NEXSOFT. All rights reserved.
+ * Copyright (c) 2025 Mythuatcmc. All rights reserved.
  *
  * This source code is proprietary and confidential.
  * Unauthorized copying, distribution, or modification of this file,
  * in whole or in part, is strictly prohibited without prior written consent
- * from NEXSOFT.
+ * from Mythuatcmc.
  */
 
 'use client'
@@ -29,7 +29,7 @@ export const AuroraText = memo(
   ({
     children,
     className = '',
-    colors = { dark: ['#0DCC61', '#86E5B0', '#C3F2D7', '#FFFFFF'], light: ['#000000', '#0DCC61'] },
+    colors = { dark: ['#006885', '#0088AA', '#00AACC', '#FFFFFF'], light: ['#000000', '#006885'] },
     speed = 1,
   }: AuroraTextProps) => {
     const { resolvedTheme } = useTheme()

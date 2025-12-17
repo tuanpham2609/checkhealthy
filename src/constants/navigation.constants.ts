@@ -1,10 +1,10 @@
 /**
- * Copyright (c) 2025 NEXSOFT. All rights reserved.
+ * Copyright (c) 2025 Mythuatcmc. All rights reserved.
  *
  * This source code is proprietary and confidential.
  * Unauthorized copying, distribution, or modification of this file,
  * in whole or in part, is strictly prohibited without prior written consent
- * from NEXSOFT.
+ * from Mythuatcmc.
  */
 
 import { msg } from '@lingui/core/macro'
@@ -15,110 +15,110 @@ import { Navigation } from '@/types/navigation.types'
 
 export const NAVIGATION_ITEMS: Navigation = [
   {
-    id: 'wallet',
-    title: msg`Wallet`,
+    id: 'products',
+    title: msg`Sản phẩm`,
     items: [
       {
-        id: 'ios-app',
-        href: 'https://apps.apple.com/app/6739870518',
-        title: msg`iOS app`,
-        description: msg`The world of Web3 in your pocket`,
+        id: 'watercolor',
+        href: '/products/watercolor',
+        title: msg`Màu nước`,
+        description: msg`Bộ màu nước cao cấp với đầy đủ màu sắc`,
       },
       {
-        id: 'android-app',
-        href: 'https://download.chainviews.net/tbchat.apk',
-        title: msg`Android app`,
-        description: msg`The world of Web3 in your pocket`,
+        id: 'oil-paint',
+        href: '/products/oil-paint',
+        title: msg`Màu dầu`,
+        description: msg`Màu dầu chuyên nghiệp cho họa sĩ`,
       },
       {
-        id: 'windows-app',
-        href: 'https://download.chainviews.net/tbchat01.exe',
-        title: msg`Windows app`,
-        description: msg`An optimized Web3 experience for desktop`,
+        id: 'acrylic',
+        href: '/products/acrylic',
+        title: msg`Màu Acrylic`,
+        description: msg`Màu acrylic đa dụng, khô nhanh`,
       },
       {
-        id: 'macos-app',
-        href: 'https://download.chainviews.net/tbchat.dmg',
-        title: msg`MacOS app`,
-        description: msg`An optimized Web3 experience for desktop`,
+        id: 'brushes',
+        href: '/products/brushes',
+        title: msg`Cọ vẽ`,
+        description: msg`Bộ cọ vẽ đa dạng từ cơ bản đến chuyên nghiệp`,
       },
       {
-        id: 'browser-extension',
-        href: 'https://download.chainviews.net/dist.zip',
-        title: msg`Browser Extension`,
-        description: msg`An optimized Web3 experience for desktop`,
+        id: 'canvas',
+        href: '/products/canvas',
+        title: msg`Canvas & Giấy`,
+        description: msg`Canvas và giấy vẽ chất lượng cao`,
       },
     ],
   },
   {
-    id: 'features',
-    title: msg`Features`,
+    id: 'categories',
+    title: msg`Danh mục`,
     items: [
       {
-        id: 'swap',
-        href: 'https://dex-test.nexsoft.duckdns.org/',
-        title: msg`Swap`,
-        description: msg`Swap securely and seamlessly`,
+        id: 'watercolor',
+        href: '/categories/watercolor',
+        title: msg`Màu nước`,
+        description: msg`Bộ màu nước đầy đủ màu sắc, dễ pha trộn`,
       },
       {
-        id: 'miner',
-        href: '/features/miner',
-        title: msg`Miner`,
-        description: msg`Boost earnings by connecting to mining pools and tracking rewards in-app`,
+        id: 'brushes',
+        href: '/categories/brushes',
+        title: msg`Cọ vẽ`,
+        description: msg`Cọ vẽ đa dạng kích thước và loại`,
       },
       {
-        id: 'multi-signature',
-        href: '/features/multi-signature',
-        title: msg`Multi signature`,
-        description: msg`Fortify your wallet with multi-approval transactions for enhanced protection`,
+        id: 'canvas',
+        href: '/categories/canvas',
+        title: msg`Canvas & Giấy`,
+        description: msg`Canvas chuyên nghiệp và giấy vẽ chất lượng`,
       },
       {
-        id: 'instant-transfer',
-        href: '/features/instant-transfer',
-        title: msg`Instant transfer`,
-        description: msg`Send assets across chains with near-zero delays and minimal costs`,
+        id: 'drawing-tools',
+        href: '/categories/drawing-tools',
+        title: msg`Dụng cụ vẽ`,
+        description: msg`Bút chì, than chì, gôm và dụng cụ vẽ`,
       },
       {
-        id: 'usdt-fee',
-        href: '/features/usdt-fee',
-        title: msg`USDT fee`,
-        description: msg`Pay fees in USDT for stable, predictable costs amid market swings`,
+        id: 'accessories',
+        href: '/categories/accessories',
+        title: msg`Phụ kiện`,
+        description: msg`Palette, giá vẽ, khung tranh và phụ kiện khác`,
       },
     ],
   },
   {
     id: 'support',
-    title: msg`Support`,
+    title: msg`Hỗ trợ`,
     items: [
       {
         id: 'FAQ',
         href: '/support/faq',
-        title: msg`FAQ`,
-        description: msg`Find answers to frequently asked questions about TBC Wallet`,
+        title: msg`Câu hỏi thường gặp`,
+        description: msg`Tìm câu trả lời cho các câu hỏi về sản phẩm`,
       },
       {
         id: 'contact-us',
         href: '/support/contact-us',
-        title: msg`Contact Us`,
-        description: msg`Get in touch with our support team for assistance`,
+        title: msg`Liên hệ`,
+        description: msg`Liên hệ với chúng tôi để được tư vấn`,
       },
     ],
   },
   {
     id: 'about',
-    title: msg`About`,
+    title: msg`Về chúng tôi`,
     items: [
       {
         id: 'terms-of-service',
         href: '/about/terms-of-service',
-        title: msg`Terms of Service`,
-        description: msg`What you need to know to use our services`,
+        title: msg`Điều khoản dịch vụ`,
+        description: msg`Những điều bạn cần biết khi sử dụng dịch vụ`,
       },
       {
         id: 'privacy-policy',
         href: '/about/privacy-policy',
-        title: msg`Privacy Policy`,
-        description: msg`Your privacy matters, learn how we protect it`,
+        title: msg`Chính sách bảo mật`,
+        description: msg`Chúng tôi cam kết bảo vệ thông tin của bạn`,
       },
     ],
   },
