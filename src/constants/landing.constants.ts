@@ -7,7 +7,6 @@
  * from Mythuatcmc.
  */
 
-import { msg } from '@lingui/core/macro'
 import BTC from '@public/assets/chain/BTC.svg'
 import ETH from '@public/assets/chain/ETH.svg'
 import TRX from '@public/assets/chain/TRX.svg'
@@ -27,46 +26,46 @@ import { Chain, Download, Feature, Platform, Product, Testimonial } from '@/type
 export const FEATURES: Feature[] = [
   {
     id: 'watercolor',
-    title: msg`Màu nước`,
-    description: msg`Bộ màu nước cao cấp với độ bền màu tuyệt vời, dễ pha trộn và tạo hiệu ứng gradient mượt mà. Phù hợp cho cả người mới bắt đầu và họa sĩ chuyên nghiệp.`,
+    title: 'Màu nước',
+    description: 'Bộ màu nước cao cấp với độ bền màu tuyệt vời, dễ pha trộn và tạo hiệu ứng gradient mượt mà. Phù hợp cho cả người mới bắt đầu và họa sĩ chuyên nghiệp.',
     icon: Miner,
     color: 'card-chain-green',
   },
   {
     id: 'brushes',
-    title: msg`Cọ vẽ`,
-    description: msg`Bộ cọ vẽ đa dạng từ cọ tròn, cọ phẳng đến cọ chi tiết. Lông cọ mềm mại, bền bỉ, giữ màu tốt. Phù hợp với mọi loại màu và kỹ thuật vẽ.`,
+    title: 'Cọ vẽ',
+    description: 'Bộ cọ vẽ đa dạng từ cọ tròn, cọ phẳng đến cọ chi tiết. Lông cọ mềm mại, bền bỉ, giữ màu tốt. Phù hợp với mọi loại màu và kỹ thuật vẽ.',
     icon: Wallet,
     color: 'card-chain-blue-purple',
   },
   {
     id: 'canvas',
-    title: msg`Canvas & Giấy`,
-    description: msg`Canvas chuyên nghiệp và giấy vẽ chất lượng cao. Độ dày phù hợp, bề mặt mịn màng, hút màu tốt. Đa dạng kích thước từ A4 đến khổ lớn.`,
+    title: 'Canvas & Giấy',
+    description: 'Canvas chuyên nghiệp và giấy vẽ chất lượng cao. Độ dày phù hợp, bề mặt mịn màng, hút màu tốt. Đa dạng kích thước từ A4 đến khổ lớn.',
     icon: Swap,
     color: 'card-chain-purple',
   },
   {
     id: 'oil-paint',
-    title: msg`Màu dầu`,
-    description: msg`Màu dầu cao cấp với độ bão hòa màu cao, thời gian khô linh hoạt. Dễ pha trộn, tạo lớp màu dày và hiệu ứng 3D sống động.`,
+    title: 'Màu dầu',
+    description: 'Màu dầu cao cấp với độ bão hòa màu cao, thời gian khô linh hoạt. Dễ pha trộn, tạo lớp màu dày và hiệu ứng 3D sống động.',
     icon: Layers,
     color: 'card-chain-orange',
   },
   {
     id: 'drawing-tools',
-    title: msg`Dụng cụ vẽ`,
-    description: msg`Bút chì, than chì, gôm, thước kẻ và các dụng cụ vẽ chuyên nghiệp. Chất lượng cao, bền bỉ, phù hợp cho mọi kỹ thuật vẽ và phác thảo.`,
+    title: 'Dụng cụ vẽ',
+    description: 'Bút chì, than chì, gôm, thước kẻ và các dụng cụ vẽ chuyên nghiệp. Chất lượng cao, bền bỉ, phù hợp cho mọi kỹ thuật vẽ và phác thảo.',
     icon: USD,
     color: 'card-chain-olive',
   },
 ] as const
 
 export const CHAINS: Chain[] = [
-  { id: 'WATERCOLOR', title: msg`Màu nước`, logo: TBC },
-  { id: 'OIL', title: msg`Màu dầu`, logo: BTC },
-  { id: 'ACRYLIC', title: msg`Màu Acrylic`, logo: TRX },
-  { id: 'PENCIL', title: msg`Bút chì màu`, logo: ETH },
+  { id: 'WATERCOLOR', title: 'Màu nước', logo: TBC },
+  { id: 'OIL', title: 'Màu dầu', logo: BTC },
+  { id: 'ACRYLIC', title: 'Màu Acrylic', logo: TRX },
+  { id: 'PENCIL', title: 'Bút chì màu', logo: ETH },
 ] as const
 
 export const BACKGROUND_ENUM: Record<number, string> = {
@@ -80,14 +79,14 @@ export const BACKGROUND_ENUM: Record<number, string> = {
 export const PLATFORMS: Platform[] = [
   {
     id: 'online',
-    title: msg`Mua online`,
+    title: 'Mua online',
     images: {
       desktop: '/assets/background/mobile-app.webp',
       mobile: '/assets/background/mobile-app-mobile.webp',
     },
   },
-  { id: 'store', title: msg`Cửa hàng`, images: { desktop: '/assets/background/extension-app.webp', mobile: '' } },
-  { id: 'wholesale', title: msg`Bán sỉ`, images: { desktop: '/assets/background/desktop-app.webp', mobile: '' } },
+  { id: 'store', title: 'Cửa hàng', images: { desktop: '/assets/background/extension-app.webp', mobile: '' } },
+  { id: 'wholesale', title: 'Bán sỉ', images: { desktop: '/assets/background/desktop-app.webp', mobile: '' } },
 ]
 
 export const TESTIMONIALS: Testimonial[] = [
@@ -221,8 +220,8 @@ export const DOWNLOADS: Download[] = [
   {
     id: 'watercolor-set',
     logo: Appstore,
-    title: msg`Bộ màu nước`,
-    subtitle: msg`Từ`,
+    title: 'Bộ màu nước',
+    subtitle: 'Từ',
     images: {
       desktop: '/assets/brands/appstore.svg',
     },
@@ -231,22 +230,22 @@ export const DOWNLOADS: Download[] = [
   {
     id: 'brush-set',
     logo: CHPlay,
-    title: msg`Bộ cọ vẽ`,
-    subtitle: msg`Từ`,
+    title: 'Bộ cọ vẽ',
+    subtitle: 'Từ',
     url: '#',
   },
   {
     id: 'canvas-set',
     logo: Windows,
-    title: msg`Bộ canvas`,
-    subtitle: msg`Từ`,
+    title: 'Bộ canvas',
+    subtitle: 'Từ',
     url: '#',
   },
   {
     id: 'oil-paint-set',
     logo: Apple,
-    title: msg`Bộ màu dầu`,
-    subtitle: msg`Từ`,
+    title: 'Bộ màu dầu',
+    subtitle: 'Từ',
     url: '#',
   },
 ]

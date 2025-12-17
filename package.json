@@ -18,7 +18,7 @@
     "rss:generate": "tsx scripts/generate-rss.ts",
     "contentlayer:build": "contentlayer2 build",
     "contentlayer:dev": "contentlayer2 dev",
-    "prebuild": "npm run contentlayer:build && npm run rss:generate"
+    "prebuild": "npm run lingui:compile && npm run contentlayer:build && npm run rss:generate"
   },
   "dependencies": {
     "@lingui/core": "^5.5.0",

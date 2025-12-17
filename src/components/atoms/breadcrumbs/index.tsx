@@ -16,7 +16,6 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { NavigationLink } from '@/components/atoms/navigation-link'
-import { Trans } from '@lingui/react/macro'
 
 interface BreadcrumbsProps {
   category?: string
@@ -46,7 +45,7 @@ export function Breadcrumbs({ category, title, className }: BreadcrumbsProps) {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <NavigationLink href='/'>
-                  <Trans>Home</Trans>
+                  Home
                 </NavigationLink>
               </BreadcrumbLink>
             </BreadcrumbItem>

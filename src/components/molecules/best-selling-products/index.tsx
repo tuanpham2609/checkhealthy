@@ -12,7 +12,6 @@ import { Container } from '@/components/atoms/container'
 import { BestSellingBanner } from '@/components/molecules/best-selling-banner'
 import { ProductCard } from '@/components/molecules/product-card'
 import { BEST_SELLING_PRODUCTS } from '@/constants/landing.constants'
-import { Trans } from '@lingui/react/macro'
 import AnimatedContent from '@/components/atoms/animated-content'
 
 export function BestSellingProducts() {
@@ -22,7 +21,7 @@ export function BestSellingProducts() {
         {/* Title */}
         <AnimatedContent distance={50} threshold={0.3}>
           <h2 className='font-clash-display text-4xl font-bold lg:text-5xl'>
-            <Trans>HỌA CỤ BÁN CHẠY</Trans>
+            HỌA CỤ BÁN CHẠY
           </h2>
         </AnimatedContent>
 

@@ -12,9 +12,6 @@ import Image from 'next/image'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PLATFORMS } from '@/constants/landing.constants'
 import { cn } from '@/lib/styles'
-import { Trans } from '@lingui/react/macro'
-import { MessageDescriptor } from '@lingui/core'
-import { useLingui } from '@lingui/react'
 import dynamic from 'next/dynamic'
 
 const AnimatedContent = dynamic(
@@ -52,8 +49,7 @@ export default function PlatformTabs() {
 }
 
 /* --- Sub Components --- */
-function PlatformTabTrigger({ value, label }: { value: string; label: MessageDescriptor }) {
-  const { i18n } = useLingui()
+function PlatformTabTrigger({ value, label }: { value: string; label: string }) {
   return (
     <TabsTrigger
       value={value}
@@ -63,7 +59,7 @@ function PlatformTabTrigger({ value, label }: { value: string; label: MessageDes
         'data-[state=active]:border-primary! data-[state=active]:bg-primary! dark:data-[state=active]:text-black!'
       )}
     >
-      {i18n._(label)}
+      {label}
     </TabsTrigger>
   )
 }
@@ -72,7 +68,7 @@ function ComingSoon() {
   return (
     <AnimatedContent duration={3} className='flex h-[548px] w-full items-center justify-center rounded-xl md:w-[940px]'>
       <p className='text-6xl font-semibold tracking-wide md:text-8xl'>
-        <Trans>Coming soon</Trans>
+        Coming soon
       </p>
     </AnimatedContent>
   )

@@ -11,14 +11,12 @@ import { Download } from '@/types/landing.types'
 import { NavigationLink } from '@/components/atoms/navigation-link'
 import Image from 'next/image'
 import { cn } from '@/lib/styles'
-import { useLingui } from '@lingui/react'
 
 interface DownloadCardProps {
   data: Download
 }
 
 export function DownloadCard({ data }: DownloadCardProps) {
-  const { i18n } = useLingui()
   const classNameLogo: Record<string, string> = {
     'app-store': 'size-12 sm:size-16',
     'mac-os': 'size-12 sm:size-16',
@@ -57,8 +55,8 @@ export function DownloadCard({ data }: DownloadCardProps) {
           ) : null}
 
           <div className='flex flex-col gap-1.5'>
-            <p className='mb-auto text-white'>{i18n._(data.subtitle)}</p>
-            <h5 className='mt-auto text-2xl font-semibold text-white sm:text-3xl'>{i18n._(data.title)}</h5>
+            <p className='mb-auto text-white'>{data.subtitle}</p>
+            <h5 className='mt-auto text-2xl font-semibold text-white sm:text-3xl'>{data.title}</h5>
           </div>
         </div>
       </div>

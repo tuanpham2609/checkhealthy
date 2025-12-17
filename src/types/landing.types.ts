@@ -8,7 +8,6 @@
  */
 
 import React from 'react'
-import { MessageDescriptor } from '@lingui/core'
 
 /**
  * Type definitions for Art Supply Store landing page
@@ -22,21 +21,21 @@ export interface Feature {
     | 'card-chain-orange'
     | 'card-chain-olive'
   readonly id: string
-  readonly title: MessageDescriptor
-  readonly description: MessageDescriptor
+  readonly title: string
+  readonly description: string
   readonly icon: React.FC<React.SVGProps<SVGSVGElement>>
 }
 
 export interface Chain {
   readonly id: 'WATERCOLOR' | 'OIL' | 'ACRYLIC' | 'PENCIL' | 'TBC' | 'BTC' | 'ETH' | 'SOL' | 'TRX'
-  readonly title: MessageDescriptor
+  readonly title: string
   readonly logo?: React.FC<React.SVGProps<SVGSVGElement>>
   readonly url?: string
 }
 
 export interface Platform {
   readonly id: string
-  readonly title: MessageDescriptor
+  readonly title: string
   readonly images: {
     desktop: string
     mobile?: string
@@ -56,8 +55,8 @@ export interface Download {
   readonly id: string
   readonly url: string
   readonly logo?: React.FC<React.SVGProps<SVGSVGElement>>
-  readonly title: MessageDescriptor
-  readonly subtitle: MessageDescriptor
+  readonly title: string
+  readonly subtitle: string
   readonly images?: {
     desktop?: string
     mobile?: string

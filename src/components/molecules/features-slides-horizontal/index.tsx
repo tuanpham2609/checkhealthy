@@ -15,7 +15,6 @@ import { useWindowSize } from '@/hooks/use-window-size'
 import { cn } from '@/lib/styles'
 import AnimatedContent from '@/components/atoms/animated-content'
 import { BACKGROUND_ENUM } from '@/constants/landing.constants'
-import { Trans } from '@lingui/react/macro'
 import { useStore } from '@/lib/store'
 import { useIsTablet } from '@/hooks/use-tablet'
 
@@ -130,7 +129,7 @@ export default function FeaturesSlidesHorizontal({ children }: HorizontalSlidesP
             'font-clash-display relative left-1/12 hidden text-center text-4xl leading-tight font-semibold lg:text-start sm:portrait:inline-block sm:landscape:hidden lg:landscape:inline-block'
           )}
         >
-          <Trans>Features</Trans>
+          Features
         </h2>
       </div>
       <div
