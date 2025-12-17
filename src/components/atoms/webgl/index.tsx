@@ -54,7 +54,7 @@ function Particles({ width = 250, height = 250, depth = 250, count = 1000, scale
     }
 
     return Float32Array.from(array)
-  }, [count, scale, width, height, depth])
+  }, [count, width, height, depth])
 
   const noise = useMemo(() => Float32Array.from(Array.from({ length: count * 3 }, () => Math.random() * 100)), [count])
 
@@ -85,12 +85,12 @@ function Particles({ width = 250, height = 250, depth = 250, count = 1000, scale
         value: new Vector2(width, height),
       },
     }),
-    []
+    [width, height]
   )
 
   useEffect(() => {
     uniforms.uResolution.value.set(width, height)
-  }, [width, height])
+  }, [width, height, uniforms.uResolution.value])
 
   useFrame(({ clock }) => {
     uniforms.uTime.value = clock.elapsedTime
@@ -221,7 +221,7 @@ export function IPhone() {
     material.roughness = roughness
     material.metalness = metalness
     material.wireframe = wireframe
-  }, [color, roughness, metalness, wireframe, material])
+  }, [color, roughness, metalness, wireframe])
 
   // useEffect(() => {
   //   if (model1) {
@@ -274,7 +274,7 @@ export function IPhone() {
         metalness: 0.6,
       })
     }
-  }, [step])
+  }, [step, setLights, setMaterial])
 
   useScroll(
     ({ scroll }) => {

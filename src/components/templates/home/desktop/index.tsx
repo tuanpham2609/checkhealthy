@@ -93,12 +93,12 @@ export default function HomeTemplateDesktop() {
 
   useEffect(() => {
     addThreshold({ id: 'top', value: 0 })
-  }, [])
+  }, [addThreshold])
 
   useEffect(() => {
     const top = lenis?.limit || 0
     addThreshold({ id: 'end', value: top })
-  }, [lenis?.limit])
+  }, [lenis?.limit, addThreshold])
 
 
   return (

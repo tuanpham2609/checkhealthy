@@ -9,6 +9,7 @@
 
 'use client'
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { cn } from '@/lib/styles'
 import { Play } from 'lucide-react'
 
@@ -186,10 +187,12 @@ export function YouTubeShortsVideo({ videoUrl, className }: YouTubeShortsVideoPr
     >
       {/* Thumbnail or gradient background */}
       {oEmbedData?.thumbnail_url ? (
-        <img
+        <Image
           src={oEmbedData.thumbnail_url}
           alt={oEmbedData.title}
-          className='h-full w-full object-cover'
+          fill
+          className='object-cover'
+          unoptimized
         />
       ) : (
         <div className='h-full w-full bg-gradient-to-br from-primary/20 to-primary/10' />

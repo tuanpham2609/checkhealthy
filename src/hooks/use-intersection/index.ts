@@ -30,6 +30,7 @@ export const useIntersection = (
       }
     }
     return () => {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ref.current, options.threshold, options.root, options.rootMargin])
 
   return intersectionObserverEntry

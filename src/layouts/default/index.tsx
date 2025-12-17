@@ -50,7 +50,7 @@ export default function DefaultLayout({ children }: Readonly<PropsWithChildren>)
       lenis.destroy()
       setLenis(null)
     }
-  }, [isTablet])
+  }, [isTablet, setLenis])
 
   const [hash, setHash] = useState<string>('')
 

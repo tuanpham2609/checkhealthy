@@ -60,6 +60,7 @@ export const PageTransition = () => {
         setPageloaded(false)
       },
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageLoaded])
   return <div className={s.transition} ref={curtainRef} />
 }

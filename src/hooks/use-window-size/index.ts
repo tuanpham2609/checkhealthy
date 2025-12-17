@@ -51,6 +51,7 @@ export const useWindowSize = ({ initialWidth = Infinity, initialHeight = Infinit
         off(window, 'resize', handler)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Return the current window size (width and height)
