@@ -13,7 +13,6 @@ import { useTocHighlight } from '@/hooks/use-toc-highlight'
 import { cn } from '@/lib/styles'
 import type { TocHeading } from '@/types/content.types'
 import { scrollToHash } from '@/lib/utils/dom/scroll'
-import { useStore } from '@/lib/store'
 
 interface TocProps {
   headings: readonly TocHeading[]
@@ -31,7 +30,6 @@ interface TocProps {
  */
 export function Toc({ headings }: TocProps) {
   const { currentIndex } = useTocHighlight()
-  const lenis = useStore((state) => state.lenis)
 
   if (headings.length === 0) {
     return null
@@ -40,7 +38,7 @@ export function Toc({ headings }: TocProps) {
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>, url: string) => {
     e.preventDefault()
     if (url) {
-      scrollToHash(url, lenis)
+      scrollToHash(url)
     }
   }
 

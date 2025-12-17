@@ -50,7 +50,7 @@ export default function MobileSidebar() {
       </SidebarHeader>
 
       {/* Content */}
-      <SidebarContent data-lenis-prevent>
+      <SidebarContent>
         {NAVIGATION_ITEMS.map((section) => (
           <NavSection
             key={section.id}

@@ -21,7 +21,6 @@ export const Intro = () => {
   const [scroll, setScroll] = useState(false)
   const introOut = useStore(({ introOut }) => introOut)
   const setIntroOut = useStore(({ setIntroOut }) => setIntroOut)
-  const lenis = useStore(({ lenis }) => lenis)
 
   useEffect(() => {
     setTimeout(() => {
@@ -31,27 +30,16 @@ export const Intro = () => {
 
   useEffect(() => {
     if (isMobile) {
-      lenis?.start()
       document.documentElement.classList.toggle('intro', false)
       return
     }
 
     if (!scroll) {
       document.documentElement.classList.toggle('intro', true)
-    }
-
-    if (!lenis) return
-    if (scroll) {
-      lenis.start()
-      document.documentElement.classList.toggle('intro', false)
     } else {
-      setTimeout(() => {
-        lenis.stop()
-      }, 0)
-
-      document.documentElement.classList.toggle('intro', true)
+      document.documentElement.classList.toggle('intro', false)
     }
-  }, [scroll, lenis, isMobile])
+  }, [scroll, isMobile])
 
   return (
     <div

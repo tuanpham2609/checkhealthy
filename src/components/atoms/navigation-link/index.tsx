@@ -13,7 +13,6 @@ import { cn } from '@/lib/styles'
 import { usePathname } from 'next/navigation'
 import { LOCALES } from '@/constants/direction.constants'
 import { scrollToHash } from '@/lib/utils/dom/scroll'
-import { useStore } from '@/lib/store'
 
 const EXTERNAL_LINK_REGEX = /^(https?:)?\/\//i
 const defaultLocale = 'en'
@@ -31,7 +30,6 @@ interface NavigationLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorEleme
 export function NavigationLink({ children, className, href, onClick, ...rest }: NavigationLinkProps) {
   const pathname = usePathname()
   const isExternal = EXTERNAL_LINK_REGEX.test(href)
-  const lenis = useStore((state) => state.lenis)
 
   const locale = (pathname?.split('/')[1] as LOCALES) || defaultLocale
   const newPath = `/${locale}${href}`
@@ -53,7 +51,7 @@ export function NavigationLink({ children, className, href, onClick, ...rest }: 
     // If it's a hash link on the same page, use scrollToHash
     if (isSamePageHash && hash) {
       e.preventDefault()
-      scrollToHash(hash, lenis)
+      scrollToHash(hash)
     }
   }
 

@@ -10,47 +10,20 @@
 'use client'
 import { PropsWithChildren, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { useStore } from '@/lib/store'
-import { useFrame } from '@/hooks/use-frame'
 import { isBrowser } from '@/lib/misc'
-import Lenis from 'lenis'
 import MobileSidebar from '@/components/organisms/mobile-sidebar'
 import { SidebarInset } from '@/components/ui/sidebar'
-import { useIsTablet } from '@/hooks/use-tablet'
 import { scrollToHash } from '@/lib/utils/dom/scroll'
 
 export default function DefaultLayout({ children }: Readonly<PropsWithChildren>) {
   const pathname = usePathname()
-  const isTablet = useIsTablet()
-
-  // Access Lenis instance from Zustand store
-  const lenis = useStore((state) => state.lenis)
-  const setLenis = useStore((state) => state.setLenis)
 
   /**
-   * Initialize Lenis smooth scrolling when the component mounts.
-   * - Disable smooth scrolling on tablet for better touch experience.
-   * - Store Lenis instance globally in Zustand.
-   * - Clean up when component unmounts.
+   * Scroll to top on mount
    */
   useEffect(() => {
     window.scrollTo(0, 0)
-
-    const lenis = new Lenis({
-      smoothWheel: !isTablet,
-      syncTouch: !isTablet,
-      duration: isTablet ? 1 : 2,
-    })
-
-    // Attach Lenis instance to global window for debugging if needed
-    window.lenis = lenis
-    setLenis(lenis)
-
-    return () => {
-      lenis.destroy()
-      setLenis(null)
-    }
-  }, [isTablet, setLenis])
+  }, [])
 
   const [hash, setHash] = useState<string>('')
 
@@ -60,9 +33,9 @@ export default function DefaultLayout({ children }: Readonly<PropsWithChildren>)
    */
   useEffect(() => {
     if (hash) {
-      scrollToHash(hash, lenis)
+      scrollToHash(hash)
     }
-  }, [lenis, hash])
+  }, [hash])
 
   /**
    * Handle browser refresh or route change:
@@ -77,13 +50,9 @@ export default function DefaultLayout({ children }: Readonly<PropsWithChildren>)
       setHash(hash)
     } else {
       // Auto scroll to top when pathname changes (only if no hash)
-      if (lenis) {
-        lenis.scrollTo(0, { immediate: false })
-      } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      }
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }, [pathname, lenis])
+  }, [pathname])
 
   /**
    * Intercept internal anchor link clicks within the same page.
@@ -96,7 +65,7 @@ export default function DefaultLayout({ children }: Readonly<PropsWithChildren>)
       const node = e.currentTarget as HTMLAnchorElement
       const hash = node.href.split('#').pop() || ''
       if (hash) {
-        scrollToHash(`#${hash}`, lenis)
+        scrollToHash(`#${hash}`)
       }
     }
 
@@ -114,15 +83,7 @@ export default function DefaultLayout({ children }: Readonly<PropsWithChildren>)
         node.removeEventListener('click', onClick, false)
       })
     }
-  }, [pathname, lenis])
-
-  /**
-   * Frame-based update for Lenis animation.
-   * This ensures Lenis updates smoothly every animation frame.
-   */
-  useFrame((time) => {
-    lenis?.raf(time)
-  }, 0)
+  }, [pathname])
 
   return (
     <div className='mb-auto flex grow flex-col'>

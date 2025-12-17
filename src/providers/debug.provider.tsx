@@ -14,8 +14,6 @@ import { PropsWithChildren, useEffect } from 'react'
 import Tempus from '@/lib/tempus'
 import dynamic from 'next/dynamic'
 import { useDebug } from '@/hooks/use-debug'
-import { useStore } from '@/lib/store'
-import { useScroll } from '@/hooks/use-scroll'
 import { isBrowser } from '@/lib/misc'
 import { Leva } from 'leva'
 
@@ -40,16 +38,10 @@ const GridDebugger = dynamic(
 
 export default function DebugProvider({ children }: Readonly<PropsWithChildren>) {
   const debug = useDebug()
-  const lenis = useStore(({ lenis }) => lenis)
-
-  useScroll(ScrollTrigger.update)
 
   useEffect(() => {
-    if (lenis) {
-      ScrollTrigger.refresh()
-      lenis?.start()
-    }
-  }, [lenis])
+    ScrollTrigger.refresh()
+  }, [])
 
   ScrollTrigger.defaults({ markers: process.env.NODE_ENV === 'development' })
 

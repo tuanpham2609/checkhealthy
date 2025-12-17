@@ -8,7 +8,6 @@
  */
 
 import { create } from 'zustand'
-import Lenis from 'lenis'
 
 interface StoreState {
   navIsOpen: boolean
@@ -16,9 +15,6 @@ interface StoreState {
 
   screenIphone: string
   setScreenIphone: (value: string | ((prev: string) => string)) => void
-
-  lenis: Lenis | null
-  setLenis: (lenis: Lenis | null) => void
 
   overflow: boolean
   setOverflow: (overflow: boolean) => void
@@ -44,9 +40,6 @@ export const useStore = create<StoreState>((set, get) => ({
     set((state) => ({
       screenIphone: typeof screenIphone === 'function' ? screenIphone(state.screenIphone) : screenIphone,
     })),
-
-  lenis: null,
-  setLenis: (lenis) => set({ lenis }),
 
   overflow: true,
   setOverflow: (overflow) => set({ overflow }),

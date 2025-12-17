@@ -7,8 +7,6 @@
  * from Mythuatcmc.
  */
 
-import type Lenis from 'lenis'
-
 /**
  * Scroll offset to prevent headings from being hidden behind sticky header
  * Matches TOP_OFFSET from use-toc-highlight hook
@@ -39,20 +37,12 @@ export function decodeHashSelector(hash: string): string {
 /**
  * Scroll to hash with force scroll support
  * Handles case where hash already exists in URL by temporarily removing it
- * Uses Lenis for smooth scrolling if available, falls back to window.scrollTo
+ * Uses window.scrollTo for smooth scrolling
  * @param hash - Hash string with # prefix (e.g., "#download")
- * @param lenis - Optional Lenis instance, will try to get from window or store if not provided
  */
-export function scrollToHash(hash: string, lenis?: Lenis | null): void {
+export function scrollToHash(hash: string): void {
   if (!hash || !hash.startsWith('#')) {
     return
-  }
-
-  // Get Lenis instance if not provided
-  let lenisInstance = lenis
-  if (!lenisInstance && typeof window !== 'undefined') {
-    // Try to get from window (attached in layout)
-    lenisInstance = (window as any).lenis || null
   }
 
   // Decode hash for safe querySelector usage (handles Unicode characters)
@@ -78,15 +68,11 @@ export function scrollToHash(hash: string, lenis?: Lenis | null): void {
 
     // Small delay to ensure browser processes the hash removal
     requestAnimationFrame(() => {
-      if (lenisInstance) {
-        lenisInstance.scrollTo(target, { offset: -SCROLL_OFFSET })
-      } else {
-        const elementPosition = target.getBoundingClientRect().top + window.scrollY
-        window.scrollTo({
-          top: elementPosition - SCROLL_OFFSET,
-          behavior: 'smooth',
-        })
-      }
+      const elementPosition = target.getBoundingClientRect().top + window.scrollY
+      window.scrollTo({
+        top: elementPosition - SCROLL_OFFSET,
+        behavior: 'smooth',
+      })
 
       // Set hash back after a short delay to ensure scroll has started
       setTimeout(() => {
@@ -95,15 +81,11 @@ export function scrollToHash(hash: string, lenis?: Lenis | null): void {
     })
   } else {
     // Normal case: hash doesn't match, just scroll
-    if (lenisInstance) {
-      lenisInstance.scrollTo(target, { offset: -SCROLL_OFFSET })
-    } else {
-      const elementPosition = target.getBoundingClientRect().top + window.scrollY
-      window.scrollTo({
-        top: elementPosition - SCROLL_OFFSET,
-        behavior: 'smooth',
-      })
-    }
+    const elementPosition = target.getBoundingClientRect().top + window.scrollY
+    window.scrollTo({
+      top: elementPosition - SCROLL_OFFSET,
+      behavior: 'smooth',
+    })
 
     // Update hash in URL
     history.replaceState(null, '', hash)
