@@ -57,7 +57,7 @@ export default async function RootLayout({ children, params }: Readonly<PropsWit
       suppressHydrationWarning
     >
       <body className={cn('relative flex min-h-dvh flex-col pl-[calc(100vw-100%)] antialiased')}>
-        <ProviderRegistry params={params}>
+        <ProviderRegistry>
           <DefaultLayout>
             <Header />
             <main className='grow'>{children}</main>
