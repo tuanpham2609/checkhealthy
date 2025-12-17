@@ -10,12 +10,31 @@
 'use client'
 import type { Feature } from '@/types/landing.types'
 import { cn } from '@/lib/styles'
+import type { MessageDescriptor } from '@lingui/core'
+
 interface FeatureCardProps {
   readonly feature: Feature
   readonly className?: string
 }
 
+/**
+ * Extract string from MessageDescriptor
+ * MessageDescriptor has id property that contains the message
+ */
+function getMessageString(message: MessageDescriptor): string {
+  if (typeof message === 'string') {
+    return message
+  }
+  // MessageDescriptor has id property
+  if (message && typeof message === 'object' && 'id' in message) {
+    return String(message.id)
+  }
+  return String(message)
+}
+
 export function FeatureCard({ feature, className }: FeatureCardProps) {
+  const titleString = getMessageString(feature.title)
+  const descriptionString = getMessageString(feature.description)
   return (
     <div
       className={cn(
@@ -36,10 +55,10 @@ export function FeatureCard({ feature, className }: FeatureCardProps) {
             <feature.icon className='size-20' fill='currentColor' />
           </div>
           <p data-subtitle className='text-3xl font-semibold'>
-            {feature.title}
+            {titleString}
           </p>
           <p data-desc className='max-w-md text-center lg:text-start'>
-            {feature.description}
+            {descriptionString}
           </p>
         </div>
       </div>
