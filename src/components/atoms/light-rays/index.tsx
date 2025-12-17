@@ -281,13 +281,16 @@ const LightRays: React.FC<LightRaysProps> = ({
     updatePlacement()
     requestRef.current = requestAnimationFrame(animate)
 
+    const container = containerRef.current
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current)
       window.removeEventListener('resize', updatePlacement)
       renderer.dispose()
       geometry.dispose()
       material.dispose()
-      containerRef.current?.removeChild(renderer.domElement)
+      if (container) {
+        container.removeChild(renderer.domElement)
+      }
     }
   }, [
     isVisible,

@@ -9,7 +9,6 @@
 
 'use client'
 import { useMemo, useState } from 'react'
-import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/styles'
 import { Button } from '@/components/ui/button'
 import { Columns4 } from 'lucide-react'
@@ -17,11 +16,10 @@ import { Container } from '@/components/atoms/container'
 
 export const GridDebugger = () => {
   const [visible, setVisible] = useState(false)
-  const isMobile = useIsMobile()
 
   const columns = useMemo(() => {
     return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--layout-columns-count') || '12')
-  }, [isMobile])
+  }, [])
 
   const columnsVariant = {
     1: 'grid-cols-1',

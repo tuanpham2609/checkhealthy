@@ -43,7 +43,7 @@ export const PageTransition = () => {
       },
       ease: 'circ.out',
     })
-  }, [triggerTransition])
+  }, [triggerTransition, router])
 
   useEffect(() => {
     if (!pageLoaded || !curtainRef.current) return
