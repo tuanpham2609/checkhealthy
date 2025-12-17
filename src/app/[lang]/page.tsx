@@ -9,7 +9,7 @@
 
 import type { Metadata } from 'next'
 import HomeTemplate from '@/components/templates/home'
-import { initLingui, PageLangParam } from '@/i18n/initLingui'
+import { PageLangParam } from '@/app/[lang]/layout'
 import { genPageMetadata } from '@/lib/seo'
 import { SITE_METADATA } from '@/constants/site-metadata.constants'
 
@@ -24,8 +24,6 @@ export async function generateMetadata({ params }: PageLangParam): Promise<Metad
 }
 
 export default async function HomePage(props: PageLangParam) {
-  const lang = (await props.params).lang
-  initLingui(lang)
   return (
     <div>
       <HomeTemplate />

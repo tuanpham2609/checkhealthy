@@ -68,6 +68,6 @@ export const useStore = create<StoreState>((set, get) => ({
     }),
   clearThresholds: () => set({ thresholds: {} }),
 
-  introOut: false,
+  introOut: true, // Luôn true vì không còn intro screen
   setIntroOut: (introOut) => set({ introOut }),
 }))

@@ -75,7 +75,7 @@ export function BestSellingBanner({ className }: BestSellingBannerProps) {
             <span 
               className='text-yellow-400 drop-shadow-[0_0_10px_rgba(255,215,0,0.8)]'
               style={{
-                textShadow: '2px 2px 0px #0066cc, -2px -2px 0px #0066cc, 2px -2px 0px #0066cc, -2px 2px 0px #0066cc',
+                textShadow: '2px 2px 0px #104e64, -2px -2px 0px #104e64, 2px -2px 0px #104e64, -2px 2px 0px #104e64',
               }}
             >
               TOP
@@ -84,7 +84,7 @@ export function BestSellingBanner({ className }: BestSellingBannerProps) {
             <span 
               className='text-yellow-400 drop-shadow-[0_0_10px_rgba(255,215,0,0.8)]'
               style={{
-                textShadow: '2px 2px 0px #0066cc, -2px -2px 0px #0066cc, 2px -2px 0px #0066cc, -2px 2px 0px #0066cc',
+                textShadow: '2px 2px 0px #104e64, -2px -2px 0px #104e64, 2px -2px 0px #104e64, -2px 2px 0px #104e64',
               }}
             >
               BÁN CHẠY

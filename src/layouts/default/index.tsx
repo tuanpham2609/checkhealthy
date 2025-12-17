@@ -8,7 +8,6 @@
  */
 
 'use client'
-import { Intro } from '@/components/atoms/intro'
 import { PropsWithChildren, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useStore } from '@/lib/store'
@@ -17,12 +16,10 @@ import { isBrowser } from '@/lib/misc'
 import Lenis from 'lenis'
 import MobileSidebar from '@/components/organisms/mobile-sidebar'
 import { SidebarInset } from '@/components/ui/sidebar'
-import { useTheme } from 'next-themes'
 import { useIsTablet } from '@/hooks/use-tablet'
 import { scrollToHash } from '@/lib/utils/dom/scroll'
 
 export default function DefaultLayout({ children }: Readonly<PropsWithChildren>) {
-  const { resolvedTheme } = useTheme()
   const pathname = usePathname()
   const isTablet = useIsTablet()
 
@@ -130,12 +127,11 @@ export default function DefaultLayout({ children }: Readonly<PropsWithChildren>)
   return (
     <div className='mb-auto flex grow flex-col'>
       {/*<Cursor/>*/}
-      <Intro />
       <MobileSidebar />
       <SidebarInset>
         <div className={'background-hero'} />
         {children}
-        <div data-theme={resolvedTheme || 'dark'} className={'background-footer'} />
+        <div data-theme='light' className={'background-footer'} />
       </SidebarInset>
     </div>
   )

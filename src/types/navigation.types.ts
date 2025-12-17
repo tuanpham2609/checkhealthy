@@ -7,18 +7,16 @@
  * from Mythuatcmc.
  */
 
-import type { MessageDescriptor } from '@lingui/core'
-
 export interface NavItem {
   readonly id: string
   readonly href: string
-  readonly title: MessageDescriptor
-  readonly description: MessageDescriptor
+  readonly title: string
+  readonly description: string
 }
 
 export interface NavSection {
   readonly id: string
-  readonly title: MessageDescriptor
+  readonly title: string
   readonly items: readonly NavItem[]
 }
 

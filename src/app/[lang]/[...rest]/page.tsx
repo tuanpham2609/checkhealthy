@@ -12,7 +12,6 @@ import type { Metadata } from 'next'
 import { allFeatures, allAbouts } from 'contentlayer/generated'
 import { MdxLayoutRenderer } from '@/components/molecules/mdx-layout-renderer'
 import MdxLayout from '@/components/templates/mdx-layout'
-import { initLingui } from '@/i18n/initLingui'
 import type { ContentType } from '@/types/content.types'
 import { genPageMetadata } from '@/lib/seo'
 
@@ -104,7 +103,6 @@ export async function generateMetadata({ params }: DynamicPageParams): Promise<M
   }
 
   try {
-    initLingui(lang)
     const pathString = rest.join('/')
     const contentType = getContentType(rest)
 
@@ -158,8 +156,6 @@ export default async function DynamicContentPage({ params }: DynamicPageParams) 
   if (!rest || rest.length === 0 || !shouldHandleRoute(lang, rest)) {
     notFound()
   }
-
-  initLingui(lang)
 
   // Find content from contentlayer
   const content = findContentByPath(lang, rest)

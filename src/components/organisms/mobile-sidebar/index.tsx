@@ -9,8 +9,6 @@
 
 'use client'
 import { useState, useCallback, memo } from 'react'
-import { useLingui } from '@lingui/react'
-import { Trans } from '@lingui/react/macro'
 import {
   Sidebar,
   SidebarContent,
@@ -28,16 +26,11 @@ import {
 } from '@/components/ui/sidebar'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
-import { ThemeSwitcher } from '@/components/molecules/theme-switcher'
-import { LocaleSwitcher } from '@/components/molecules/locale-switcher'
 import { NavigationLink } from '@/components/atoms/navigation-link'
 import { Logo } from '@/components/atoms/logo'
 import { cn } from '@/lib/styles'
 import { NAVIGATION_ITEMS } from '@/constants/navigation.constants'
 import { NavItem } from '@/types/navigation.types'
-import type { MessageDescriptor } from '@lingui/core'
-import { usePathname } from 'next/navigation'
-import { LOCALES } from '@/constants/direction.constants'
 
 export default function MobileSidebar() {
   const { toggleSidebar } = useSidebar()
@@ -75,19 +68,13 @@ export default function MobileSidebar() {
       {/* Footer */}
       <SidebarFooter>
         <div className='flex w-full flex-col items-end gap-6 px-8 pt-4 pb-8'>
-          <div className='grid w-full grid-cols-2'>
-            <div className='col-start-2 flex w-full justify-between'>
-              <ThemeSwitcher className='relative right-4.5' />
-              <LocaleSwitcher />
-            </div>
-          </div>
           <NavigationLink href='/#download' className={'w-full'}>
             <Button
               variant='neon'
               className='h-11! w-full rounded-full text-xl font-normal whitespace-nowrap'
               onClick={toggleSidebar}
             >
-              <Trans>Download</Trans>
+              Tải xuống
             </Button>
           </NavigationLink>
         </div>
@@ -98,7 +85,7 @@ export default function MobileSidebar() {
 
 interface NavSectionProps {
   id: string
-  title: MessageDescriptor
+  title: string
   toggleSidebar: () => void
   items: readonly NavItem[]
   open: boolean
@@ -106,9 +93,6 @@ interface NavSectionProps {
 }
 
 const NavSection = memo(({ id, title, items, open, onToggle, toggleSidebar }: NavSectionProps) => {
-  const { i18n } = useLingui()
-  const pathname = usePathname()
-  const locale = (pathname?.split('/')[1] as LOCALES) || 'en'
   const handleToggle = useCallback((state: boolean) => onToggle(id, state), [id, onToggle])
 
   return (
@@ -121,31 +105,28 @@ const NavSection = memo(({ id, title, items, open, onToggle, toggleSidebar }: Na
               'text-foreground! hover:text-foreground group-data-[state=open]/collapsible:text-primary!'
             )}
           >
-            {i18n._(title)}
+            {title}
           </CollapsibleTrigger>
         </SidebarGroupLabel>
 
         <CollapsibleContent>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map(({ id, title, href }) => {
-                const customHref = id === 'swap' ? href + locale : href
-                return (
-                  <SidebarMenuItem key={id}>
-                    <SidebarMenuButton asChild onClick={toggleSidebar}>
-                      <NavigationLink
-                        href={customHref}
-                        className={cn(
-                          'flex items-center rounded-md py-2 text-xl font-medium transition-colors',
-                          'hover:bg-muted/40 text-primary dark:text-[#BEEDC8]'
-                        )}
-                      >
-                        {i18n._(title)}
-                      </NavigationLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
+              {items.map(({ id, title, href }) => (
+                <SidebarMenuItem key={id}>
+                  <SidebarMenuButton asChild onClick={toggleSidebar}>
+                    <NavigationLink
+                      href={href}
+                      className={cn(
+                        'flex items-center rounded-md py-2 text-xl font-medium transition-colors',
+                        'hover:bg-muted/40 text-primary'
+                      )}
+                    >
+                      {title}
+                    </NavigationLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </CollapsibleContent>

@@ -7,15 +7,13 @@
  * from Mythuatcmc.
  */
 
-import { getI18nInstance } from './i18n'
-import { setI18n } from '@lingui/react/server'
+import HomeTemplate from '@/components/templates/home'
 
-export type PageLangParam = {
-  params: Promise<{ lang: string }>
+export default function HomePage() {
+  return (
+    <div>
+      <HomeTemplate />
+    </div>
+  )
 }
 
-export function initLingui(lang: string) {
-  const i18n = getI18nInstance(lang)
-  setI18n(i18n)
-  return i18n
-}

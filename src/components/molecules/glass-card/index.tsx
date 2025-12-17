@@ -14,12 +14,18 @@ type GlassCardProps = {
   children?: React.ReactNode
   style?: React.CSSProperties
   className?: string
+  'data-theme'?: string
 }
 
-const GlassCard: React.FC<GlassCardProps> = ({ children, className, style }) => {
+const GlassCard: React.FC<GlassCardProps> = ({ children, className, style, 'data-theme': dataTheme }) => {
   return (
-    <div className={cn('relative overflow-hidden rounded-2xl', className)} style={style}>
-      <div className='pointer-events-none absolute inset-0 bg-white/20 dark:bg-black/40' />
+    <div 
+      className={cn('relative overflow-hidden rounded-2xl', className)} 
+      style={style}
+      data-theme={dataTheme}
+      suppressHydrationWarning
+    >
+      <div className='pointer-events-none absolute inset-0 bg-white/20' />
       <div className='relative z-10'>{children}</div>
     </div>
   )

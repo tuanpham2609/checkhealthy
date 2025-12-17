@@ -9,14 +9,8 @@
 
 'use client'
 import React, { memo } from 'react'
-import { useTheme } from 'next-themes'
 
-type Colors =
-  | string[]
-  | {
-      light: string[]
-      dark: string[]
-    }
+type Colors = string[]
 
 interface AuroraTextProps {
   children: React.ReactNode
@@ -29,17 +23,10 @@ export const AuroraText = memo(
   ({
     children,
     className = '',
-    colors = { dark: ['#006885', '#0088AA', '#00AACC', '#FFFFFF'], light: ['#000000', '#006885'] },
+    colors = ['#000000', '#104e64'],
     speed = 1,
   }: AuroraTextProps) => {
-    const { resolvedTheme } = useTheme()
-    const isColorObject = !Array.isArray(colors)
-
-    const lightColors = isColorObject ? colors.light : colors
-    const darkColors = isColorObject ? colors.dark : colors
-
-    const prefersDark = resolvedTheme === 'dark'
-    const activeColors = prefersDark ? darkColors : lightColors
+    const activeColors = colors
 
     const gradientStyle = {
       backgroundImage: `linear-gradient(135deg, ${activeColors.join(', ')}, ${activeColors[0]})`,

@@ -12,7 +12,7 @@ import { Container } from '@/components/atoms/container'
 import { Empty, EmptyContent, EmptyHeader } from '@/components/ui/empty'
 import { ContactSocialButtons } from '@/components/molecules/contact-social-buttons'
 import { ContactTitle } from '@/components/molecules/contact-title'
-import { initLingui, PageLangParam } from '@/i18n/initLingui'
+import { PageLangParam } from '@/app/[lang]/layout'
 import { genPageMetadata } from '@/lib/seo'
 
 export async function generateMetadata({ params }: PageLangParam): Promise<Metadata> {
@@ -31,9 +31,6 @@ export async function generateMetadata({ params }: PageLangParam): Promise<Metad
  * Displays contact information with social media buttons
  */
 export default async function ContactUsPage(props: PageLangParam) {
-  const lang = (await props.params).lang
-  initLingui(lang)
-
   return (
     <Container className='relative flex h-[75dvh] items-center justify-center md:h-[80dvh]'>
       <div className='background-ellipse' />

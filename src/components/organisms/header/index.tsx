@@ -24,18 +24,12 @@ import { cn } from '@/lib/styles'
 import { SITE_METADATA } from '@/constants/site-metadata.constants'
 import { Logo } from '@/components/atoms/logo'
 import { useScroll } from '@/hooks/use-scroll'
-import { ThemeSwitcher } from '@/components/molecules/theme-switcher'
 import { Container } from '@/components/atoms/container'
 import { NavigationLink } from '@/components/atoms/navigation-link'
 import { NAVIGATION_ITEMS } from '@/constants/navigation.constants'
-import { LocaleSwitcher } from '@/components/molecules/locale-switcher'
-import { Trans } from '@lingui/react/macro'
 import { NavSection } from '@/types/navigation.types'
-import { useLingui } from '@lingui/react'
-import type { MessageDescriptor } from '@lingui/core'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
 import Image from 'next/image'
-import { LOCALES } from '@/constants/direction.constants'
 
 export default function Header() {
   const [hasScrolled, setHasScrolled] = useState<boolean>(false)
@@ -43,8 +37,14 @@ export default function Header() {
   const headerRef = useRef<HTMLDivElement>(null)
 
   useScroll(({ scroll }) => {
-    const newState = scroll > 10
-    setHasScrolled((prev) => (prev !== newState ? newState : prev))
+    // Fix header ngay khi scroll xuống 20px, không cần đợi
+    const newState = scroll > 20
+    setHasScrolled((prev) => {
+      if (prev !== newState) {
+        return newState
+      }
+      return prev
+    })
   })
 
   useLayoutEffect(() => {
@@ -60,7 +60,9 @@ export default function Header() {
     })
 
     observer.observe(element)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+    }
   }, [])
 
   return (
@@ -68,16 +70,30 @@ export default function Header() {
       ref={headerRef}
       as='header'
       className={cn(
-        'transition-all duration-300 ease-in-out',
-        'rounded-xl border-[0.5px] px-4 py-2',
+        'will-change-auto',
+        'transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+        'rounded-xl border-[0.5px] px-4',
+        hasScrolled ? 'py-1' : 'py-2',
         hasScrolled
-          ? 'border-white/10 bg-white/80 shadow-md backdrop-blur-md dark:bg-white/10'
+          ? 'border-white/10 bg-white/80 shadow-md backdrop-blur-md'
           : 'border-transparent bg-transparent shadow-none',
         SITE_METADATA.stickyNav ? 'sticky top-2 z-50 lg:top-3' : 'mt-2 lg:mt-3'
       )}
     >
-      <div className='flex items-center justify-between gap-3'>
-        <Logo showText={true} classNameLabel='sm:hidden lg:inline-block lg:text-sm xl:text-md' />
+      <div className={cn(
+        'flex items-center justify-between',
+        'transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+        hasScrolled ? 'gap-2' : 'gap-3'
+      )}>
+        <Logo 
+          showText={true} 
+          classNameLabel={cn(
+            'sm:hidden lg:inline-block',
+            'transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            hasScrolled ? 'lg:text-xs xl:text-sm' : 'lg:text-sm xl:text-md'
+          )} 
+          customSize={hasScrolled ? 70 : 90} 
+        />
 
         <div className='hidden flex-1 justify-center lg:flex'>
           <NavigationMenu scrolled={hasScrolled}>
@@ -90,11 +106,9 @@ export default function Header() {
         </div>
 
         <div className='hidden items-center gap-2 lg:flex lg:gap-10'>
-          <ThemeSwitcher />
-          <LocaleSwitcher classNameLabel='hidden lg:inline-block' />
           <NavigationLink href='/#download'>
             <Button variant='neon' size='sm' className='rounded-full text-base! font-normal whitespace-nowrap'>
-              <Trans>Download</Trans>
+              Tải xuống
             </Button>
           </NavigationLink>
         </div>
@@ -111,8 +125,6 @@ interface NavigationSectionProps {
 }
 
 const NavigationSection = memo(function NavigationSection({ section, contentWidth }: NavigationSectionProps) {
-  const { i18n } = useLingui()
-
   return (
     <NavigationMenuItem>
       <NavigationMenuTrigger
@@ -123,7 +135,7 @@ const NavigationSection = memo(function NavigationSection({ section, contentWidt
           'data-[state=open]:bg-primary! data-[state=open]:border-primary data-[state=open]:text-black'
         )}
       >
-        {i18n._(section.title)}
+        {section.title}
       </NavigationMenuTrigger>
 
       <NavigationMenuContent>
@@ -144,7 +156,7 @@ const NavigationSection = memo(function NavigationSection({ section, contentWidt
           <ul className='grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-6 xl:grid-cols-3 xl:grid-rows-3 xl:gap-x-13'>
             {section.items.map((item) => (
               <ListItem key={item.id} id={item.id} href={item.href} title={item.title} className='h-full'>
-                {i18n._(item.description)}
+                {item.description}
               </ListItem>
             ))}
           </ul>
@@ -157,22 +169,18 @@ const NavigationSection = memo(function NavigationSection({ section, contentWidt
 interface ListItemProps extends Omit<React.ComponentPropsWithoutRef<'li'>, 'title'> {
   id: string
   href: string
-  title: MessageDescriptor
+  title: string
 }
 
 const ListItem = memo(function ListItem({ title, id, children, href, ...props }: ListItemProps) {
-  const { i18n } = useLingui()
   const pathname = usePathname()
   const isActive = pathname === href
-
-  const locale = (pathname?.split('/')[1] as LOCALES) || 'en'
-  const customHref = id === 'swap' ? href + locale : href
 
   return (
     <li {...props}>
       <NavigationMenuLink asChild>
         <NavigationLink
-          href={customHref}
+          href={href}
           className={cn(
             'flex h-full max-h-[90px] rounded-md p-3 transition-colors',
             isActive
@@ -180,7 +188,7 @@ const ListItem = memo(function ListItem({ title, id, children, href, ...props }:
               : 'text-foreground/80 hover:text-foreground hover:bg-primary/10'
           )}
         >
-          <div className='mb-auto text-sm leading-none font-medium'>{i18n._(title)}</div>
+          <div className='mb-auto text-sm leading-none font-medium'>{title}</div>
           <p className='text-muted-foreground line-clamp-2 text-sm leading-snug'>{children}</p>
         </NavigationLink>
       </NavigationMenuLink>

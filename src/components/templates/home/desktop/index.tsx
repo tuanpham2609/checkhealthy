@@ -16,11 +16,12 @@ import { useWindowSize } from '@/hooks/use-window-size'
 import { useScroll } from '@/hooks/use-scroll'
 import { Button } from '@/components/ui/button'
 import { BEST_SELLING_PRODUCTS } from '@/constants/landing.constants'
+import { YOUTUBE_SHORTS_VIDEOS, YOUTUBE_SHORTS_VIDEOS_TOP } from '@/constants/tiktok.constants'
 import { useStore } from '@/lib/store'
 import { Container } from '@/components/atoms/container'
 import { ProductCard } from '@/components/molecules/product-card'
-import Image from 'next/image'
-import { Trans } from '@lingui/react/macro'
+import { PromotionalBanners } from '@/components/molecules/promotional-banners'
+import { YouTubeShortsGallery } from '@/components/molecules/tiktok-gallery'
 import { NavigationLink } from '@/components/atoms/navigation-link'
 import { cn } from '@/lib/styles'
 
@@ -92,7 +93,6 @@ export default function HomeTemplateDesktop() {
 
   useEffect(() => {
     addThreshold({ id: 'top', value: 0 })
-    addThreshold({ id: 'intro', value: windowHeight / 4 })
   }, [])
 
   useEffect(() => {
@@ -103,51 +103,66 @@ export default function HomeTemplateDesktop() {
 
   return (
     <div className='relative min-h-dvh overflow-x-hidden'>
-      {/* Hero Section */}
-      <Container id='hero' className='flex min-h-dvh items-center pb-5 lg:pb-10 xl:pb-16'>
-        <div className='grid w-full items-center lg:grid-cols-2'>
-          <div className='flex w-full flex-col items-center gap-8 lg:items-start lg:gap-13'>
-            <h1 className='font-clash-display flex flex-col text-center text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-start lg:text-6xl lg:leading-20'>
-              <HeroTextIn introOut={introOut}>
-                <AuroraText speed={0}>
-                  <Trans>Khám Phá Nghệ Thuật.</Trans>
-                </AuroraText>
-              </HeroTextIn>
-              <HeroTextIn introOut={introOut}>
-                <AuroraText speed={0}>
-                  <Trans>Họa Cụ Chất Lượng</Trans>
-                </AuroraText>
-              </HeroTextIn>
-              <HeroTextIn introOut={introOut}>
-                <AuroraText speed={0}>
-                  <Trans>Cho Mọi Họa Sĩ</Trans>
-                </AuroraText>
-              </HeroTextIn>
-            </h1>
-            <HeroTextIn introOut={introOut}>
-              <p className='max-w-md text-center lg:text-start'>
-                <Trans>
-                  Shop họa cụ mỹ thuật chuyên nghiệp với đầy đủ sản phẩm từ màu nước, màu dầu, cọ vẽ đến canvas. 
-                  Chất lượng cao, giá cả hợp lý, phục vụ mọi nhu cầu sáng tạo của bạn.
-                </Trans>
-              </p>
-            </HeroTextIn>
-            <NavigationLink href='/#best-selling'>
-              <Button
-                variant={'neon'}
-                size={'2xl'}
-                className={cn('hide-button w-fit lg:relative', introOut && 'show-button')}
-              >
-                <span>
-                  <Trans>Explore now</Trans>
-                </span>
-              </Button>
-            </NavigationLink>
-          </div>
-          <div className='hidden w-full lg:block'>
-            <Image src={'/assets/background/network.webp'} alt={'hero'} width={612} height={612} />
-          </div>
+      {/* Promotional Banners */}
+      <Container className='py-8 lg:py-12'>
+        <AnimatedContent duration={3}>
+          <PromotionalBanners />
+        </AnimatedContent>
+      </Container>
+      {/* Best Selling Products Section - Top (4 products) */}
+      <Container id='best-selling-top' className='min-h-[70dvh] py-5 lg:min-h-[85dvh] lg:py-10 xl:py-16'>
+        <div className='relative flex h-full w-full flex-col items-center justify-center gap-8 text-center lg:gap-12'>
+          <AnimatedContent duration={3}>
+            <h2 className='font-clash-display text-4xl font-semibold'>
+              Sản phẩm hot nhất
+            </h2>
+          </AnimatedContent>
+          <AnimatedSequence
+            className='grid w-full grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'
+            threshold={0.3}
+            distance={100}
+            stagger={0.1}
+          >
+            {BEST_SELLING_PRODUCTS.slice(0, 4).map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </AnimatedSequence>
         </div>
+      </Container>
+
+      {/* YouTube Shorts Videos Section - Top */}
+      <Container id='youtube-shorts-top' className='min-h-dvh py-5 lg:py-10 xl:py-16'>
+        <AnimatedContent distance={50} threshold={0.7}>
+          <YouTubeShortsGallery videoUrls={YOUTUBE_SHORTS_VIDEOS_TOP} />
+        </AnimatedContent>
+      </Container>
+
+     {/* Best Selling Products Section */}
+      <Container id='best-selling' className='min-h-[70dvh] py-5 lg:min-h-[85dvh] lg:py-10 xl:py-16'>
+        <div className='relative flex h-full w-full flex-col items-center justify-center gap-8 text-center lg:gap-12'>
+          <AnimatedContent duration={3}>
+            <h2 className='font-clash-display text-4xl font-semibold'>
+              Sản phẩm bán chạy
+            </h2>
+          </AnimatedContent>
+          <AnimatedSequence
+            className='grid w-full grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'
+            threshold={0.3}
+            distance={100}
+            stagger={0.1}
+          >
+            {BEST_SELLING_PRODUCTS.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </AnimatedSequence>
+        </div>
+      </Container>
+
+      {/* Promotional Banners */}
+      <Container className='py-8 lg:py-12'>
+        <AnimatedContent duration={3}>
+          <PromotionalBanners />
+        </AnimatedContent>
       </Container>
 
       {/* Products Section */}
@@ -155,7 +170,7 @@ export default function HomeTemplateDesktop() {
         <div className='flex h-full flex-col items-center gap-8 text-center lg:gap-12'>
           <AnimatedContent distance={50} threshold={0.7}>
             <h2 className='font-clash-display text-4xl font-semibold lg:text-5xl'>
-              <Trans>Sản phẩm của chúng tôi</Trans>
+              Sản phẩm của chúng tôi
             </h2>
           </AnimatedContent>
           <AnimatedSequence
@@ -171,26 +186,11 @@ export default function HomeTemplateDesktop() {
         </div>
       </Container>
 
-
-      {/* Best Selling Products Section */}
-      <Container id='best-selling' className='min-h-[70dvh] py-5 lg:min-h-[85dvh] lg:py-10 xl:py-16'>
-        <div className='relative flex h-full w-full flex-col items-center justify-center gap-8 text-center lg:gap-12'>
-          <AnimatedContent duration={3}>
-            <h2 className='font-clash-display text-4xl font-semibold'>
-              <Trans>Sản phẩm bán chạy</Trans>
-            </h2>
-          </AnimatedContent>
-          <AnimatedSequence
-            className='grid w-full grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'
-            threshold={0.3}
-            distance={100}
-            stagger={0.1}
-          >
-            {BEST_SELLING_PRODUCTS.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </AnimatedSequence>
-        </div>
+      {/* YouTube Shorts Videos Section */}
+      <Container id='youtube-shorts' className='min-h-dvh py-5 lg:py-10 xl:py-16'>
+        <AnimatedContent distance={50} threshold={0.7}>
+          <YouTubeShortsGallery videoUrls={YOUTUBE_SHORTS_VIDEOS} />
+        </AnimatedContent>
       </Container>
     </div>
   )

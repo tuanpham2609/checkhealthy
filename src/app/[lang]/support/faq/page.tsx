@@ -13,7 +13,7 @@ import { Breadcrumbs } from '@/components/atoms/breadcrumbs'
 import { FAQAccordion } from '@/components/molecules/faq-accordion'
 import { FAQTitle } from '@/components/molecules/faq-title'
 import { FAQ_CATEGORIES } from '@/constants/faq.constants'
-import { initLingui, PageLangParam } from '@/i18n/initLingui'
+import { PageLangParam } from '@/app/[lang]/layout'
 import { genPageMetadata } from '@/lib/seo'
 
 export async function generateMetadata({ params }: PageLangParam): Promise<Metadata> {
@@ -32,9 +32,6 @@ export async function generateMetadata({ params }: PageLangParam): Promise<Metad
  * Displays frequently asked questions in accordion format
  */
 export default async function FAQPage(props: PageLangParam) {
-  const lang = (await props.params).lang
-  initLingui(lang)
-
   return (
     <Container className='mx-auto max-w-[768px] py-8 lg:py-12 xl:py-16'>
       <article className='prose prose-lg dark:prose-invert lg:prose-xl max-w-none'>

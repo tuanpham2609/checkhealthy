@@ -14,17 +14,11 @@ import { NavigationLink } from '@/components/atoms/navigation-link'
 import { Container } from '@/components/atoms/container'
 import GlassCard from '@/components/molecules/glass-card'
 import { NAVIGATION_ITEMS, SOCIAL_LINKS } from '@/constants/navigation.constants'
-import { Trans } from '@lingui/react/macro'
 import { NavSection } from '@/types/navigation.types'
-import { useLingui } from '@lingui/react'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useTheme } from 'next-themes'
-import { LOCALES } from '@/constants/direction.constants'
-import { usePathname } from 'next/navigation'
 
 const Footer = () => {
   const isMobile = useIsMobile()
-  const { resolvedTheme } = useTheme()
 
   const navigationList = useMemo(() => {
     if (isMobile) {
@@ -37,7 +31,7 @@ const Footer = () => {
   return (
     <Container>
       <GlassCard
-        data-theme={resolvedTheme}
+        data-theme='light'
         className='border-footer border-gradient-footer mb-4 rounded-[44px] px-0 py-5 sm:mb-6 md:mb-24 md:py-10 lg:px-7'
       >
         {/* --- Top Grid --- */}
@@ -45,9 +39,6 @@ const Footer = () => {
           {/* Logo section */}
           <div className='col-span-full flex flex-col items-center gap-4 md:col-span-2'>
             <Logo classNameIcon='size-16 md:size-24' />
-            <p className='isolate text-center text-5xl font-black text-black mix-blend-normal dark:text-white'>
-              MỸ THUẬT CMC
-            </p>
           </div>
 
           <div className='col-span-full md:hidden'>
@@ -67,7 +58,7 @@ const Footer = () => {
             <NavigationLink href='#' className='hover:text-primary'>
               MỸ THUẬT CMC
             </NavigationLink>{' '}
-            <Trans>. All rights reserved.</Trans>
+            . Tất cả quyền được bảo lưu.
           </span>
 
           <div className='hidden lg:block'>
@@ -84,30 +75,22 @@ interface FooterColumnProps {
 }
 
 function FooterColumn({ section }: FooterColumnProps) {
-  const { i18n } = useLingui()
-  const pathname = usePathname()
-  const locale = (pathname?.split('/')[1] as LOCALES) || 'en'
-
   return (
     <div className='flex lg:mx-auto'>
       <div className='flex flex-col gap-4 text-start md:gap-7'>
-        {/* i18n title section */}
-        <h4 className='text-lg font-medium break-all capitalize'>{i18n._(section.title)}</h4>
+        <h4 className='text-lg font-medium break-all capitalize'>{section.title}</h4>
 
         <ul className='space-y-3 text-sm md:space-y-7'>
-          {section.items.map((item) => {
-            const customHref = item.id === 'swap' ? item.href + locale : item.href
-            return (
-              <li key={item.id}>
-                <NavigationLink
-                  href={customHref}
-                  className='hover:text-primary dark:hover:text-primary break-all text-neutral-500 transition-colors duration-200'
-                >
-                  {i18n._(item.title)}
-                </NavigationLink>
-              </li>
-            )
-          })}
+          {section.items.map((item) => (
+            <li key={item.id}>
+              <NavigationLink
+                href={item.href}
+                className='hover:text-primary break-all text-neutral-500 transition-colors duration-200'
+              >
+                {item.title}
+              </NavigationLink>
+            </li>
+          ))}
         </ul>
       </div>
     </div>
@@ -118,7 +101,7 @@ function SocialLink() {
   return (
     <div className='mt-4 flex flex-col items-center gap-4 md:flex-row lg:mt-0'>
       <p className='font-semibold text-neutral-500'>
-        <Trans>Stay connected:</Trans>
+        Kết nối với chúng tôi:
       </p>
       <div className='flex items-center gap-x-4'>
         {SOCIAL_LINKS.map((social) => (

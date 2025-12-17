@@ -8,13 +8,14 @@
  */
 
 'use client'
-import Image from 'next/image'
 import { Container } from '@/components/atoms/container'
 import { Button } from '@/components/ui/button'
 import { NavigationLink } from '@/components/atoms/navigation-link'
 import { BEST_SELLING_PRODUCTS } from '@/constants/landing.constants'
+import { YOUTUBE_SHORTS_VIDEOS } from '@/constants/tiktok.constants'
 import { ProductCard } from '@/components/molecules/product-card'
-import { Trans } from '@lingui/react/macro'
+import { PromotionalBanners } from '@/components/molecules/promotional-banners'
+import { YouTubeShortsGallery } from '@/components/molecules/tiktok-gallery'
 import { AuroraText } from '@/components/atoms/aurora-text'
 
 export default function HomeTemplateMobile() {
@@ -24,28 +25,16 @@ export default function HomeTemplateMobile() {
       <Container id='hero' className='flex flex-col items-center justify-center gap-6 py-10 text-center'>
         <h1 className='font-clash-display text-3xl font-extrabold'>
           <AuroraText speed={0}>
-            <Trans>Khám Phá Nghệ Thuật. Họa Cụ Chất Lượng Cho Mọi Họa Sĩ</Trans>
+            Khám Phá Nghệ Thuật. Họa Cụ Chất Lượng Cho Mọi Họa Sĩ
           </AuroraText>
         </h1>
         <p className='max-w-md'>
-          <Trans>
-            Shop họa cụ mỹ thuật chuyên nghiệp với đầy đủ sản phẩm từ màu nước, màu dầu, cọ vẽ đến canvas. 
-            Chất lượng cao, giá cả hợp lý, phục vụ mọi nhu cầu sáng tạo của bạn.
-          </Trans>
+          Shop họa cụ mỹ thuật chuyên nghiệp với đầy đủ sản phẩm từ màu nước, màu dầu, cọ vẽ đến canvas. 
+          Chất lượng cao, giá cả hợp lý, phục vụ mọi nhu cầu sáng tạo của bạn.
         </p>
-        <div className='relative flex h-svw w-full items-center justify-center'>
-          <Image
-            src={'/assets/background/network.webp'}
-            alt={'network'}
-            width={612}
-            height={612}
-            className='absolute top-1/2 left-1/2 z-[-1] -translate-x-1/2 -translate-y-1/2 object-contain'
-          />
-          <Image src={'/mobile/screen/1.webp'} alt='network' fill className='object-contain' />
-        </div>
         <NavigationLink href='/#best-selling'>
           <Button variant='neon' size='2xl' className='w-fit'>
-            <Trans>Khám phá ngay</Trans>
+            Khám phá ngay
           </Button>
         </NavigationLink>
       </Container>
@@ -53,7 +42,7 @@ export default function HomeTemplateMobile() {
       {/* Products */}
       <Container id='products' className='py-10 text-center'>
         <h2 className='font-clash-display text-4xl font-semibold'>
-          <Trans>Sản phẩm của chúng tôi</Trans>
+          Sản phẩm của chúng tôi
         </h2>
         <div className='mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'>
           {BEST_SELLING_PRODUCTS.slice(0, 12).map((product) => (
@@ -63,16 +52,26 @@ export default function HomeTemplateMobile() {
       </Container>
 
 
+      {/* Promotional Banners */}
+      <Container className='py-8'>
+        <PromotionalBanners />
+      </Container>
+
       {/* Best Selling Products */}
       <Container id='best-selling' className='py-10 text-center'>
         <h2 className='font-clash-display text-4xl font-semibold'>
-          <Trans>Sản phẩm bán chạy</Trans>
+          Sản phẩm bán chạy
         </h2>
         <div className='mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'>
           {BEST_SELLING_PRODUCTS.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
+      </Container>
+
+      {/* YouTube Shorts Videos Section */}
+      <Container id='youtube-shorts' className='py-10'>
+        <YouTubeShortsGallery videoUrls={YOUTUBE_SHORTS_VIDEOS} />
       </Container>
     </div>
   )
