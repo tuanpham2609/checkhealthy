@@ -7,8 +7,23 @@
  * from Mythuatcmc.
  */
 
-import { DependencyList } from 'react'
+'use client'
 
-export function useScroll(callback: (...args: any[]) => void, deps: DependencyList = []) {
-  // Scroll hook disabled - no-op
+import { useEffect, DependencyList } from 'react'
+
+export function useScroll(callback: (args: { scroll: number }) => void, deps: DependencyList = []) {
+  useEffect(() => {
+    const handleScroll = () => {
+      const scroll = window.scrollY || window.pageYOffset || document.documentElement.scrollTop
+      callback({ scroll })
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll() // Initial call
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps)
 }

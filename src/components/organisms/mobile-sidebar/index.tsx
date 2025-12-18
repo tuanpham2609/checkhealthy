@@ -8,36 +8,29 @@
  */
 
 'use client'
-import { useState, useCallback, memo } from 'react'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarTrigger,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
 import { NavigationLink } from '@/components/atoms/navigation-link'
 import { Logo } from '@/components/atoms/logo'
 import { cn } from '@/lib/styles'
-import { NAVIGATION_ITEMS } from '@/constants/navigation.constants'
-import { NavItem } from '@/types/navigation.types'
+import { HOME_SECTIONS } from '@/constants/navigation.constants'
+import { useActiveSection } from '@/hooks/use-active-section'
 
 export default function MobileSidebar() {
   const { toggleSidebar } = useSidebar()
-  const [openId, setOpenId] = useState<string | null>(null)
-  const handleToggle = useCallback((id: string, isOpen: boolean) => {
-    setOpenId(isOpen ? id : null)
-  }, [])
+  const sectionIds = HOME_SECTIONS.map((section) => section.id)
+  const activeSectionId = useActiveSection(sectionIds)
 
   return (
     <Sidebar>
@@ -51,88 +44,48 @@ export default function MobileSidebar() {
 
       {/* Content */}
       <SidebarContent>
-        {NAVIGATION_ITEMS.map((section) => (
-          <NavSection
-            key={section.id}
-            id={section.id}
-            title={section.title}
-            items={section.items}
-            open={openId === section.id}
-            onToggle={handleToggle}
-            toggleSidebar={toggleSidebar}
-          />
-        ))}
+        <SidebarMenu className='px-4'>
+          {HOME_SECTIONS.map((section) => (
+            <SidebarMenuItem key={section.id}>
+              <SidebarMenuButton asChild onClick={toggleSidebar}>
+                <NavigationLink
+                  href={section.href}
+                  className={cn(
+                    'flex items-center rounded-md py-3 text-lg font-medium transition-colors',
+                    activeSectionId === section.id
+                      ? 'bg-primary text-white font-semibold'
+                      : 'text-foreground hover:bg-primary/10'
+                  )}
+                >
+                  {section.label}
+                </NavigationLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
       </SidebarContent>
       <SidebarRail />
 
       {/* Footer */}
       <SidebarFooter>
         <div className='flex w-full flex-col items-end gap-6 px-8 pt-4 pb-8'>
-          <NavigationLink href='/#download' className={'w-full'}>
+          <a
+            href='https://mythuatcmc.vn/'
+            target='_blank'
+            rel='noopener noreferrer'
+            className='w-full no-underline'
+            onClick={toggleSidebar}
+          >
             <Button
               variant='neon'
-              className='h-11! w-full rounded-full text-xl font-normal whitespace-nowrap'
-              onClick={toggleSidebar}
+              className='h-10! w-full rounded-full px-4 py-2 text-sm font-normal whitespace-nowrap'
             >
-              Tải xuống
+              Liên Hệ
             </Button>
-          </NavigationLink>
+          </a>
         </div>
       </SidebarFooter>
     </Sidebar>
   )
 }
 
-interface NavSectionProps {
-  id: string
-  title: string
-  toggleSidebar: () => void
-  items: readonly NavItem[]
-  open: boolean
-  onToggle: (id: string, isOpen: boolean) => void
-}
-
-const NavSection = memo(({ id, title, items, open, onToggle, toggleSidebar }: NavSectionProps) => {
-  const handleToggle = useCallback((state: boolean) => onToggle(id, state), [id, onToggle])
-
-  return (
-    <Collapsible open={open} onOpenChange={handleToggle} className='group/collapsible px-10'>
-      <SidebarGroup className='border-sidebar-border border-b px-0'>
-        <SidebarGroupLabel asChild className='group/label'>
-          <CollapsibleTrigger
-            className={cn(
-              'w-full px-0! pb-2 text-2xl! font-semibold transition-colors',
-              'text-foreground! hover:text-foreground group-data-[state=open]/collapsible:text-primary!'
-            )}
-          >
-            {title}
-          </CollapsibleTrigger>
-        </SidebarGroupLabel>
-
-        <CollapsibleContent>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map(({ id, title, href }) => (
-                <SidebarMenuItem key={id}>
-                  <SidebarMenuButton asChild onClick={toggleSidebar}>
-                    <NavigationLink
-                      href={href}
-                      className={cn(
-                        'flex items-center rounded-md py-2 text-xl font-medium transition-colors',
-                        'hover:bg-muted/40 text-primary'
-                      )}
-                    >
-                      {title}
-                    </NavigationLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </CollapsibleContent>
-      </SidebarGroup>
-    </Collapsible>
-  )
-})
-
-NavSection.displayName = 'NavSection'

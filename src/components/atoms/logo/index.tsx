@@ -7,8 +7,8 @@
  * from Mythuatcmc.
  */
 
+'use client'
 import { cn } from '@/lib/styles'
-import { NavigationLink } from '@/components/atoms/navigation-link'
 import Image from 'next/image'
 
 interface LogoProps {
@@ -51,27 +51,34 @@ export function Logo({ className, classNameIcon, classNameLabel, showText = fals
   const logoSize = customSize ?? 120
   const logoSizePx = `${logoSize}px`
 
+  const handleClick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
-    <NavigationLink href='/'>
-      <div className={cn('flex flex-row items-center justify-center gap-2', className)}>
-        {/* Logo MỸ THUẬT CMC */}
-        <div className={cn('flex items-center gap-3', classNameIcon)}>
-          {/* Logo Image */}
-          <div 
-            className='relative flex-shrink-0 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]' 
-            style={{ width: logoSizePx, height: logoSizePx }}
-          >
-            <Image
-              src='/assets/logocmc.png'
-              alt='MỸ THUẬT CMC'
-              width={logoSize}
-              height={logoSize}
-              className='h-full w-full object-contain'
-              priority
-            />
-          </div>
+    <button
+      type='button'
+      onClick={handleClick}
+      className={cn('flex flex-row items-center justify-center gap-2 cursor-pointer bg-transparent border-none p-0', className)}
+      aria-label='Scroll to top'
+    >
+      {/* Logo MỸ THUẬT CMC */}
+      <div className={cn('flex items-center gap-3', classNameIcon)}>
+        {/* Logo Image */}
+        <div
+          className='relative flex-shrink-0 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]'
+          style={{ width: logoSizePx, height: logoSizePx }}
+        >
+          <Image
+            src='/assets/logocmc.png'
+            alt='MỸ THUẬT CMC'
+            width={logoSize}
+            height={logoSize}
+            className='h-full w-full object-contain'
+            priority
+          />
         </div>
       </div>
-    </NavigationLink>
+    </button>
   )
 }

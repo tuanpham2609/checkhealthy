@@ -123,6 +123,14 @@ export const NAVIGATION_ITEMS: Navigation = [
   },
 ]
 
+export const HOME_SECTIONS = [
+  { id: 'best-selling-top', label: 'Hot nhất', href: '#best-selling-top' },
+  { id: 'youtube-shorts-top', label: 'Video Top', href: '#youtube-shorts-top' },
+  { id: 'best-selling', label: 'Bán chạy', href: '#best-selling' },
+  { id: 'products', label: 'Sản phẩm', href: '#products' },
+  { id: 'youtube-shorts', label: 'Video', href: '#youtube-shorts' },
+] as const
+
 export const SOCIAL_LINKS = [
   {
     id: 'x',

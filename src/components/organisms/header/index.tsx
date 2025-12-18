@@ -8,17 +8,8 @@
  */
 
 'use client'
-import { memo, useLayoutEffect, useRef, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  NavigationMenuLink,
-} from '@/components/ui/navigation-menu'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { cn } from '@/lib/styles'
 import { SITE_METADATA } from '@/constants/site-metadata.constants'
@@ -26,15 +17,14 @@ import { Logo } from '@/components/atoms/logo'
 import { useScroll } from '@/hooks/use-scroll'
 import { Container } from '@/components/atoms/container'
 import { NavigationLink } from '@/components/atoms/navigation-link'
-import { NAVIGATION_ITEMS } from '@/constants/navigation.constants'
-import { NavSection } from '@/types/navigation.types'
-import { AspectRatio } from '@/components/ui/aspect-ratio'
-import Image from 'next/image'
+import { HOME_SECTIONS } from '@/constants/navigation.constants'
+import { useActiveSection } from '@/hooks/use-active-section'
 
 export default function Header() {
   const [hasScrolled, setHasScrolled] = useState<boolean>(false)
-  const [headerWidth, setHeaderWidth] = useState<number>()
   const headerRef = useRef<HTMLDivElement>(null)
+  const sectionIds = HOME_SECTIONS.map((section) => section.id)
+  const activeSectionId = useActiveSection(sectionIds)
 
   useScroll(({ scroll }) => {
     // Fix header ngay khi scroll xuống 20px, không cần đợi
@@ -46,24 +36,6 @@ export default function Header() {
       return prev
     })
   })
-
-  useLayoutEffect(() => {
-    if (!headerRef.current) return
-    const element = headerRef.current
-
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.contentRect.width) {
-          setHeaderWidth(element.offsetWidth)
-        }
-      }
-    })
-
-    observer.observe(element)
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
 
   return (
     <Container
@@ -95,22 +67,39 @@ export default function Header() {
           customSize={hasScrolled ? 70 : 90} 
         />
 
-        <div className='hidden flex-1 justify-center lg:flex'>
-          <NavigationMenu scrolled={hasScrolled}>
-            <NavigationMenuList>
-              {NAVIGATION_ITEMS.map((section) => (
-                <NavigationSection key={section.id} section={section} contentWidth={headerWidth} />
-              ))}
-            </NavigationMenuList>
-          </NavigationMenu>
-        </div>
+        <nav className='hidden flex-1 items-center justify-center gap-2 lg:flex lg:gap-3'>
+          {HOME_SECTIONS.map((section) => (
+            <NavigationLink
+              key={section.id}
+              href={section.href}
+              className={cn(
+                'rounded-full px-4 py-2 text-sm font-medium transition-colors duration-300 ease-in-out',
+                'hover:bg-primary hover:text-black',
+                activeSectionId === section.id
+                  ? 'bg-primary text-white font-semibold'
+                  : 'bg-transparent text-foreground/80'
+              )}
+            >
+              {section.label}
+            </NavigationLink>
+          ))}
+        </nav>
 
         <div className='hidden items-center gap-2 lg:flex lg:gap-10'>
-          <NavigationLink href='/#download'>
-            <Button variant='neon' size='sm' className='rounded-full text-base! font-normal whitespace-nowrap'>
-              Tải xuống
+          <a
+            href='https://mythuatcmc.vn/'
+            target='_blank'
+            rel='noopener noreferrer'
+            className='no-underline'
+          >
+            <Button
+              variant='neon'
+              size='sm'
+              className='rounded-full px-4 py-1.5 text-sm font-normal whitespace-nowrap'
+            >
+              Liên Hệ
             </Button>
-          </NavigationLink>
+          </a>
         </div>
 
         <SidebarTrigger className='text-primary size-9 lg:hidden [&_svg]:size-7!' />
@@ -119,79 +108,3 @@ export default function Header() {
   )
 }
 
-interface NavigationSectionProps {
-  section: NavSection
-  contentWidth?: number
-}
-
-const NavigationSection = memo(function NavigationSection({ section, contentWidth }: NavigationSectionProps) {
-  return (
-    <NavigationMenuItem>
-      <NavigationMenuTrigger
-        className={cn(
-          'h-8 rounded-full border border-transparent bg-transparent px-3 text-sm font-medium transition-colors duration-300 ease-in-out',
-          'hover:bg-primary hover:text-black',
-          'focus:bg-transparent! active:bg-transparent!',
-          'data-[state=open]:bg-primary! data-[state=open]:border-primary data-[state=open]:text-black'
-        )}
-      >
-        {section.title}
-      </NavigationMenuTrigger>
-
-      <NavigationMenuContent>
-        <div
-          className='flex flex-col gap-6 p-4 lg:flex-row lg:gap-8 lg:p-6 xl:gap-13'
-          style={{
-            width: contentWidth ? `${contentWidth - 15}px` : 'auto',
-          }}
-        >
-          {/* Left Highlight */}
-          <div className='hidden w-1/3 flex-col justify-end select-none lg:flex xl:w-1/6'>
-            <AspectRatio className='h-full w-full' ratio={285 / 324}>
-              <Image src={'/assets/images/tbchat.webp'} fill alt={'tbchat'} className={'rounded-md object-cover'} />
-            </AspectRatio>
-          </div>
-
-          {/* Links */}
-          <ul className='grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-6 xl:grid-cols-3 xl:grid-rows-3 xl:gap-x-13'>
-            {section.items.map((item) => (
-              <ListItem key={item.id} id={item.id} href={item.href} title={item.title} className='h-full'>
-                {item.description}
-              </ListItem>
-            ))}
-          </ul>
-        </div>
-      </NavigationMenuContent>
-    </NavigationMenuItem>
-  )
-})
-
-interface ListItemProps extends Omit<React.ComponentPropsWithoutRef<'li'>, 'title'> {
-  id: string
-  href: string
-  title: string
-}
-
-const ListItem = memo(function ListItem({ title, id, children, href, ...props }: ListItemProps) {
-  const pathname = usePathname()
-  const isActive = pathname === href
-
-  return (
-    <li {...props}>
-      <NavigationMenuLink asChild>
-        <NavigationLink
-          href={href}
-          className={cn(
-            'flex h-full max-h-[90px] rounded-md p-3 transition-colors',
-            isActive
-              ? 'bg-primary/10 text-primary font-semibold'
-              : 'text-foreground/80 hover:text-foreground hover:bg-primary/10'
-          )}
-        >
-          <div className='mb-auto text-sm leading-none font-medium'>{title}</div>
-          <p className='text-muted-foreground line-clamp-2 text-sm leading-snug'>{children}</p>
-        </NavigationLink>
-      </NavigationMenuLink>
-    </li>
-  )
-})

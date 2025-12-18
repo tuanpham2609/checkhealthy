@@ -31,27 +31,17 @@ export function NavigationLink({ children, className, href, onClick, ...rest }: 
   const pathname = usePathname()
   const isExternal = EXTERNAL_LINK_REGEX.test(href)
 
-  const locale = (pathname?.split('/')[1] as LOCALES) || defaultLocale
-  const newPath = `/${locale}${href}`
-
-  // Check if this is a hash link (starts with # or contains #)
-  const isHashLink = href.startsWith('#') || href.includes('#')
-
-  // Extract hash from href
-  const hashMatch = href.match(/#(.+)$/)
-  const hash = hashMatch ? `#${hashMatch[1]}` : null
-
-  // Check if we're on the same pathname (hash link on current page)
-  const isSamePageHash = isHashLink && hash && pathname === newPath.split('#')[0]
+  // Check if this is a hash link (starts with #)
+  const isHashLink = href.startsWith('#')
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     // Call original onClick if provided
     onClick?.(e)
 
-    // If it's a hash link on the same page, use scrollToHash
-    if (isSamePageHash && hash) {
+    // If it's a hash link, use scrollToHash and prevent default
+    if (isHashLink) {
       e.preventDefault()
-      scrollToHash(hash)
+      scrollToHash(href)
     }
   }
 
@@ -63,17 +53,21 @@ export function NavigationLink({ children, className, href, onClick, ...rest }: 
     )
   }
 
-  // If it's a hash link on the same page, use anchor tag with onClick
-  if (isSamePageHash) {
+  // If it's a hash link, use anchor tag with onClick (no locale prefix)
+  if (isHashLink) {
     return (
-      <a href={hash || href} className={cn('no-underline', className)} onClick={handleClick} {...rest}>
+      <a href={href} className={cn('no-underline', className)} onClick={handleClick} {...rest}>
         {children}
       </a>
     )
   }
 
+  // For regular internal links, add locale prefix
+  const locale = (pathname?.split('/')[1] as LOCALES) || defaultLocale
+  const newPath = `/${locale}${href}`
+
   return (
-    <Link href={newPath} className={cn('no-underline', className)} onClick={handleClick} {...rest}>
+    <Link href={newPath} className={cn('no-underline', className)} onClick={onClick} {...rest}>
       {children}
     </Link>
   )
