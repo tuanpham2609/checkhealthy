@@ -24,10 +24,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
     return new Intl.NumberFormat('vi-VN').format(price)
   }
 
+  const shopeeUrl = product.shopeeUrl || 'https://shopee.vn/shopmythuatcmc'
+
   return (
-    <div
+    <a
+      href={shopeeUrl}
+      target='_blank'
+      rel='noopener noreferrer'
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-[20px] border border-white/20 bg-white/5 backdrop-blur-sm transition-all duration-300 border-primary/50 bg-white/10',
+        'group relative flex flex-col overflow-hidden rounded-[20px] border border-white/20 bg-white/5 backdrop-blur-sm transition-all duration-300 border-primary/50 bg-white/10 cursor-pointer no-underline',
         className
       )}
     >
@@ -75,12 +80,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
             size='sm'
             variant='outline'
             className='h-9 w-9 rounded-full p-0 hover:bg-primary hover:text-primary-foreground'
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
           >
             <ShoppingCart className='h-4 w-4' />
           </Button>
         </div>
       </div>
-    </div>
+    </a>
   )
 }
 

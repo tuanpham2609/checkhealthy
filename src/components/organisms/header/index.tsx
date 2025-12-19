@@ -74,7 +74,7 @@ export default function Header() {
               href={section.href}
               className={cn(
                 'rounded-full px-4 py-2 text-sm font-medium transition-colors duration-300 ease-in-out',
-                'hover:bg-primary hover:text-black',
+                'hover:bg-primary hover:text-white',
                 activeSectionId === section.id
                   ? 'bg-primary text-white font-semibold'
                   : 'bg-transparent text-foreground/80'
@@ -94,8 +94,8 @@ export default function Header() {
           >
             <Button
               variant='neon'
-              size='sm'
-              className='rounded-full px-4 py-1.5 text-sm font-normal whitespace-nowrap'
+              size='lg'
+              className='rounded-full px-6 py-4 !text-[14px] font-normal whitespace-nowrap'
             >
               Liên Hệ
             </Button>

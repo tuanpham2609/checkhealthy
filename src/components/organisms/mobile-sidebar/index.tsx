@@ -54,7 +54,7 @@ export default function MobileSidebar() {
                     'flex items-center rounded-md py-3 text-lg font-medium transition-colors',
                     activeSectionId === section.id
                       ? 'bg-primary text-white font-semibold'
-                      : 'text-foreground hover:bg-primary/10'
+                      : 'text-foreground hover:bg-primary hover:text-white'
                   )}
                 >
                   {section.label}

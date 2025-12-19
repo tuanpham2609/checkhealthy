@@ -73,4 +73,5 @@ export interface Product {
   readonly discount?: number
   readonly badge?: string
   readonly brand?: string
+  readonly shopeeUrl?: string
 }
