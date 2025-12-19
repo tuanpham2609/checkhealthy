@@ -133,17 +133,17 @@ export const HOME_SECTIONS = [
 export const SOCIAL_LINKS = [
   {
     id: 'facebook',
-    href: 'https://www.facebook.com/mythuatcmc',
+    href: 'https://www.facebook.com/votanthanh.1905',
     icon: Facebook,
   },
   {
     id: 'instagram',
-    href: 'https://www.instagram.com/mythuatcmc',
+    href: 'https://www.instagram.com/votanthanh.art?igsh=b3l2YTEwbjZmdW11&utm_source=qr',
     icon: Instagram,
   },
   {
     id: 'tiktok',
-    href: 'https://www.tiktok.com/@mythuatcmc',
+    href: 'https://www.tiktok.com/@votanthanh.art?_r=1&_d=secCgYIASAHKAESPgo8G3o9IwCqPaVXTRGjdb090m7XUlUyOYHYs9XcW%2BFCwWiDpmz6ZPpallYYTaaVJmtwHox1awtXOP6onvncGgA%3D&_svg=1&checksum=fcd4673274fa188a2292e5b5ffcb1cc852e25df2dda87a179a0a061e43a4f44d&item_author_type=1&sec_uid=MS4wLjABAAAAKEWHGgjkgHPwCGqubUdjvqN2ysnDhFymLyCTfJG2SgZUdkKCPzhDnLufoYOkgbm-&sec_user_id=MS4wLjABAAAAKEWHGgjkgHPwCGqubUdjvqN2ysnDhFymLyCTfJG2SgZUdkKCPzhDnLufoYOkgbm-&share_app_id=1180&share_author_id=6918317911539647490&share_link_id=9B0B4A44-343E-4C1B-BA54-4E50FBC2C427&share_region=VN&share_scene=1&sharer_language=vi&social_share_type=4&source=h5_t&timestamp=1766135897&tt_from=copy&u_code=dgfm4637h4153e&ug_btm=b8727%2Cb0&user_id=6918317911539647490&utm_campaign=client_share&utm_medium=ios&utm_source=copy',
     icon: TikTokIcon,
   },
 ]
