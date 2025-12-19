@@ -31,68 +31,82 @@ export default function HomeTemplateDesktop() {
 
 
   return (
-    <div className='relative min-h-dvh overflow-x-hidden'>
+    <main className='relative min-h-dvh overflow-x-hidden'>
       {/* Promotional Banners */}
-      <Container className='py-8 lg:py-12'>
-        <PromotionalBanners />
-      </Container>
+      <section aria-label='Banner khuyến mãi' className='py-8 lg:py-12'>
+        <Container>
+          <PromotionalBanners />
+        </Container>
+      </section>
       {/* Best Selling Products Section - Top (4 products) */}
-      <Container id='best-selling-top' className='min-h-[70dvh] py-5 lg:min-h-[85dvh] lg:py-10 xl:py-16'>
-        <div className='relative flex h-full w-full flex-col items-center justify-center gap-8 text-center lg:gap-12'>
-          <h2 className='font-clash-display text-4xl font-semibold'>
-            Sản phẩm hot nhất
-          </h2>
-          <div className='grid w-full grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'>
-            {BEST_SELLING_PRODUCTS.slice(0, 4).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+      <section id='best-selling-top' itemScope itemType='https://schema.org/ItemList' className='min-h-[70dvh] py-5 lg:min-h-[85dvh] lg:py-10 xl:py-16'>
+        <Container>
+          <div className='relative flex h-full w-full flex-col items-center justify-center gap-8 text-center lg:gap-12'>
+            <h1 className='font-clash-display text-4xl font-semibold' itemProp='name'>
+              Sản phẩm hot nhất
+            </h1>
+            <div className='grid w-full grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'>
+              {BEST_SELLING_PRODUCTS.slice(0, 4).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
           </div>
-        </div>
-      </Container>
+        </Container>
+      </section>
 
       {/* YouTube Shorts Videos Section - Top */}
-      <Container id='youtube-shorts-top' className='min-h-dvh py-5 lg:py-10 xl:py-16'>
-        <YouTubeShortsGallery videoUrls={YOUTUBE_SHORTS_VIDEOS_TOP} />
-      </Container>
+      <section id='youtube-shorts-top' aria-label='Video YouTube Shorts Top' className='min-h-dvh py-5 lg:py-10 xl:py-16'>
+        <Container>
+          <YouTubeShortsGallery videoUrls={YOUTUBE_SHORTS_VIDEOS_TOP} />
+        </Container>
+      </section>
 
-     {/* Best Selling Products Section */}
-      <Container id='best-selling' className='min-h-[70dvh] py-5 lg:min-h-[85dvh] lg:py-10 xl:py-16'>
-        <div className='relative flex h-full w-full flex-col items-center justify-center gap-8 text-center lg:gap-12'>
-          <h2 className='font-clash-display text-4xl font-semibold'>
-            Sản phẩm bán chạy
-          </h2>
-          <div className='grid w-full grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'>
-            {BEST_SELLING_PRODUCTS.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+      {/* Best Selling Products Section */}
+      <section id='best-selling' itemScope itemType='https://schema.org/ItemList' className='min-h-[70dvh] py-5 lg:min-h-[85dvh] lg:py-10 xl:py-16'>
+        <Container>
+          <div className='relative flex h-full w-full flex-col items-center justify-center gap-8 text-center lg:gap-12'>
+            <h2 className='font-clash-display text-4xl font-semibold' itemProp='name'>
+              Sản phẩm bán chạy
+            </h2>
+            <div className='grid w-full grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'>
+              {BEST_SELLING_PRODUCTS.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
           </div>
-        </div>
-      </Container>
+        </Container>
+      </section>
 
       {/* Promotional Banners */}
-      <Container className='py-8 lg:py-12'>
-        <PromotionalBanners />
-      </Container>
+      <section aria-label='Banner khuyến mãi' className='py-8 lg:py-12'>
+        <Container>
+          <PromotionalBanners />
+        </Container>
+      </section>
 
       {/* Products Section */}
-      <Container id='products' className='min-h-dvh py-5 lg:py-10 xl:py-16'>
-        <div className='flex h-full flex-col items-center gap-8 text-center lg:gap-12'>
-          <h2 className='font-clash-display text-4xl font-semibold lg:text-5xl'>
-            Sản phẩm của chúng tôi
-          </h2>
-          <div className='grid w-full grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'>
-            {BEST_SELLING_PRODUCTS.slice(0, 12).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+      <section id='products' itemScope itemType='https://schema.org/ItemList' className='min-h-dvh py-5 lg:py-10 xl:py-16'>
+        <Container>
+          <div className='flex h-full flex-col items-center gap-8 text-center lg:gap-12'>
+            <h2 className='font-clash-display text-4xl font-semibold lg:text-5xl' itemProp='name'>
+              Sản phẩm của chúng tôi
+            </h2>
+            <div className='grid w-full grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'>
+              {BEST_SELLING_PRODUCTS.slice(0, 12).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
           </div>
-        </div>
-      </Container>
+        </Container>
+      </section>
 
       {/* YouTube Shorts Videos Section */}
-      <Container id='youtube-shorts' className='min-h-dvh py-5 lg:py-10 xl:py-16'>
-        <YouTubeShortsGallery videoUrls={YOUTUBE_SHORTS_VIDEOS} />
-      </Container>
-    </div>
+      <section id='youtube-shorts' aria-label='Video YouTube Shorts' className='min-h-dvh py-5 lg:py-10 xl:py-16'>
+        <Container>
+          <YouTubeShortsGallery videoUrls={YOUTUBE_SHORTS_VIDEOS} />
+        </Container>
+      </section>
+    </main>
   )
 }
 

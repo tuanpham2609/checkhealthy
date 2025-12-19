@@ -15,13 +15,22 @@ export function PromotionalBanners() {
   return (
     <div className='grid grid-cols-1 gap-6 md:grid-cols-3'>
       {/* Banner 1 */}
-      <BannerImage src='/assets/banner_coll_3.png' alt='Banner 1' />
+      <BannerImage 
+        src='/assets/banner_coll_3.png' 
+        alt='Khuyến mãi họa cụ mỹ thuật - Mua sắm tại Shopee Mỹ Thuật CMC' 
+      />
       
       {/* Banner 2 */}
-      <BannerImage src='/assets/unnamed (1).jpg' alt='Banner 2' />
+      <BannerImage 
+        src='/assets/unnamed (1).jpg' 
+        alt='Ưu đãi đặc biệt họa cụ mỹ thuật - Shopee Mỹ Thuật CMC' 
+      />
       
       {/* Banner 3 */}
-      <BannerImage src='/assets/unnamed.jpg' alt='Banner 3' />
+      <BannerImage 
+        src='/assets/unnamed.jpg' 
+        alt='Sản phẩm họa cụ chất lượng cao - Mua ngay tại Shopee' 
+      />
     </div>
   )
 }

@@ -132,12 +132,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     sitemapEntries.push(...generateContentEntries(siteUrl, locale, aboutMap, 'about'))
 
     // Add product pages (high priority for SEO)
-    BEST_SELLING_PRODUCTS.forEach((product) => {
+    // Add main products page
+    sitemapEntries.push({
+      url: `${siteUrl}/${locale}#products`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 1.0, // Highest priority for main products page
+    })
+    
+    // Add best-selling section
+    sitemapEntries.push({
+      url: `${siteUrl}/${locale}#best-selling`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.95,
+    })
+    
+    // Add individual product anchor links for better indexing
+    BEST_SELLING_PRODUCTS.forEach((product, index) => {
       sitemapEntries.push({
-        url: `${siteUrl}/${locale}#products`,
+        url: `${siteUrl}/${locale}#products-${product.id}`,
         lastModified: new Date(),
         changeFrequency: 'weekly',
-        priority: 0.9, // High priority for products
+        priority: 0.9, // High priority for individual products
       })
     })
   }

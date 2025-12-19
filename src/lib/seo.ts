@@ -110,11 +110,11 @@ export function genPageMetadata({
   keywords,
   ...rest
 }: PageSEOProps): Metadata {
-  const siteUrl = SITE_METADATA.siteUrl || 'https://tbchatofficial.com'
+  const siteUrl = SITE_METADATA.siteUrl || 'https://mythuatcmc.vn'
   const fullTitle = title ? `${title} | ${SITE_METADATA.title}` : SITE_METADATA.title
   // Ensure description is never empty - use default if missing
   const fullDescription =
-    description?.trim() || SITE_METADATA.description || 'TBC Wallet - Secure cryptocurrency management platform'
+    description?.trim() || SITE_METADATA.description || 'Shop họa cụ mỹ thuật chuyên nghiệp - Mua sắm online tại Shopee'
   const fullImage = image || SITE_METADATA.socialBanner
   const canonicalUrl = `${siteUrl}/${lang}${path ? `/${path}` : ''}`
 
