@@ -23,14 +23,10 @@ import {
 import { Button } from '@/components/ui/button'
 import { NavigationLink } from '@/components/atoms/navigation-link'
 import { Logo } from '@/components/atoms/logo'
-import { cn } from '@/lib/styles'
 import { HOME_SECTIONS } from '@/constants/navigation.constants'
-import { useActiveSection } from '@/hooks/use-active-section'
 
 export default function MobileSidebar() {
   const { toggleSidebar } = useSidebar()
-  const sectionIds = HOME_SECTIONS.map((section) => section.id)
-  const activeSectionId = useActiveSection(sectionIds)
 
   return (
     <Sidebar>
@@ -50,12 +46,7 @@ export default function MobileSidebar() {
               <SidebarMenuButton asChild onClick={toggleSidebar}>
                 <NavigationLink
                   href={section.href}
-                  className={cn(
-                    'flex items-center rounded-md py-3 text-lg font-medium transition-colors',
-                    activeSectionId === section.id
-                      ? 'bg-primary text-white font-semibold'
-                      : 'text-foreground hover:bg-primary hover:text-white'
-                  )}
+                  className='flex items-center rounded-md py-3 text-lg font-medium text-foreground transition-colors hover:bg-primary hover:text-white'
                 >
                   {section.label}
                 </NavigationLink>
