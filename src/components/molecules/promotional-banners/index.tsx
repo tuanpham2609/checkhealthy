@@ -33,15 +33,22 @@ interface BannerImageProps {
 
 function BannerImage({ src, alt }: BannerImageProps) {
   return (
-    <div className='group relative h-64 overflow-hidden rounded-3xl shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl'>
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        className='object-cover transition-transform duration-300 group-hover:scale-110'
-        sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
-      />
-    </div>
+    <a
+      href='https://shopee.vn/shopmythuatcmc'
+      target='_blank'
+      rel='noopener noreferrer'
+      className='block cursor-pointer no-underline'
+    >
+      <div className='group relative h-64 overflow-hidden rounded-3xl shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl'>
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          className='object-cover transition-transform duration-300 group-hover:scale-110'
+          sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+        />
+      </div>
+    </a>
   )
 }
 
