@@ -27,7 +27,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   return (
     <div
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-lg border border-white/20 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-primary/50 hover:bg-white/10',
+        'group relative flex flex-col overflow-hidden rounded-[20px] border border-white/20 bg-white/5 backdrop-blur-sm transition-all duration-300 border-primary/50 bg-white/10',
         className
       )}
     >
@@ -38,22 +38,17 @@ export function ProductCard({ product, className }: ProductCardProps) {
         </div>
       )}
 
-      {/* Brand Logo - Vertical */}
-      {product.brand && (
-        <div className='absolute left-0 top-12 z-10 flex h-20 w-6 items-center justify-center rounded-r-lg bg-primary/80 text-xs font-bold text-white writing-vertical-rl'>
-          {product.brand}
-        </div>
-      )}
-
       {/* Product Image */}
-      <div className='relative aspect-square w-full overflow-hidden rounded-lg bg-gradient-to-br from-primary/20 to-primary/5'>
-        <Image
-          src={product.image}
-          alt={product.title}
-          fill
-          className='rounded-lg object-contain p-4 transition-transform duration-300 group-hover:scale-105'
-          sizes='(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw'
-        />
+      <div className='relative aspect-square w-full overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 p-4'>
+        <div className='relative h-full w-full overflow-hidden rounded-2xl'>
+          <Image
+            src={product.image}
+            alt={product.title}
+            fill
+            className='rounded-2xl object-contain transition-transform duration-300'
+            sizes='(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw'
+          />
+        </div>
       </div>
 
       {/* Product Info */}
@@ -84,13 +79,6 @@ export function ProductCard({ product, className }: ProductCardProps) {
             <ShoppingCart className='h-4 w-4' />
           </Button>
         </div>
-
-        {/* Small brand logo bottom right */}
-        {product.brand && (
-          <div className='absolute bottom-2 right-2 text-[10px] font-semibold text-muted-foreground/50'>
-            {product.brand.toLowerCase()}
-          </div>
-        )}
       </div>
     </div>
   )
