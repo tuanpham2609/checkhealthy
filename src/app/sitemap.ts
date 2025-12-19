@@ -12,6 +12,7 @@ import type { MetadataRoute } from 'next'
 import { allFeatures, allAbouts } from 'contentlayer/generated'
 import linguiConfig from '../../lingui.config'
 import { SITE_METADATA } from '@/constants/site-metadata.constants'
+import { BEST_SELLING_PRODUCTS } from '@/constants/landing.constants'
 
 const { locales } = linguiConfig
 
@@ -129,6 +130,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Add about docs
     const aboutMap = aboutsMap.get(locale) || []
     sitemapEntries.push(...generateContentEntries(siteUrl, locale, aboutMap, 'about'))
+
+    // Add product pages (high priority for SEO)
+    BEST_SELLING_PRODUCTS.forEach((product) => {
+      sitemapEntries.push({
+        url: `${siteUrl}/${locale}#products`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly',
+        priority: 0.9, // High priority for products
+      })
+    })
   }
 
   return sitemapEntries

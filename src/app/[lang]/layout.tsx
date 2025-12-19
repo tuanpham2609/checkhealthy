@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: PageLangParam): Promise<Metad
 
   return {
     ...metadata,
-    metadataBase: new URL(SITE_METADATA.siteUrl || 'https://officialwalletweb.vercel.app'),
+    metadataBase: new URL(SITE_METADATA.siteUrl || 'https://mythuatcmc.vn'),
   }
 }
 

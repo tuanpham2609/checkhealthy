@@ -30,6 +30,7 @@ interface PageSEOProps {
   path?: string
   date?: string
   type?: 'website' | 'article'
+  keywords?: string
   [key: string]: unknown
 }
 
@@ -106,6 +107,7 @@ export function genPageMetadata({
   path = '',
   date,
   type = 'website',
+  keywords,
   ...rest
 }: PageSEOProps): Metadata {
   const siteUrl = SITE_METADATA.siteUrl || 'https://tbchatofficial.com'
@@ -148,6 +150,7 @@ export function genPageMetadata({
   const metadata: Metadata = {
     title: fullTitle,
     description: fullDescription,
+    keywords: keywords || 'họa cụ mỹ thuật, màu nước, màu dầu, cọ vẽ, canvas, shopee',
     alternates,
     openGraph: {
       title: fullTitle,
