@@ -1,6 +1,7 @@
 {
-  "name": "TBWallet",
-  "short_name": "TBWallet",
+  "name": "MỸ THUẬT CMC",
+  "short_name": "MỸ THUẬT CMC",
+  "description": "Shop họa cụ mỹ thuật chuyên nghiệp - Mua sắm online tại Shopee",
   "icons": [
     {
       "src": "/favicon/web-app-manifest-192x192.png",
@@ -16,6 +17,8 @@
     }
   ],
   "theme_color": "#104e64",
-  "background_color": "#104e64",
-  "display": "standalone"
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/",
+  "orientation": "portrait-primary"
 }

@@ -22,7 +22,16 @@ import { SITE_METADATA } from '@/constants/site-metadata.constants'
 export const metadata: Metadata = {
   title: SITE_METADATA.titleHeader,
   description: SITE_METADATA.description,
-  metadataBase: new URL(SITE_METADATA.siteUrl || 'https://officialwalletweb.vercel.app'),
+  metadataBase: new URL(SITE_METADATA.siteUrl || 'https://mythuatcmc.vn'),
+  icons: {
+    icon: [
+      { url: '/favicon/web-app-manifest-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/favicon/web-app-manifest-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/favicon/web-app-manifest-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+  },
 }
 
 export default function RootLayout({ children }: Readonly<PropsWithChildren>) {
