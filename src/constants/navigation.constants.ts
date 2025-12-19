@@ -7,10 +7,9 @@
  * from Mythuatcmc.
  */
 
-import X from '@public/assets/icons/x.svg'
-import Discord from '@public/assets/icons/discord.svg'
-import Telegram from '@public/assets/icons/telegram.svg'
+import { Facebook, Instagram } from 'lucide-react'
 import { Navigation } from '@/types/navigation.types'
+import { TikTokIcon } from '@/components/atoms/icons/tiktok-icon'
 
 export const NAVIGATION_ITEMS: Navigation = [
   {
@@ -133,18 +132,18 @@ export const HOME_SECTIONS = [
 
 export const SOCIAL_LINKS = [
   {
-    id: 'x',
-    href: 'https://x.com/tbchatofficial',
-    icon: X,
+    id: 'facebook',
+    href: 'https://www.facebook.com/mythuatcmc',
+    icon: Facebook,
   },
   {
-    id: 'telegram',
-    href: 'https://t.me/TBChatGlobal',
-    icon: Telegram,
+    id: 'instagram',
+    href: 'https://www.instagram.com/mythuatcmc',
+    icon: Instagram,
   },
   {
-    id: 'discord',
-    href: 'https://discord.com/invite/6UHYk6k372',
-    icon: Discord,
+    id: 'tiktok',
+    href: 'https://www.tiktok.com/@mythuatcmc',
+    icon: TikTokIcon,
   },
 ]

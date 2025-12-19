@@ -9,6 +9,7 @@
 
 'use client'
 import React, { useMemo } from 'react'
+import type { ComponentType } from 'react'
 import { Logo } from '@/components/atoms/logo'
 import { NavigationLink } from '@/components/atoms/navigation-link'
 import { Container } from '@/components/atoms/container'
@@ -104,16 +105,23 @@ function SocialLink() {
         Kết nối với chúng tôi:
       </p>
       <div className='flex items-center gap-x-4'>
-        {SOCIAL_LINKS.map((social) => (
-          <NavigationLink
-            key={social.id}
-            href={social.href}
-            aria-label={social.id}
-            className='hover:bg-primary flex size-13 items-center justify-center rounded-xl bg-gray-700 transition-colors duration-300'
-          >
-            <social.icon className='size-6 text-white' fill='currentColor' />
-          </NavigationLink>
-        ))}
+        {SOCIAL_LINKS.map((social) => {
+          const IconComponent = social.icon as ComponentType<{ className?: string; fill?: string }>
+          return (
+            <NavigationLink
+              key={social.id}
+              href={social.href}
+              aria-label={social.id}
+              className='hover:bg-primary flex size-13 items-center justify-center rounded-xl bg-gray-700 transition-colors duration-300'
+            >
+              {social.id === 'tiktok' ? (
+                <IconComponent className='size-6 text-white' fill='currentColor' />
+              ) : (
+                <IconComponent className='size-6 text-white' />
+              )}
+            </NavigationLink>
+          )
+        })}
       </div>
     </div>
   )

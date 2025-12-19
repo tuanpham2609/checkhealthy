@@ -9,6 +9,7 @@
 
 'use client'
 
+import type { ComponentType } from 'react'
 import { Button } from '@/components/ui/button'
 import { NavigationLink } from '@/components/atoms/navigation-link'
 import { SOCIAL_LINKS } from '@/constants/navigation.constants'
@@ -25,18 +26,25 @@ interface ContactSocialButtonsProps {
 export function ContactSocialButtons({ className }: ContactSocialButtonsProps) {
   return (
     <div className={cn('flex flex-wrap items-center justify-center gap-4', className)}>
-      {SOCIAL_LINKS.map((social) => (
-        <NavigationLink key={social.id} href={social.href} target='_blank' rel='noopener noreferrer'>
-          <Button
-            variant='outline'
-            size='lg'
-            className='hover:bg-primary hover:text-primary-foreground group flex h-auto items-center gap-3 px-6 py-4 transition-colors'
-          >
-            <social.icon className='size-5 text-current' fill='currentColor' />
-            <span className='font-medium capitalize'>{social.id === 'x' ? 'X (Twitter)' : social.id}</span>
-          </Button>
-        </NavigationLink>
-      ))}
+      {SOCIAL_LINKS.map((social) => {
+        const IconComponent = social.icon as ComponentType<{ className?: string; fill?: string }>
+        return (
+          <NavigationLink key={social.id} href={social.href} target='_blank' rel='noopener noreferrer'>
+            <Button
+              variant='outline'
+              size='lg'
+              className='hover:bg-primary hover:text-primary-foreground group flex h-auto items-center gap-3 px-6 py-4 transition-colors'
+            >
+              {social.id === 'tiktok' ? (
+                <IconComponent className='size-5 text-current' fill='currentColor' />
+              ) : (
+                <IconComponent className='size-5 text-current' />
+              )}
+              <span className='font-medium capitalize'>{social.id}</span>
+            </Button>
+          </NavigationLink>
+        )
+      })}
     </div>
   )
 }
