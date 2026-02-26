@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { CrawlResult } from '@/lib/utils/crawl'
 import { buildSuggestedCaptions } from '@/lib/utils/crawl'
 import { StoryCaptionTool } from '@/components/molecules/story-caption-tool'
-import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages } from 'lucide-react'
+import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages, X } from 'lucide-react'
 import { cn } from '@/lib/styles'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -32,6 +32,10 @@ const CAPTION_STRIP_COLOR = 'rgb(54, 118, 42)'
 const CAPTION_FONT = '600 {size}px system-ui, -apple-system, sans-serif'
 const TIKTOK_FRAME_WIDTH = 1080
 const TIKTOK_FRAME_HEIGHT = 1920
+/** Khoảng trống phía dưới để tránh bị UI TikTok (avatar, nút like/comment, caption) che khi up bài. */
+const TIKTOK_SAFE_BOTTOM = 200
+
+type DownloadFormat = 'tiktok' | 'facebook'
 
 function wrapDescriptionForCanvas(text: string, ctx: CanvasRenderingContext2D, maxWidthPx: number): string[] {
   const t = text.trim()
@@ -74,10 +78,11 @@ function wrapDescriptionForCanvas(text: string, ctx: CanvasRenderingContext2D, m
   return lines
 }
 
-/** Khung TikTok 1080×1920: ảnh full cover toàn khung, dải nền xanh + chữ đè lên phía dưới (che màu hồng). */
+/** Khung 1080×1920: ảnh full cover, dải nền xanh + chữ. safeBottom: TikTok giữ vùng trống dưới, Facebook = 0 để ít xanh. */
 function drawImageWithTitleCanvas(
   imageUrl: string,
-  description: string
+  description: string,
+  safeBottom: number = TIKTOK_SAFE_BOTTOM
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -112,9 +117,10 @@ function drawImageWithTitleCanvas(
         const maxLineWidth = outW - 2 * paddingH
         const lines = wrapDescriptionForCanvas(desc, ctx, maxLineWidth)
         const stripHeight = lines.length * lineHeight + paddingV * 2 + extraOverlap
-        const stripY = outH - stripHeight
+        const stripY = outH - stripHeight - safeBottom
         ctx.fillStyle = CAPTION_STRIP_COLOR
         ctx.fillRect(0, stripY, outW, stripHeight)
+        ctx.fillRect(0, stripY + stripHeight, outW, outH - (stripY + stripHeight))
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
@@ -240,27 +246,30 @@ export function CrawlTool() {
     }
   }
 
-  async function handleDownloadWithTitle() {
+  async function handleDownloadWithTitle(format: DownloadFormat) {
     if (!result?.imageUrl) return
     setDownloadTitleError(null)
     setDownloadTitleLoading(true)
+    const safeBottom = format === 'tiktok' ? TIKTOK_SAFE_BOTTOM : 0
     try {
       let blob: Blob
       try {
         blob = await drawImageWithTitleCanvas(
           result.imageUrl,
-          result.description || ''
+          result.description || '',
+          safeBottom
         )
       } catch {
         const imageBlob = await fetchImageViaProxy(result.imageUrl)
         const objectUrl = URL.createObjectURL(imageBlob)
         try {
-          blob = await drawImageWithTitleCanvas(objectUrl, result.description || '')
+          blob = await drawImageWithTitleCanvas(objectUrl, result.description || '', safeBottom)
         } finally {
           URL.revokeObjectURL(objectUrl)
         }
       }
-      downloadBlob(blob, 'anh-co-mo-ta.png')
+      const filename = format === 'tiktok' ? 'anh-co-mo-ta-tiktok.png' : 'anh-co-mo-ta-fanpage.png'
+      downloadBlob(blob, filename)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Không tạo được ảnh.'
       setDownloadTitleError(msg)
@@ -296,9 +305,20 @@ export function CrawlTool() {
                 placeholder='https://example.com/bai-viet'
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className='h-11 w-full pl-10 text-base sm:h-12 sm:pl-12 md:text-[15px]'
+                className='h-11 w-full pl-10 pr-10 text-base sm:h-12 sm:pl-12 sm:pr-12 md:text-[15px]'
                 disabled={loading}
               />
+              {url.trim() && (
+                <button
+                  type='button'
+                  onClick={() => setUrl('')}
+                  aria-label='Xóa link'
+                  className='text-muted-foreground hover:text-foreground absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:pointer-events-none sm:right-4'
+                  disabled={loading}
+                >
+                  <X className='size-4 sm:size-5' />
+                </button>
+              )}
             </div>
             <Button
               type='submit'
@@ -340,31 +360,47 @@ export function CrawlTool() {
                     alt={result.title}
                     className='max-h-64 w-full rounded-xl border bg-muted/30 object-contain sm:max-h-80 md:max-h-96'
                   />
-                  <div className='mt-3 flex flex-wrap items-center gap-2'>
+                  <div className='mt-3 space-y-3'>
                     <a
                       href={result.imageUrl}
                       target='_blank'
                       rel='noopener noreferrer'
-                      className='text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-2'
+                      className='text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-2 transition-colors'
                     >
-                      <ExternalLink className='size-4' />
+                      <ExternalLink className='size-4 shrink-0' />
                       Mở ảnh / Tải gốc
                     </a>
-                    <span className='text-muted-foreground text-sm'>|</span>
-                    <Button
-                      type='button'
-                      size='sm'
-                      className='gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
-                      disabled={downloadTitleLoading}
-                      onClick={handleDownloadWithTitle}
-                    >
-                      {downloadTitleLoading ? (
-                        <Loader2 className='size-4 shrink-0 animate-spin' />
-                      ) : (
-                        <Download className='size-4 shrink-0' />
-                      )}
-                      Tải ảnh có mô tả
-                    </Button>
+                    <div className='grid grid-cols-2 gap-2 sm:gap-3'>
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        className='gap-1.5'
+                        disabled={downloadTitleLoading}
+                        onClick={() => handleDownloadWithTitle('tiktok')}
+                      >
+                        {downloadTitleLoading ? (
+                          <Loader2 className='size-4 shrink-0 animate-spin' />
+                        ) : (
+                          <Download className='size-4 shrink-0' />
+                        )}
+                        Tải cho TikTok
+                      </Button>
+                      <Button
+                        type='button'
+                        size='sm'
+                        className='gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
+                        disabled={downloadTitleLoading}
+                        onClick={() => handleDownloadWithTitle('facebook')}
+                      >
+                        {downloadTitleLoading ? (
+                          <Loader2 className='size-4 shrink-0 animate-spin' />
+                        ) : (
+                          <Download className='size-4 shrink-0' />
+                        )}
+                        Tải cho Fanpage FB
+                      </Button>
+                    </div>
                   </div>
                   {downloadTitleError && (
                     <p className='text-destructive mt-2 text-sm' role='alert'>
