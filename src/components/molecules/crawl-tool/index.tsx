@@ -127,19 +127,17 @@ function drawImageWithTitleCanvas(
   })
 }
 
-async function fetchImageWithTitleFromApi(
-  imageUrl: string,
-  description: string
-): Promise<Blob> {
+/** Proxy ảnh qua API (không CORS) rồi vẽ mô tả client-side — giống tab Story, hoạt động trên Vercel. */
+async function fetchImageViaProxy(imageUrl: string): Promise<Blob> {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const res = await fetch(`${origin}/api/image-with-title`, {
+  const res = await fetch(`${origin}/api/image-proxy`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageUrl, description }),
+    body: JSON.stringify({ imageUrl }),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
-    const msg = typeof data?.error === 'string' ? data.error : 'Không tạo được ảnh.'
+    const msg = typeof data?.error === 'string' ? data.error : 'Không tải được ảnh từ link.'
     throw new Error(msg)
   }
   return res.blob()
@@ -200,10 +198,13 @@ export function CrawlTool() {
           result.description || ''
         )
       } catch {
-        blob = await fetchImageWithTitleFromApi(
-          result.imageUrl,
-          result.description || ''
-        )
+        const imageBlob = await fetchImageViaProxy(result.imageUrl)
+        const objectUrl = URL.createObjectURL(imageBlob)
+        try {
+          blob = await drawImageWithTitleCanvas(objectUrl, result.description || '')
+        } finally {
+          URL.revokeObjectURL(objectUrl)
+        }
       }
       downloadBlob(blob, 'anh-co-mo-ta.png')
     } catch (err) {
