@@ -29,6 +29,8 @@ function downloadBlob(blob: Blob, filename: string) {
 
 const CAPTION_STRIP_COLOR = 'rgb(54, 118, 42)'
 const CAPTION_FONT = '600 {size}px system-ui, -apple-system, sans-serif'
+const TIKTOK_FRAME_WIDTH = 1080
+const TIKTOK_FRAME_HEIGHT = 1920
 
 function wrapDescriptionForCanvas(text: string, ctx: CanvasRenderingContext2D, maxWidthPx: number): string[] {
   const t = text.trim()
@@ -71,7 +73,7 @@ function wrapDescriptionForCanvas(text: string, ctx: CanvasRenderingContext2D, m
   return lines
 }
 
-/** Chỉ dùng crossOrigin = 'anonymous' — nếu không CORS canvas sẽ tainted và toBlob() throw. */
+/** Khung TikTok 1080×1920: ảnh full cover toàn khung, dải nền xanh + chữ đè lên phía dưới (che màu hồng). */
 function drawImageWithTitleCanvas(
   imageUrl: string,
   description: string
@@ -80,36 +82,44 @@ function drawImageWithTitleCanvas(
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      const W = img.naturalWidth
-      const H = img.naturalHeight
+      const natW = img.naturalWidth
+      const natH = img.naturalHeight
+      const outW = TIKTOK_FRAME_WIDTH
+      const outH = TIKTOK_FRAME_HEIGHT
       const canvas = document.createElement('canvas')
-      canvas.width = W
-      canvas.height = H
+      canvas.width = outW
+      canvas.height = outH
       const ctx = canvas.getContext('2d')
       if (!ctx) {
         reject(new Error('Không tạo được canvas'))
         return
       }
-      ctx.drawImage(img, 0, 0, W, H)
+      const scale = Math.max(outW / natW, outH / natH)
+      const drawW = natW * scale
+      const drawH = natH * scale
+      const dx = (outW - drawW) / 2
+      const dy = (outH - drawH) / 2
+      ctx.drawImage(img, 0, 0, natW, natH, dx, dy, drawW, drawH)
       const desc = (description || '').trim()
       if (desc) {
         const paddingH = 10
-        const paddingV = Math.round(W * 0.03)
-        const fontSize = Math.min(30, Math.round(W * 0.028))
+        const paddingV = Math.round(outW * 0.03)
+        const extraOverlap = Math.round(outW * 0.04)
+        const fontSize = Math.min(52, Math.round(outW * 0.048))
         const lineHeight = Math.round(fontSize * 1.35)
         ctx.font = CAPTION_FONT.replace('{size}', String(fontSize))
-        const maxLineWidth = W - 2 * paddingH
+        const maxLineWidth = outW - 2 * paddingH
         const lines = wrapDescriptionForCanvas(desc, ctx, maxLineWidth)
-        const stripHeight = lines.length * lineHeight + paddingV * 2
-        const stripY = H - stripHeight
+        const stripHeight = lines.length * lineHeight + paddingV * 2 + extraOverlap
+        const stripY = outH - stripHeight
         ctx.fillStyle = CAPTION_STRIP_COLOR
-        ctx.fillRect(0, stripY, W, stripHeight)
+        ctx.fillRect(0, stripY, outW, stripHeight)
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
-        const textX = W / 2
+        const textX = outW / 2
         lines.forEach((line, i) => {
-          const y = stripY + paddingV + i * lineHeight
+          const y = stripY + extraOverlap + paddingV + i * lineHeight
           ctx.fillText(line, textX, y)
         })
       }
