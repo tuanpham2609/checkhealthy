@@ -19,6 +19,8 @@ export interface CrawlResult {
   suggestedCaptionFacebook: string
   /** Đoạn text gợi ý để đăng TikTok (ngắn hơn, có hashtag) */
   suggestedCaptionTikTok: string
+  /** True nếu URL crawl là X (Twitter) — tải ảnh full (contain) cho đẹp. */
+  isFromX?: boolean
   /** Raw Open Graph / Twitter Card nếu cần */
   raw: {
     ogTitle?: string
@@ -342,6 +344,7 @@ export async function crawlUrl(inputUrl: string): Promise<CrawlResult> {
     description,
     imageUrl,
     siteName,
+    isFromX: isX,
     suggestedCaptionFacebook: truncate(suggestedCaptionFacebook, FACEBOOK_CAPTION_MAX * 2),
     suggestedCaptionTikTok,
     raw: {

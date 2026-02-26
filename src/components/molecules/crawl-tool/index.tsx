@@ -78,12 +78,13 @@ function wrapDescriptionForCanvas(text: string, ctx: CanvasRenderingContext2D, m
   return lines
 }
 
-/** Khung 1080×1920: ảnh full cover, dải nền xanh + chữ. safeBottom: TikTok giữ vùng trống dưới, Facebook = 0. paddingH: TikTok 25px trái phải. */
+/** Khung 1080×1920. sourceIsX: crawl từ X → ảnh full (contain). Còn lại: cover. */
 function drawImageWithTitleCanvas(
   imageUrl: string,
   description: string,
   safeBottom: number = TIKTOK_SAFE_BOTTOM,
-  format: DownloadFormat = 'tiktok'
+  format: DownloadFormat = 'tiktok',
+  sourceIsX: boolean = false
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -101,7 +102,13 @@ function drawImageWithTitleCanvas(
         reject(new Error('Không tạo được canvas'))
         return
       }
-      const scale = Math.max(outW / natW, outH / natH)
+      if (sourceIsX) {
+        ctx.fillStyle = '#0a0a0a'
+        ctx.fillRect(0, 0, outW, outH)
+      }
+      const scale = sourceIsX
+        ? Math.min(outW / natW, outH / natH)
+        : Math.max(outW / natW, outH / natH)
       const drawW = natW * scale
       const drawH = natH * scale
       const dx = (outW - drawW) / 2
@@ -118,10 +125,11 @@ function drawImageWithTitleCanvas(
         const maxLineWidth = outW - 2 * paddingH
         const lines = wrapDescriptionForCanvas(desc, ctx, maxLineWidth)
         const stripHeight = lines.length * lineHeight + paddingV * 2 + extraOverlap
-        const stripY = outH - stripHeight - safeBottom
+        const stripY = sourceIsX
+          ? Math.min(dy + drawH, outH - stripHeight)
+          : outH - stripHeight - safeBottom
         ctx.fillStyle = CAPTION_STRIP_COLOR
-        ctx.fillRect(0, stripY, outW, stripHeight)
-        ctx.fillRect(0, stripY + stripHeight, outW, outH - (stripY + stripHeight))
+        ctx.fillRect(0, stripY, outW, outH - stripY)
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
@@ -252,6 +260,7 @@ export function CrawlTool() {
     setDownloadTitleError(null)
     setDownloadTitleLoading(true)
     const safeBottom = format === 'tiktok' ? TIKTOK_SAFE_BOTTOM : 0
+    const sourceIsX = result.isFromX === true
     try {
       let blob: Blob
       try {
@@ -259,13 +268,20 @@ export function CrawlTool() {
           result.imageUrl,
           result.description || '',
           safeBottom,
-          format
+          format,
+          sourceIsX
         )
       } catch {
         const imageBlob = await fetchImageViaProxy(result.imageUrl)
         const objectUrl = URL.createObjectURL(imageBlob)
         try {
-          blob = await drawImageWithTitleCanvas(objectUrl, result.description || '', safeBottom, format)
+          blob = await drawImageWithTitleCanvas(
+            objectUrl,
+            result.description || '',
+            safeBottom,
+            format,
+            sourceIsX
+          )
         } finally {
           URL.revokeObjectURL(objectUrl)
         }
