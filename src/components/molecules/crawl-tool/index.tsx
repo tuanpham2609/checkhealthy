@@ -13,7 +13,9 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { CrawlResult } from '@/lib/utils/crawl'
+import { StoryCaptionTool } from '@/components/molecules/story-caption-tool'
 import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download } from 'lucide-react'
 import { cn } from '@/lib/styles'
 
@@ -99,9 +101,19 @@ export function CrawlTool() {
   }
 
   return (
-    <div className='space-y-5 sm:space-y-6 md:space-y-8'>
-      {/* Form card - full width, responsive padding */}
-      <Card className='overflow-hidden border-emerald-200/70 bg-white/90 shadow-xl shadow-emerald-900/5 backdrop-blur-sm dark:border-emerald-800/50 dark:bg-card/95'>
+    <Tabs defaultValue='crawl' className='w-full'>
+      <TabsList className='mb-4 w-full max-w-md sm:mb-6'>
+        <TabsTrigger value='crawl' className='flex-1'>
+          Crawl
+        </TabsTrigger>
+        <TabsTrigger value='story' className='flex-1'>
+          Story / Caption
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value='crawl' className='mt-0'>
+        <div className='space-y-5 sm:space-y-6 md:space-y-8'>
+          {/* Form card - full width, responsive padding */}
+          <Card className='overflow-hidden border-emerald-200/70 bg-white/90 shadow-xl shadow-emerald-900/5 backdrop-blur-sm dark:border-emerald-800/50 dark:bg-card/95'>
         <CardContent className='p-4 sm:p-5 md:p-6 lg:p-7'>
           <form
             onSubmit={handleSubmit}
@@ -310,6 +322,11 @@ export function CrawlTool() {
           </div>
         </div>
       )}
-    </div>
+        </div>
+      </TabsContent>
+      <TabsContent value='story' className='mt-0'>
+        <StoryCaptionTool />
+      </TabsContent>
+    </Tabs>
   )
 }
