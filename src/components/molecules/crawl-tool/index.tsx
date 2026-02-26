@@ -15,8 +15,9 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { CrawlResult } from '@/lib/utils/crawl'
+import { buildSuggestedCaptions } from '@/lib/utils/crawl'
 import { StoryCaptionTool } from '@/components/molecules/story-caption-tool'
-import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download } from 'lucide-react'
+import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages } from 'lucide-react'
 import { cn } from '@/lib/styles'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -161,6 +162,8 @@ export function CrawlTool() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [downloadTitleLoading, setDownloadTitleLoading] = useState(false)
   const [downloadTitleError, setDownloadTitleError] = useState<string | null>(null)
+  const [translateLoading, setTranslateLoading] = useState(false)
+  const [translateError, setTranslateError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -194,6 +197,47 @@ export function CrawlTool() {
     navigator.clipboard.writeText(text)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  async function handleTranslateToVietnamese() {
+    if (!result) return
+    setTranslateError(null)
+    setTranslateLoading(true)
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    try {
+      const [titleRes, descRes] = await Promise.all([
+        fetch(`${origin}/api/translate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: result.title, sourceLang: 'en' }),
+        }),
+        fetch(`${origin}/api/translate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: result.description, sourceLang: 'en' }),
+        }),
+      ])
+      const titleData = await titleRes.json()
+      const descData = await descRes.json()
+      if (!titleRes.ok || !descRes.ok) {
+        setTranslateError(titleData?.error || descData?.error || 'Dịch thất bại')
+        return
+      }
+      const translatedTitle = typeof titleData?.translated === 'string' ? titleData.translated : result.title
+      const translatedDesc = typeof descData?.translated === 'string' ? descData.translated : result.description
+      const captions = buildSuggestedCaptions(translatedTitle, translatedDesc, result.url)
+      setResult({
+        ...result,
+        title: translatedTitle,
+        description: translatedDesc,
+        suggestedCaptionFacebook: captions.suggestedCaptionFacebook,
+        suggestedCaptionTikTok: captions.suggestedCaptionTikTok,
+      })
+    } catch {
+      setTranslateError('Lỗi kết nối khi dịch')
+    } finally {
+      setTranslateLoading(false)
+    }
   }
 
   async function handleDownloadWithTitle() {
@@ -332,10 +376,30 @@ export function CrawlTool() {
             )}
 
             <Card className='flex-1 overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
-              <CardHeader className='border-b bg-muted/40 px-4 py-3 sm:px-5 sm:py-4'>
+              <CardHeader className='flex flex-col gap-2 border-b bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4'>
                 <CardTitle className='text-base font-semibold sm:text-lg'>Thông tin trang</CardTitle>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  className='w-full gap-1.5 sm:w-auto'
+                  disabled={translateLoading}
+                  onClick={handleTranslateToVietnamese}
+                >
+                  {translateLoading ? (
+                    <Loader2 className='size-4 shrink-0 animate-spin' />
+                  ) : (
+                    <Languages className='size-4 shrink-0' />
+                  )}
+                  Dịch sang tiếng Việt
+                </Button>
               </CardHeader>
               <CardContent className='space-y-3 p-4 text-sm sm:space-y-4 sm:p-5 sm:text-[15px]'>
+                {translateError && (
+                  <p className='text-destructive text-sm' role='alert'>
+                    {translateError}
+                  </p>
+                )}
                 <div>
                   <div className='flex flex-wrap items-center justify-between gap-2'>
                     <span className='text-muted-foreground font-medium'>Tiêu đề:</span>

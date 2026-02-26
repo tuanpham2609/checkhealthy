@@ -99,6 +99,26 @@ function generateHashtagsFromContent(title: string, description: string): string
   return tags.join(' ')
 }
 
+/**
+ * Tạo caption Facebook và TikTok từ title, description và URL.
+ * Dùng sau khi dịch nội dung sang tiếng Việt để cập nhật caption gợi ý.
+ */
+export function buildSuggestedCaptions(
+  title: string,
+  description: string,
+  url: string
+): { suggestedCaptionFacebook: string; suggestedCaptionTikTok: string } {
+  const linkLine = url || ''
+  const suggestedCaptionFacebook = [title, description, linkLine].filter(Boolean).join('\n\n')
+  const shortDesc = truncate(description, TIKTOK_CAPTION_MAX)
+  const hashtags = generateHashtagsFromContent(title, description)
+  const suggestedCaptionTikTok = [title, shortDesc, linkLine, hashtags].filter(Boolean).join('\n')
+  return {
+    suggestedCaptionFacebook: truncate(suggestedCaptionFacebook, FACEBOOK_CAPTION_MAX * 2),
+    suggestedCaptionTikTok,
+  }
+}
+
 /** Headers giống trình duyệt để hạn chế bị chặn (ví dụ BBC, báo) */
 const BROWSER_HEADERS: HeadersInit = {
   'User-Agent':
