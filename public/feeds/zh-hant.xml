@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>MỸ THUẬT CMC - Shop Họa Cụ Mỹ Thuật Chuyên Nghiệp - ZH-HANT</title>
-    <link>https://officialwalletweb.vercel.app/zh-hant</link>
-    <description>Shop họa cụ mỹ thuật chuyên nghiệp với đầy đủ sản phẩm từ màu nước, màu dầu, cọ vẽ, canvas đến dụng cụ vẽ. Chất lượng cao, giá cả hợp lý.</description>
+    <title>MỸ THUẬT CMC - Shop Họa Cụ Mỹ Thuật Chuyên Nghiệp | Mua Online Shopee - ZH-HANT</title>
+    <link>https://mythuatcmc.vn/zh-hant</link>
+    <description>Shop họa cụ mỹ thuật chuyên nghiệp với đầy đủ sản phẩm từ màu nước, màu dầu, cọ vẽ, canvas đến dụng cụ vẽ. Mua sắm online tại Shopee với nhiều ưu đãi hấp dẫn. Chất lượng cao, giá cả hợp lý, giao hàng nhanh chóng.</description>
     <language>zh-hant</language>
-    <managingEditor>contact@artsupplystore.com (Mythuatcmc)</managingEditor>
-    <webMaster>contact@artsupplystore.com (Mythuatcmc)</webMaster>
-    <lastBuildDate>Wed, 17 Dec 2025 10:51:53 GMT</lastBuildDate>
-    <atom:link href="https://officialwalletweb.vercel.app/feeds/zh-hant.xml" rel="self" type="application/rss+xml"/>
+    <managingEditor>contact@mythuatcmc.vn (Mythuatcmc)</managingEditor>
+    <webMaster>contact@mythuatcmc.vn (Mythuatcmc)</webMaster>
+    <lastBuildDate>Thu, 26 Feb 2026 04:58:05 GMT</lastBuildDate>
+    <atom:link href="https://mythuatcmc.vn/feeds/zh-hant.xml" rel="self" type="application/rss+xml"/>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/zh-hant/about/privacy-policy</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/zh-hant/about/privacy-policy</guid>
       <title>隱私協議</title>
-      <link>https://officialwalletweb.vercel.app/zh-hant/about/privacy-policy</link>
+      <link>https://mythuatcmc.vn/zh-hant/about/privacy-policy</link>
       <description>
 歡迎您使用官方網站（以下簡稱：官網）的運營主體。我們尊重並保護您的隱私，在您使用我們的服務時或在接受服務過程中，所提供給我們或我們收集的關於您的個人信息，我們將按照移動應用隱私政策（以下簡稱&quot;本政策&quot;）進行收集、存儲、使用及對外提供。本政策與您使用我們的產品和服務關係緊密，請您仔細閱讀並理解本政策全部內容，一旦您確認充分理解並同意后使用移動應用產品或服務，即表示您已充分理解並同意我們可按照本政</description>
-      <pubDate>Wed, 17 Dec 2025 10:51:53 GMT</pubDate>
+      <pubDate>Thu, 26 Feb 2026 04:58:05 GMT</pubDate>
       <category>about</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/zh-hant/about/terms-of-service</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/zh-hant/about/terms-of-service</guid>
       <title>請仔細閱讀服務條款</title>
-      <link>https://officialwalletweb.vercel.app/zh-hant/about/terms-of-service</link>
+      <link>https://mythuatcmc.vn/zh-hant/about/terms-of-service</link>
       <description>
  請仔細閱讀這些服務條款。
 
@@ -36,13 +36,13 @@
 (b) 您此前未被暫停或取消使用我們的服務；
 
 (c) 您擁有完全的權力和授權來簽署本協議，且不會違反您作為當事方的任何其他協議。如果您代表法人實體註冊使用服務，您進一步聲明</description>
-      <pubDate>Wed, 17 Dec 2025 10:51:53 GMT</pubDate>
+      <pubDate>Thu, 26 Feb 2026 04:58:05 GMT</pubDate>
       <category>about</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/zh-hant/features/instant-transfer</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/zh-hant/features/instant-transfer</guid>
       <title>即時轉帳 - 快速跨鏈交易</title>
-      <link>https://officialwalletweb.vercel.app/zh-hant/features/instant-transfer</link>
+      <link>https://mythuatcmc.vn/zh-hant/features/instant-transfer</link>
       <description>
  概述
 
@@ -60,9 +60,9 @@ TBC Wallet 的即時轉帳功能支援閃電般的跨鏈交易，費用極低且
       <category>features</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/zh-hant/features/miner</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/zh-hant/features/miner</guid>
       <title>礦工 - PoS 質押和驗證器系統</title>
-      <link>https://officialwalletweb.vercel.app/zh-hant/features/miner</link>
+      <link>https://mythuatcmc.vn/zh-hant/features/miner</link>
       <description>
  概述
 
@@ -77,9 +77,9 @@ TBC Wallet 的礦工功能使您能夠參與權益證明 (PoS) 共識機制。�
       <category>features</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/zh-hant/features/multi-signature</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/zh-hant/features/multi-signature</guid>
       <title>多重簽名 - 增強您的錢包安全性</title>
-      <link>https://officialwalletweb.vercel.app/zh-hant/features/multi-signature</link>
+      <link>https://mythuatcmc.vn/zh-hant/features/multi-signature</link>
       <description>
  概述
 
@@ -92,9 +92,9 @@ TBC Wallet 的礦工功能使您能夠參與權益證明 (PoS) 共識機制。�
       <category>features</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/zh-hant/features/usdt-fee</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/zh-hant/features/usdt-fee</guid>
       <title>USDT 手續費 - 使用穩定幣支付費用</title>
-      <link>https://officialwalletweb.vercel.app/zh-hant/features/usdt-fee</link>
+      <link>https://mythuatcmc.vn/zh-hant/features/usdt-fee</link>
       <description>
  概述
 

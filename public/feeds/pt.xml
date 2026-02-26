@@ -1,38 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>MỸ THUẬT CMC - Shop Họa Cụ Mỹ Thuật Chuyên Nghiệp - PT</title>
-    <link>https://officialwalletweb.vercel.app/pt</link>
-    <description>Shop họa cụ mỹ thuật chuyên nghiệp với đầy đủ sản phẩm từ màu nước, màu dầu, cọ vẽ, canvas đến dụng cụ vẽ. Chất lượng cao, giá cả hợp lý.</description>
+    <title>MỸ THUẬT CMC - Shop Họa Cụ Mỹ Thuật Chuyên Nghiệp | Mua Online Shopee - PT</title>
+    <link>https://mythuatcmc.vn/pt</link>
+    <description>Shop họa cụ mỹ thuật chuyên nghiệp với đầy đủ sản phẩm từ màu nước, màu dầu, cọ vẽ, canvas đến dụng cụ vẽ. Mua sắm online tại Shopee với nhiều ưu đãi hấp dẫn. Chất lượng cao, giá cả hợp lý, giao hàng nhanh chóng.</description>
     <language>pt</language>
-    <managingEditor>contact@artsupplystore.com (Mythuatcmc)</managingEditor>
-    <webMaster>contact@artsupplystore.com (Mythuatcmc)</webMaster>
-    <lastBuildDate>Wed, 17 Dec 2025 10:51:53 GMT</lastBuildDate>
-    <atom:link href="https://officialwalletweb.vercel.app/feeds/pt.xml" rel="self" type="application/rss+xml"/>
+    <managingEditor>contact@mythuatcmc.vn (Mythuatcmc)</managingEditor>
+    <webMaster>contact@mythuatcmc.vn (Mythuatcmc)</webMaster>
+    <lastBuildDate>Thu, 26 Feb 2026 04:58:05 GMT</lastBuildDate>
+    <atom:link href="https://mythuatcmc.vn/feeds/pt.xml" rel="self" type="application/rss+xml"/>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/pt/about/privacy-policy</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/pt/about/privacy-policy</guid>
       <title>Política de Privacidade</title>
-      <link>https://officialwalletweb.vercel.app/pt/about/privacy-policy</link>
+      <link>https://mythuatcmc.vn/pt/about/privacy-policy</link>
       <description>
 Bem-vindo à entidade operadora do nosso site oficial (doravante designado por &quot;o Site&quot;). Respeitamos e protegemos a sua privacidade. Quando utiliza ou recebe os nossos serviços, as informações pesso</description>
-      <pubDate>Wed, 17 Dec 2025 10:51:53 GMT</pubDate>
+      <pubDate>Thu, 26 Feb 2026 04:58:05 GMT</pubDate>
       <category>about</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/pt/about/terms-of-service</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/pt/about/terms-of-service</guid>
       <title>Termos do Serviço</title>
-      <link>https://officialwalletweb.vercel.app/pt/about/terms-of-service</link>
+      <link>https://mythuatcmc.vn/pt/about/terms-of-service</link>
       <description>
  Por favor, leia atentamente estes termos de serviço.
 
 Ao acessar ou usar nossos serviços, você concorda em ficar vinculado por estes Termos de Serviço e todos os termos incorporados por referênci</description>
-      <pubDate>Wed, 17 Dec 2025 10:51:53 GMT</pubDate>
+      <pubDate>Thu, 26 Feb 2026 04:58:05 GMT</pubDate>
       <category>about</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/pt/features/instant-transfer</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/pt/features/instant-transfer</guid>
       <title>Transferência Instantânea - Transações Rápidas entre Cadeias</title>
-      <link>https://officialwalletweb.vercel.app/pt/features/instant-transfer</link>
+      <link>https://mythuatcmc.vn/pt/features/instant-transfer</link>
       <description>
  Visão Geral
 
@@ -41,9 +41,9 @@ A funcionalidade de Transferência Instantânea do TBC Wallet permite transaçõ
       <category>features</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/pt/features/miner</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/pt/features/miner</guid>
       <title>Minerador - Sistema de Staking PoS e Validadores</title>
-      <link>https://officialwalletweb.vercel.app/pt/features/miner</link>
+      <link>https://mythuatcmc.vn/pt/features/miner</link>
       <description>
  Visão Geral
 
@@ -52,9 +52,9 @@ O recurso Miner do TBC Wallet permite que você participe do mecanismo de consen
       <category>features</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/pt/features/multi-signature</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/pt/features/multi-signature</guid>
       <title>Multi-Assinatura - Segurança Aprimorada para sua Carteira</title>
-      <link>https://officialwalletweb.vercel.app/pt/features/multi-signature</link>
+      <link>https://mythuatcmc.vn/pt/features/multi-signature</link>
       <description>
  Visão Geral
 
@@ -63,9 +63,9 @@ A tecnologia de multi-assinatura (multi-sig) adiciona uma camada extra de segura
       <category>features</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/pt/features/usdt-fee</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/pt/features/usdt-fee</guid>
       <title>Taxa USDT - Pague Taxas com Stablecoin</title>
-      <link>https://officialwalletweb.vercel.app/pt/features/usdt-fee</link>
+      <link>https://mythuatcmc.vn/pt/features/usdt-fee</link>
       <description>
  Visão Geral
 

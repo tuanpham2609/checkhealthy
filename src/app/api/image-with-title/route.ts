@@ -164,7 +164,7 @@ export async function POST(request: Request) {
     const lines = wrapTitle(description, W)
     if (lines.length === 0) {
       const out = await pipeline.png().toBuffer()
-      return new NextResponse(out, {
+      return new NextResponse(new Uint8Array(out), {
         status: 200,
         headers: {
           'Content-Type': 'image/png',
@@ -204,7 +204,7 @@ export async function POST(request: Request) {
       .png()
       .toBuffer()
 
-    return new NextResponse(out, {
+    return new NextResponse(new Uint8Array(out), {
       status: 200,
       headers: {
         'Content-Type': 'image/png',

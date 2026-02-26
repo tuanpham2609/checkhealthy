@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>MỸ THUẬT CMC - Shop Họa Cụ Mỹ Thuật Chuyên Nghiệp - FI</title>
-    <link>https://officialwalletweb.vercel.app/fi</link>
-    <description>Shop họa cụ mỹ thuật chuyên nghiệp với đầy đủ sản phẩm từ màu nước, màu dầu, cọ vẽ, canvas đến dụng cụ vẽ. Chất lượng cao, giá cả hợp lý.</description>
+    <title>MỸ THUẬT CMC - Shop Họa Cụ Mỹ Thuật Chuyên Nghiệp | Mua Online Shopee - FI</title>
+    <link>https://mythuatcmc.vn/fi</link>
+    <description>Shop họa cụ mỹ thuật chuyên nghiệp với đầy đủ sản phẩm từ màu nước, màu dầu, cọ vẽ, canvas đến dụng cụ vẽ. Mua sắm online tại Shopee với nhiều ưu đãi hấp dẫn. Chất lượng cao, giá cả hợp lý, giao hàng nhanh chóng.</description>
     <language>fi</language>
-    <managingEditor>contact@artsupplystore.com (Mythuatcmc)</managingEditor>
-    <webMaster>contact@artsupplystore.com (Mythuatcmc)</webMaster>
-    <lastBuildDate>Wed, 17 Dec 2025 10:51:53 GMT</lastBuildDate>
-    <atom:link href="https://officialwalletweb.vercel.app/feeds/fi.xml" rel="self" type="application/rss+xml"/>
+    <managingEditor>contact@mythuatcmc.vn (Mythuatcmc)</managingEditor>
+    <webMaster>contact@mythuatcmc.vn (Mythuatcmc)</webMaster>
+    <lastBuildDate>Thu, 26 Feb 2026 04:58:05 GMT</lastBuildDate>
+    <atom:link href="https://mythuatcmc.vn/feeds/fi.xml" rel="self" type="application/rss+xml"/>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/fi/about/privacy-policy</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/fi/about/privacy-policy</guid>
       <title>Tietosuojakäytäntö</title>
-      <link>https://officialwalletweb.vercel.app/fi/about/privacy-policy</link>
+      <link>https://mythuatcmc.vn/fi/about/privacy-policy</link>
       <description>
 Tervetuloa virallisen verkkosivustomme (jäljempänä &quot;Verkkosivusto&quot;) toimintaan. Kunnioitamme ja suojaamme yksityisyyttäsi. Kun käytät palveluitamme tai vastaanotat palveluitamme, meille antamasi tai</description>
-      <pubDate>Wed, 17 Dec 2025 10:51:53 GMT</pubDate>
+      <pubDate>Thu, 26 Feb 2026 04:58:05 GMT</pubDate>
       <category>about</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/fi/about/terms-of-service</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/fi/about/terms-of-service</guid>
       <title>Palveluehdot</title>
-      <link>https://officialwalletweb.vercel.app/fi/about/terms-of-service</link>
+      <link>https://mythuatcmc.vn/fi/about/terms-of-service</link>
       <description>
  Lue nämä käyttöehdot huolellisesti.
 
@@ -30,13 +30,13 @@ Kun käytät palveluitamme tai käytät niitä, sitoudut noudattamaan näitä pa
  1\. Pätevyydet
 
 Vakuutat</description>
-      <pubDate>Wed, 17 Dec 2025 10:51:53 GMT</pubDate>
+      <pubDate>Thu, 26 Feb 2026 04:58:05 GMT</pubDate>
       <category>about</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/fi/features/instant-transfer</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/fi/features/instant-transfer</guid>
       <title>Välitön Siirto - Nopeat Ketjujenväliset Transaktiot</title>
-      <link>https://officialwalletweb.vercel.app/fi/features/instant-transfer</link>
+      <link>https://mythuatcmc.vn/fi/features/instant-transfer</link>
       <description>
  Yleiskatsaus
 
@@ -45,9 +45,9 @@ TBC Walletin Välitön Siirto -ominaisuus mahdollistaa salamannopeat ketjujenvä
       <category>features</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/fi/features/miner</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/fi/features/miner</guid>
       <title>Louhija - PoS Staking ja Validointijärjestelmä</title>
-      <link>https://officialwalletweb.vercel.app/fi/features/miner</link>
+      <link>https://mythuatcmc.vn/fi/features/miner</link>
       <description>
  Yleiskatsaus
 
@@ -56,9 +56,9 @@ TBC Walletin Louhija-ominaisuus mahdollistaa osallistumisen Proof of Stake (PoS)
       <category>features</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/fi/features/multi-signature</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/fi/features/multi-signature</guid>
       <title>Moniallekirjoitus - Parannettu Turvallisuus Lompakollesi</title>
-      <link>https://officialwalletweb.vercel.app/fi/features/multi-signature</link>
+      <link>https://mythuatcmc.vn/fi/features/multi-signature</link>
       <description>
  Yleiskatsaus
 
@@ -67,9 +67,9 @@ Moniallekirjoitus (multi-sig) -teknologia lisää ylimääräisen turvallisuuske
       <category>features</category>
     </item>
     <item>
-      <guid isPermaLink="true">https://officialwalletweb.vercel.app/fi/features/usdt-fee</guid>
+      <guid isPermaLink="true">https://mythuatcmc.vn/fi/features/usdt-fee</guid>
       <title>USDT-maksu - Maksa Maksut Stablecoinilla</title>
-      <link>https://officialwalletweb.vercel.app/fi/features/usdt-fee</link>
+      <link>https://mythuatcmc.vn/fi/features/usdt-fee</link>
       <description>
  Yleiskatsaus
 
