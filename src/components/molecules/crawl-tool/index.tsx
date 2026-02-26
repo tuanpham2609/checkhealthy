@@ -14,8 +14,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { CrawlResult } from '@/lib/utils/crawl'
-import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink } from 'lucide-react'
+import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download } from 'lucide-react'
 import { cn } from '@/lib/styles'
+
+function downloadBlob(blob: Blob, filename: string) {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
 
 export function CrawlTool() {
   const [url, setUrl] = useState('')
@@ -23,6 +31,8 @@ export function CrawlTool() {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<CrawlResult | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [downloadTitleLoading, setDownloadTitleLoading] = useState(false)
+  const [downloadTitleError, setDownloadTitleError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -56,6 +66,36 @@ export function CrawlTool() {
     navigator.clipboard.writeText(text)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  async function handleDownloadWithTitle() {
+    if (!result?.imageUrl) return
+    setDownloadTitleError(null)
+    setDownloadTitleLoading(true)
+    try {
+      const res = await fetch('/api/image-with-title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: result.imageUrl,
+          description: result.description || '',
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        const msg = typeof data?.error === 'string' ? data.error : 'Không tạo được ảnh.'
+        setDownloadTitleError(msg)
+        setTimeout(() => setDownloadTitleError(null), 6000)
+        return
+      }
+      const blob = await res.blob()
+      downloadBlob(blob, 'anh-co-mo-ta.png')
+    } catch {
+      setDownloadTitleError('Lỗi kết nối. Thử lại.')
+      setTimeout(() => setDownloadTitleError(null), 5000)
+    } finally {
+      setDownloadTitleLoading(false)
+    }
   }
 
   return (
@@ -118,15 +158,37 @@ export function CrawlTool() {
                     alt={result.title}
                     className='max-h-64 w-full rounded-xl border bg-muted/30 object-contain sm:max-h-80 md:max-h-96'
                   />
-                  <a
-                    href={result.imageUrl}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 mt-3 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-2'
-                  >
-                    <ExternalLink className='size-4' />
-                    Mở ảnh / Tải về
-                  </a>
+                  <div className='mt-3 flex flex-wrap items-center gap-2'>
+                    <a
+                      href={result.imageUrl}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-2'
+                    >
+                      <ExternalLink className='size-4' />
+                      Mở ảnh / Tải gốc
+                    </a>
+                    <span className='text-muted-foreground text-sm'>|</span>
+                    <Button
+                      type='button'
+                      size='sm'
+                      className='gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
+                      disabled={downloadTitleLoading}
+                      onClick={handleDownloadWithTitle}
+                    >
+                      {downloadTitleLoading ? (
+                        <Loader2 className='size-4 shrink-0 animate-spin' />
+                      ) : (
+                        <Download className='size-4 shrink-0' />
+                      )}
+                      Tải ảnh có mô tả
+                    </Button>
+                  </div>
+                  {downloadTitleError && (
+                    <p className='text-destructive mt-2 text-sm' role='alert'>
+                      {downloadTitleError}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -137,11 +199,43 @@ export function CrawlTool() {
               </CardHeader>
               <CardContent className='space-y-3 p-4 text-sm sm:space-y-4 sm:p-5 sm:text-[15px]'>
                 <div>
-                  <span className='text-muted-foreground font-medium'>Tiêu đề:</span>
+                  <div className='flex flex-wrap items-center justify-between gap-2'>
+                    <span className='text-muted-foreground font-medium'>Tiêu đề:</span>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      size='sm'
+                      className='h-8 gap-1.5 shrink-0'
+                      onClick={() => copyToClipboard(result.title, 'title')}
+                    >
+                      {copiedId === 'title' ? (
+                        <Check className='size-4 text-emerald-600' />
+                      ) : (
+                        <Copy className='size-4' />
+                      )}
+                      {copiedId === 'title' ? 'Đã copy' : 'Copy'}
+                    </Button>
+                  </div>
                   <p className='mt-0.5 font-medium'>{result.title}</p>
                 </div>
                 <div>
-                  <span className='text-muted-foreground font-medium'>Mô tả:</span>
+                  <div className='flex flex-wrap items-center justify-between gap-2'>
+                    <span className='text-muted-foreground font-medium'>Mô tả:</span>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      size='sm'
+                      className='h-8 gap-1.5 shrink-0'
+                      onClick={() => copyToClipboard(result.description, 'desc')}
+                    >
+                      {copiedId === 'desc' ? (
+                        <Check className='size-4 text-emerald-600' />
+                      ) : (
+                        <Copy className='size-4' />
+                      )}
+                      {copiedId === 'desc' ? 'Đã copy' : 'Copy'}
+                    </Button>
+                  </div>
                   <p className='mt-0.5'>{result.description}</p>
                 </div>
                 <div>

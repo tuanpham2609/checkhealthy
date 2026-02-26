@@ -56,6 +56,49 @@ function truncate(text: string, maxLen: number): string {
   return oneLine.slice(0, maxLen - 3) + '...'
 }
 
+/** Từ stop (bỏ qua khi tạo hashtag) */
+const STOP_WORDS = new Set(
+  (
+    'và của để trong trên với cho về từ là có được tại các này đó the a an for in on at by to of with from as is are was were be been have has had do does did will would can could may might must shall should'
+  ).split(/\s+/)
+)
+
+/**
+ * Bỏ dấu tiếng Việt (đơn giản) để tạo hashtag gọn.
+ */
+function removeVietnameseTone(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+}
+
+/**
+ * Sinh hashtag từ chủ đề bài (title + description), không dùng cứng.
+ * Lấy từ khóa chính, bỏ dấu, ghép tối đa MAX_HASHTAGS hashtag.
+ */
+const MAX_HASHTAGS = 5
+const MIN_WORD_LENGTH = 2
+
+function generateHashtagsFromContent(title: string, description: string): string {
+  const text = `${title || ''} ${description || ''}`.toLowerCase()
+  const words = text
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= MIN_WORD_LENGTH && !STOP_WORDS.has(w) && !/^\d+$/.test(w))
+  const seen = new Set<string>()
+  const tags: string[] = []
+  for (const w of words) {
+    if (tags.length >= MAX_HASHTAGS) break
+    const normalized = removeVietnameseTone(w)
+    if (!normalized || seen.has(normalized)) continue
+    seen.add(normalized)
+    tags.push('#' + normalized)
+  }
+  return tags.join(' ')
+}
+
 /** Headers giống trình duyệt để hạn chế bị chặn (ví dụ BBC, báo) */
 const BROWSER_HEADERS: HeadersInit = {
   'User-Agent':
@@ -211,7 +254,8 @@ export async function crawlUrl(inputUrl: string): Promise<CrawlResult> {
     .join('\n\n')
 
   const shortDesc = truncate(description, TIKTOK_CAPTION_MAX)
-  const suggestedCaptionTikTok = [title, shortDesc, linkLine, '#mythuatcmc #hoacu'].filter(Boolean).join('\n')
+  const hashtags = generateHashtagsFromContent(title, description)
+  const suggestedCaptionTikTok = [title, shortDesc, linkLine, hashtags].filter(Boolean).join('\n')
 
   return {
     url: canonicalUrl,
