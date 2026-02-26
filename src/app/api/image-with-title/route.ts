@@ -14,7 +14,10 @@ import sharp from 'sharp'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 20
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB input
+/** Vercel serverless response body limit 4.5MB — giữ output dưới ngưỡng này */
+const MAX_OUTPUT_BYTES = 4 * 1024 * 1024 // 4MB
+const MAX_OUTPUT_DIMENSION = 1920
 
 const FETCH_HEADERS: HeadersInit = {
   'User-Agent':
@@ -158,13 +161,27 @@ export async function POST(request: Request) {
 
     const pipeline = sharp(fetched.buffer)
     const meta = await pipeline.metadata()
-    const W = meta.width ?? 1200
-    const H = meta.height ?? 630
+    let W = meta.width ?? 1200
+    let H = meta.height ?? 630
+    let workBuffer: Buffer = fetched.buffer
+    if (W > MAX_OUTPUT_DIMENSION || H > MAX_OUTPUT_DIMENSION) {
+      workBuffer = await sharp(fetched.buffer)
+        .resize(MAX_OUTPUT_DIMENSION, MAX_OUTPUT_DIMENSION, { fit: 'inside', withoutEnlargement: true })
+        .toBuffer()
+      const resizedMeta = await sharp(workBuffer).metadata()
+      W = resizedMeta.width ?? W
+      H = resizedMeta.height ?? H
+    }
+
+    const pipelineWork = sharp(workBuffer)
 
     const lines = wrapTitle(description, W)
     if (lines.length === 0) {
-      const out = await pipeline.png().toBuffer()
-      return new NextResponse(new Uint8Array(out), {
+      const out = await pipelineWork
+        .png({ compressionLevel: 9 })
+        .toBuffer()
+      const outSafe = out.length > MAX_OUTPUT_BYTES ? await sharp(out).resize(1600, 1600, { fit: 'inside' }).png({ compressionLevel: 9 }).toBuffer() : out
+      return new NextResponse(new Uint8Array(outSafe), {
         status: 200,
         headers: {
           'Content-Type': 'image/png',
@@ -196,13 +213,19 @@ export async function POST(request: Request) {
       </svg>`
     )
 
-    const overlay = await sharp(svg).png().toBuffer()
+    const overlay = await sharp(svg).png({ compressionLevel: 9 }).toBuffer()
 
-    const out = await sharp(fetched.buffer)
+    let out = await sharp(workBuffer)
       .png()
       .composite([{ input: overlay, top: 0, left: 0 }])
-      .png()
+      .png({ compressionLevel: 9 })
       .toBuffer()
+    if (out.length > MAX_OUTPUT_BYTES) {
+      out = await sharp(out)
+        .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
+        .png({ compressionLevel: 9 })
+        .toBuffer()
+    }
 
     return new NextResponse(new Uint8Array(out), {
       status: 200,

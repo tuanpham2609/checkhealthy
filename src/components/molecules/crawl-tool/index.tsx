@@ -27,6 +27,124 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(a.href)
 }
 
+const CAPTION_STRIP_COLOR = 'rgb(54, 118, 42)'
+const CAPTION_FONT = '600 {size}px system-ui, -apple-system, sans-serif'
+
+function wrapDescriptionForCanvas(text: string, ctx: CanvasRenderingContext2D, maxWidthPx: number): string[] {
+  const t = text.trim()
+  if (!t) return []
+  const words = t.split(/\s+/)
+  const lines: string[] = []
+  let line = ''
+  for (const w of words) {
+    const trial = line ? `${line} ${w}` : w
+    if (ctx.measureText(trial).width <= maxWidthPx) {
+      line = trial
+    } else {
+      if (line) {
+        lines.push(line)
+        line = ''
+      }
+      if (ctx.measureText(w).width <= maxWidthPx) {
+        line = w
+      } else {
+        let remaining = w
+        while (remaining) {
+          let fit = ''
+          for (let i = 1; i <= remaining.length; i++) {
+            const sub = remaining.slice(0, i)
+            if (ctx.measureText(sub).width <= maxWidthPx) fit = sub
+            else break
+          }
+          if (fit) {
+            lines.push(fit)
+            remaining = remaining.slice(fit.length)
+          } else {
+            lines.push(remaining.slice(0, 1))
+            remaining = remaining.slice(1)
+          }
+        }
+      }
+    }
+  }
+  if (line) lines.push(line)
+  return lines
+}
+
+/** Chỉ dùng crossOrigin = 'anonymous' — nếu không CORS canvas sẽ tainted và toBlob() throw. */
+function drawImageWithTitleCanvas(
+  imageUrl: string,
+  description: string
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const W = img.naturalWidth
+      const H = img.naturalHeight
+      const canvas = document.createElement('canvas')
+      canvas.width = W
+      canvas.height = H
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Không tạo được canvas'))
+        return
+      }
+      ctx.drawImage(img, 0, 0, W, H)
+      const desc = (description || '').trim()
+      if (desc) {
+        const paddingH = 10
+        const paddingV = Math.round(W * 0.03)
+        const fontSize = Math.min(30, Math.round(W * 0.028))
+        const lineHeight = Math.round(fontSize * 1.35)
+        ctx.font = CAPTION_FONT.replace('{size}', String(fontSize))
+        const maxLineWidth = W - 2 * paddingH
+        const lines = wrapDescriptionForCanvas(desc, ctx, maxLineWidth)
+        const stripHeight = lines.length * lineHeight + paddingV * 2
+        const stripY = H - stripHeight
+        ctx.fillStyle = CAPTION_STRIP_COLOR
+        ctx.fillRect(0, stripY, W, stripHeight)
+        ctx.fillStyle = '#ffffff'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        const textX = W / 2
+        lines.forEach((line, i) => {
+          const y = stripY + paddingV + i * lineHeight
+          ctx.fillText(line, textX, y)
+        })
+      }
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob)
+          else reject(new Error('Không tạo được blob'))
+        },
+        'image/png',
+        0.92
+      )
+    }
+    img.onerror = () => reject(new Error('Không tải được ảnh từ link (CORS)'))
+    img.src = imageUrl
+  })
+}
+
+async function fetchImageWithTitleFromApi(
+  imageUrl: string,
+  description: string
+): Promise<Blob> {
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const res = await fetch(`${origin}/api/image-with-title`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageUrl, description }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    const msg = typeof data?.error === 'string' ? data.error : 'Không tạo được ảnh.'
+    throw new Error(msg)
+  }
+  return res.blob()
+}
+
 export function CrawlTool() {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -75,28 +193,23 @@ export function CrawlTool() {
     setDownloadTitleError(null)
     setDownloadTitleLoading(true)
     try {
-      const origin = typeof window !== 'undefined' ? window.location.origin : ''
-      const apiUrl = `${origin}/api/image-with-title`
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageUrl: result.imageUrl,
-          description: result.description || '',
-        }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        const msg = typeof data?.error === 'string' ? data.error : 'Không tạo được ảnh.'
-        setDownloadTitleError(msg)
-        setTimeout(() => setDownloadTitleError(null), 6000)
-        return
+      let blob: Blob
+      try {
+        blob = await drawImageWithTitleCanvas(
+          result.imageUrl,
+          result.description || ''
+        )
+      } catch {
+        blob = await fetchImageWithTitleFromApi(
+          result.imageUrl,
+          result.description || ''
+        )
       }
-      const blob = await res.blob()
       downloadBlob(blob, 'anh-co-mo-ta.png')
-    } catch {
-      setDownloadTitleError('Lỗi kết nối. Thử lại.')
-      setTimeout(() => setDownloadTitleError(null), 5000)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Không tạo được ảnh.'
+      setDownloadTitleError(msg)
+      setTimeout(() => setDownloadTitleError(null), 6000)
     } finally {
       setDownloadTitleLoading(false)
     }
