@@ -138,6 +138,39 @@ const BROWSER_HEADERS: HeadersInit = {
   'Upgrade-Insecure-Requests': '1',
 }
 
+/** User-Agent cho Facebook crawler — Meta có thể trả og meta khi nhận bot. */
+const FACEBOOK_CRAWLER_UA =
+  'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
+/** User-Agent cho X (Twitter) — có thể trả twitter/og meta cho preview. */
+const TWITTER_CRAWLER_UA = 'Twitterbot/1.0'
+
+function isFacebookUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    return (
+      host === 'facebook.com' ||
+      host === 'www.facebook.com' ||
+      host === 'fb.com' ||
+      host === 'www.fb.com' ||
+      host === 'fb.watch' ||
+      host === 'www.fb.watch' ||
+      host === 'm.facebook.com' ||
+      host === 'fb.me'
+    )
+  } catch {
+    return false
+  }
+}
+
+function isXOrTwitterUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    return host === 'twitter.com' || host === 'www.twitter.com' || host === 'x.com' || host === 'www.x.com'
+  } catch {
+    return false
+  }
+}
+
 interface JsonLdArticle {
   '@type'?: string
   headline?: string
@@ -200,10 +233,20 @@ export async function crawlUrl(inputUrl: string): Promise<CrawlResult> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 20000)
 
+  const isFb = isFacebookUrl(normalizedUrl)
+  const isX = isXOrTwitterUrl(normalizedUrl)
+  const headers: HeadersInit =
+    isFb || isX
+      ? {
+          ...BROWSER_HEADERS,
+          'User-Agent': isFb ? FACEBOOK_CRAWLER_UA : TWITTER_CRAWLER_UA,
+        }
+      : BROWSER_HEADERS
+
   let res: Response
   try {
     res = await fetch(normalizedUrl, {
-      headers: BROWSER_HEADERS,
+      headers,
       redirect: 'follow',
       signal: controller.signal,
     })
@@ -263,6 +306,22 @@ export async function crawlUrl(inputUrl: string): Promise<CrawlResult> {
   const imageUrl = resolveUrl(baseUrl, ogImage || twitterImage) || jsonLd.imageUrl || ''
   const siteName = ogSiteName || parsed.hostname.replace(/^www\./, '')
   const canonicalUrl = ogUrl || baseUrl
+
+  const genericTitles = new Set([
+    'facebook',
+    'log in to facebook',
+    'facebook - log in or sign up',
+    'x',
+    'twitter',
+    'twitter - it\'s what\'s happening',
+  ])
+  const titleLower = title.toLowerCase().trim()
+  if ((isFb || isX) && (genericTitles.has(titleLower) || titleLower.length < 5)) {
+    const platform = isFb ? 'Facebook' : 'X (Twitter)'
+    throw new Error(
+      `Không lấy được nội dung bài viết từ ${platform}. Trang thường chặn bot hoặc yêu cầu đăng nhập. Bạn có thể: (1) Copy nội dung và ảnh từ bài gốc rồi dán vào caption, hoặc (2) Nếu bài share link báo khác, hãy dán link bài báo gốc để crawl.`
+    )
+  }
 
   const linkLine = canonicalUrl
   const suggestedCaptionFacebook = [
