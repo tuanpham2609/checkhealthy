@@ -75,7 +75,9 @@ export function CrawlTool() {
     setDownloadTitleError(null)
     setDownloadTitleLoading(true)
     try {
-      const res = await fetch('/api/image-with-title', {
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      const apiUrl = `${origin}/api/image-with-title`
+      const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
