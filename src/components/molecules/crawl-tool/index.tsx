@@ -78,11 +78,12 @@ function wrapDescriptionForCanvas(text: string, ctx: CanvasRenderingContext2D, m
   return lines
 }
 
-/** Khung 1080×1920: ảnh full cover, dải nền xanh + chữ. safeBottom: TikTok giữ vùng trống dưới, Facebook = 0 để ít xanh. */
+/** Khung 1080×1920: ảnh full cover, dải nền xanh + chữ. safeBottom: TikTok giữ vùng trống dưới, Facebook = 0. paddingH: TikTok 25px trái phải. */
 function drawImageWithTitleCanvas(
   imageUrl: string,
   description: string,
-  safeBottom: number = TIKTOK_SAFE_BOTTOM
+  safeBottom: number = TIKTOK_SAFE_BOTTOM,
+  format: DownloadFormat = 'tiktok'
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -108,7 +109,7 @@ function drawImageWithTitleCanvas(
       ctx.drawImage(img, 0, 0, natW, natH, dx, dy, drawW, drawH)
       const desc = (description || '').trim()
       if (desc) {
-        const paddingH = 10
+        const paddingH = format === 'tiktok' ? 25 : 10
         const paddingV = Math.round(outW * 0.03)
         const extraOverlap = Math.round(outW * 0.04)
         const fontSize = Math.min(52, Math.round(outW * 0.048))
@@ -257,13 +258,14 @@ export function CrawlTool() {
         blob = await drawImageWithTitleCanvas(
           result.imageUrl,
           result.description || '',
-          safeBottom
+          safeBottom,
+          format
         )
       } catch {
         const imageBlob = await fetchImageViaProxy(result.imageUrl)
         const objectUrl = URL.createObjectURL(imageBlob)
         try {
-          blob = await drawImageWithTitleCanvas(objectUrl, result.description || '', safeBottom)
+          blob = await drawImageWithTitleCanvas(objectUrl, result.description || '', safeBottom, format)
         } finally {
           URL.revokeObjectURL(objectUrl)
         }
