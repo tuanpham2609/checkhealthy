@@ -275,7 +275,7 @@ export function StoryCaptionTool() {
                   type='text'
                   value={colorHex}
                   onChange={(e) => setColorHex(e.target.value)}
-                  className='h-9 w-24 rounded border border-input bg-background px-2 text-sm'
+                  className='h-9 w-24 rounded border border-input bg-background px-2 text-[16px] min-[768px]:text-sm'
                 />
               </div>
             )}
@@ -290,7 +290,7 @@ export function StoryCaptionTool() {
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 placeholder='Caption hiển thị trên hình (story)...'
-                className='min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                className='min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-[768px]:text-sm'
                 rows={4}
               />
             </div>

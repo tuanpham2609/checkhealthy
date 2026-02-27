@@ -394,7 +394,7 @@ export function CrawlTool() {
                 placeholder='https://example.com/bai-viet'
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className='h-11 w-full pl-10 pr-10 text-base sm:h-12 sm:pl-12 sm:pr-12 md:text-[15px]'
+                className='h-11 w-full pl-10 pr-10 text-[16px] sm:h-12 sm:pl-12 sm:pr-12 min-[768px]:text-[15px]'
                 disabled={loading}
               />
               {url.trim() && (
