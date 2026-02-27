@@ -7,4 +7,4 @@
  * from Mythuatcmc.
  */
 
-export { crawlUrl, buildSuggestedCaptions, type CrawlResult } from './crawl-for-social'
+export { crawlUrl, buildSuggestedCaptions, fetchXTweetImageUrl, extractTweetId, type CrawlResult } from './crawl-for-social'

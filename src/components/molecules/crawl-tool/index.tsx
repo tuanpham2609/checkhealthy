@@ -9,13 +9,13 @@
 
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { CrawlResult } from '@/lib/utils/crawl'
-import { buildSuggestedCaptions } from '@/lib/utils/crawl'
+import { buildSuggestedCaptions, extractTweetId, fetchXTweetImageUrl } from '@/lib/utils/crawl'
 import { StoryCaptionTool } from '@/components/molecules/story-caption-tool'
 import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages, X, Upload, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/styles'
@@ -83,10 +83,10 @@ function wrapDescriptionForCanvas(text: string, ctx: CanvasRenderingContext2D, m
 /** Đường dẫn ảnh nền (sân cỏ) — đặt file tại public/assets/background/field-bg.png */
 const BACKGROUND_IMAGE_PATH = '/assets/background/field-bg.png'
 
-/** Padding quanh chữ trong dải xanh (trên/dưới/trái phải) */
-const STRIP_PADDING = 20
+/** Padding quanh chữ trong dải xanh (trên/dưới) */
+const STRIP_PADDING = 40
 /** Padding trái phải cho title và mô tả trong dải xanh */
-const STRIP_PADDING_H = 30
+const STRIP_PADDING_H = 45
 
 /** Khung 1080×1920. Nền phủ canvas; khối (ảnh + dải xanh) căn giữa; dải xanh overlap lên ảnh. backgroundImageUrl: tùy chọn, mặc định field-bg.png */
 function drawImageWithTitleCanvas(
@@ -129,8 +129,8 @@ function drawImageWithTitleCanvas(
       const titleStr = (title || '').trim()
       const descStr = (description || '').trim()
       const maxLineWidth = outW - 2 * STRIP_PADDING_H
-      const fontSizeTitle = Math.min(58, Math.round(outW * 0.052))
-      const fontSizeDesc = Math.min(40, Math.round(outW * 0.037))
+      const fontSizeTitle = Math.min(52, Math.round(outW * 0.048))
+      const fontSizeDesc = Math.min(35, Math.round(outW * 0.032))
       const lineHeightTitle = Math.round(fontSizeTitle * 1.3)
       const lineHeightDesc = Math.round(fontSizeDesc * 1.35)
       ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeTitle))
@@ -228,6 +228,27 @@ export function CrawlTool() {
   const [translateError, setTranslateError] = useState<string | null>(null)
   const [customBackgroundUrl, setCustomBackgroundUrl] = useState<string | null>(null)
   const backgroundInputRef = useRef<HTMLInputElement>(null)
+  const [xImageLoading, setXImageLoading] = useState(false)
+
+  // Khi crawl X trên Vercel không có ảnh: thử lấy ảnh từ Syndication API ngay trên trình duyệt (request từ IP user, ít bị chặn)
+  useEffect(() => {
+    if (!result?.isFromX || result.imageUrl) return
+    const tweetId = extractTweetId(result.url)
+    if (!tweetId) return
+    let cancelled = false
+    setXImageLoading(true)
+    fetchXTweetImageUrl(tweetId)
+      .then((imageUrl) => {
+        if (cancelled || !imageUrl) return
+        setResult((prev) => (prev ? { ...prev, imageUrl } : prev))
+      })
+      .finally(() => {
+        if (!cancelled) setXImageLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [result?.url, result?.isFromX, result?.imageUrl])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -416,13 +437,17 @@ export function CrawlTool() {
         <div className='grid gap-4 sm:gap-5 lg:grid-cols-2 lg:gap-6'>
           {/* Left column: Image + Meta */}
           <div className='flex flex-col gap-4 sm:gap-5'>
-            {result.imageUrl && (
+            {(result.imageUrl || result.isFromX) && (
               <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
                 <CardHeader className='flex flex-row items-center gap-2 border-b bg-muted/40 px-4 py-3 sm:px-5 sm:py-4'>
                   <ImageIcon className='size-5 shrink-0 text-emerald-600 dark:text-emerald-400' />
-                  <CardTitle className='text-base font-semibold sm:text-lg'>Ảnh (OG Image)</CardTitle>
+                  <CardTitle className='text-base font-semibold sm:text-lg'>
+                    {result.isFromX ? 'Ảnh (X / Twitter)' : 'Ảnh (OG Image)'}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className='p-4 sm:p-5'>
+                  {result.imageUrl ? (
+                    <>
                   <img
                     src={result.imageUrl}
                     alt={result.title}
@@ -521,6 +546,19 @@ export function CrawlTool() {
                     <p className='text-destructive mt-2 text-sm' role='alert'>
                       {downloadTitleError}
                     </p>
+                  )}
+                    </>
+                  ) : (
+                    <div className='flex min-h-[200px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 p-6 text-center'>
+                      {xImageLoading ? (
+                        <>
+                          <Loader2 className='size-6 animate-spin text-emerald-600' />
+                          <p className='text-muted-foreground text-sm'>Đang tải ảnh từ X (từ trình duyệt)...</p>
+                        </>
+                      ) : (
+                        <p className='text-muted-foreground text-sm'>Không lấy được ảnh từ link X. Tweet có thể không có ảnh hoặc bị giới hạn.</p>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>

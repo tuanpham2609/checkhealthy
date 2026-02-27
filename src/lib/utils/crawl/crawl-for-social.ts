@@ -178,8 +178,8 @@ function isVercel(): boolean {
   return process.env.VERCEL === '1'
 }
 
-/** Trích tweet ID từ URL X/Twitter (ví dụ .../status/1234567890). */
-function extractTweetId(url: string): string | null {
+/** Trích tweet ID từ URL X/Twitter (ví dụ .../status/1234567890). Export để dùng ở client. */
+export function extractTweetId(url: string): string | null {
   try {
     const path = new URL(url).pathname
     const m = path.match(/\/status\/(\d+)/i)
@@ -203,7 +203,7 @@ const SYNDICATION_FEATURES =
 /**
  * Lấy URL ảnh đầu tiên của tweet từ Syndication API (dùng token + features như react-tweet để chạy trên Vercel).
  */
-async function fetchXTweetImageUrl(tweetId: string): Promise<string | null> {
+export async function fetchXTweetImageUrl(tweetId: string): Promise<string | null> {
   try {
     const url = new URL('https://cdn.syndication.twimg.com/tweet-result')
     url.searchParams.set('id', tweetId)
