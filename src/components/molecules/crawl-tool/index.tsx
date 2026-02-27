@@ -34,8 +34,8 @@ const TIKTOK_FRAME_WIDTH = 1080
 const TIKTOK_FRAME_HEIGHT = 1920
 /** Khoảng trống phía dưới để tránh bị UI TikTok che khi up bài. */
 const TIKTOK_SAFE_BOTTOM = 200
-/** Dải xanh đè lên ảnh (như dải hồng) — cắt/che phần dưới ảnh. */
-const STRIP_OVERLAP_IMAGE = 100
+/** Dải xanh đè lên ảnh (px) để che vùng hồng/tím (logo) ở mép dưới ảnh. */
+const STRIP_OVERLAP_IMAGE = 85
 
 type DownloadFormat = 'tiktok' | 'facebook'
 
@@ -80,7 +80,13 @@ function wrapDescriptionForCanvas(text: string, ctx: CanvasRenderingContext2D, m
   return lines
 }
 
-/** Khung 1080×1920. Luôn ảnh full (contain, không cắt), đẩy lên trên, dải xanh bên dưới. */
+/** Đường dẫn ảnh nền (sân cỏ) — đặt file tại public/assets/background/field-bg.png */
+const BACKGROUND_IMAGE_PATH = '/assets/background/field-bg.png'
+
+/** Padding quanh chữ trong dải xanh (trên/dưới/trái phải) */
+const STRIP_PADDING = 20
+
+/** Khung 1080×1920. Nền sân cỏ phủ canvas; khối (ảnh + dải xanh) căn giữa; dải xanh overlap lên ảnh để che vùng hồng, padding chữ 20px. */
 function drawImageWithTitleCanvas(
   imageUrl: string,
   title: string,
@@ -91,7 +97,10 @@ function drawImageWithTitleCanvas(
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
-    img.onload = () => {
+    const bgImg = new Image()
+    bgImg.crossOrigin = 'anonymous'
+
+    function doDraw() {
       const natW = img.naturalWidth
       const natH = img.naturalHeight
       const outW = TIKTOK_FRAME_WIDTH
@@ -104,41 +113,53 @@ function drawImageWithTitleCanvas(
         reject(new Error('Không tạo được canvas'))
         return
       }
-      const scale = Math.min(outW / natW, outH / natH)
-      const drawW = natW * scale
-      const drawH = natH * scale
-      const dx = (outW - drawW) / 2
-      const dy = 0
-      ctx.drawImage(img, 0, 0, natW, natH, dx, dy, drawW, drawH)
+      // 1) Vẽ nền sân cỏ phủ toàn bộ canvas (cover) — phần không bị ảnh/dải che sẽ lộ nền
+      if (bgImg.complete && bgImg.naturalWidth > 0) {
+        const bw = bgImg.naturalWidth
+        const bh = bgImg.naturalHeight
+        const scale = Math.max(outW / bw, outH / bh)
+        const sx = (bw - outW / scale) / 2
+        const sy = (bh - outH / scale) / 2
+        ctx.drawImage(bgImg, sx, sy, outW / scale, outH / scale, 0, 0, outW, outH)
+      }
       const titleStr = (title || '').trim()
       const descStr = (description || '').trim()
-      if (titleStr || descStr) {
-        const paddingH = format === 'tiktok' ? 25 : 10
-        const paddingV = Math.round(outW * 0.035)
-        const maxLineWidth = outW - 2 * paddingH
-        const fontSizeTitle = Math.min(58, Math.round(outW * 0.052))
-        const fontSizeDesc = Math.min(40, Math.round(outW * 0.037))
-        const lineHeightTitle = Math.round(fontSizeTitle * 1.3)
-        const lineHeightDesc = Math.round(fontSizeDesc * 1.35)
-        ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeTitle))
-        const titleLines = titleStr ? wrapDescriptionForCanvas(titleStr, ctx, maxLineWidth) : []
-        ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeDesc))
-        const descLines = descStr ? wrapDescriptionForCanvas(descStr, ctx, maxLineWidth) : []
-        const titleBlockH = titleLines.length * lineHeightTitle
-        const descBlockH = descLines.length * lineHeightDesc
-        const gap = titleLines.length && descLines.length ? Math.round(outW * 0.02) : 0
-        const stripHeight = titleBlockH + gap + descBlockH + paddingV * 2
-        const stripYRaw = drawH - STRIP_OVERLAP_IMAGE
-        const stripY = format === 'tiktok'
-          ? Math.max(0, Math.min(stripYRaw, outH - stripHeight - TIKTOK_SAFE_BOTTOM))
-          : Math.max(0, stripYRaw)
+      const paddingH = format === 'tiktok' ? 25 : 10
+      const maxLineWidth = outW - 2 * Math.max(paddingH, STRIP_PADDING)
+      const fontSizeTitle = Math.min(58, Math.round(outW * 0.052))
+      const fontSizeDesc = Math.min(40, Math.round(outW * 0.037))
+      const lineHeightTitle = Math.round(fontSizeTitle * 1.3)
+      const lineHeightDesc = Math.round(fontSizeDesc * 1.35)
+      ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeTitle))
+      const titleLines = titleStr ? wrapDescriptionForCanvas(titleStr, ctx, maxLineWidth) : []
+      ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeDesc))
+      const descLines = descStr ? wrapDescriptionForCanvas(descStr, ctx, maxLineWidth) : []
+      const titleBlockH = titleLines.length * lineHeightTitle
+      const descBlockH = descLines.length * lineHeightDesc
+      const gap = titleLines.length && descLines.length ? Math.round(outW * 0.02) : 0
+      const stripHeight =
+        titleStr || descStr
+          ? STRIP_PADDING * 2 + titleBlockH + gap + descBlockH
+          : 0
+      // Khối (ảnh + dải xanh) căn giữa canvas; dải xanh overlap lên ảnh 1 chút để che vùng hồng
+      const contentH = outH - stripHeight
+      const scale = Math.min(outW / natW, contentH / natH)
+      const drawW = natW * scale
+      const drawH = natH * scale
+      const totalBlockH = drawH + stripHeight
+      const startY = Math.max(0, (outH - totalBlockH) / 2)
+      const stripY = startY + drawH - STRIP_OVERLAP_IMAGE
+      const dx = (outW - drawW) / 2
+      const dy = startY
+      ctx.drawImage(img, 0, 0, natW, natH, dx, dy, drawW, drawH)
+      if (stripHeight > 0) {
         ctx.fillStyle = CAPTION_STRIP_COLOR
-        ctx.fillRect(0, stripY, outW, outH - stripY)
+        ctx.fillRect(0, stripY, outW, stripHeight)
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
         const textX = outW / 2
-        let y = stripY + paddingV
+        let y = stripY + STRIP_PADDING
         ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeTitle))
         titleLines.forEach((line) => {
           ctx.fillText(line, textX, y)
@@ -160,8 +181,19 @@ function drawImageWithTitleCanvas(
         0.92
       )
     }
+
+    img.onload = () => {
+      // Đợi ảnh nền load xong (hoặc lỗi) rồi mới vẽ
+      if (bgImg.complete) {
+        doDraw()
+        return
+      }
+      bgImg.onload = () => doDraw()
+      bgImg.onerror = () => doDraw()
+    }
     img.onerror = () => reject(new Error('Không tải được ảnh từ link (CORS)'))
     img.src = imageUrl
+    bgImg.src = BACKGROUND_IMAGE_PATH
   })
 }
 

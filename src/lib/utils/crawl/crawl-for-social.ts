@@ -173,6 +173,49 @@ function isXOrTwitterUrl(url: string): boolean {
   }
 }
 
+/** Trên Vercel, request tới X (Twitter) thường bị chặn. */
+function isVercel(): boolean {
+  return process.env.VERCEL === '1'
+}
+
+/**
+ * Fallback khi crawl X trên Vercel: dùng oEmbed API (không cần auth, ít bị chặn).
+ * Trả về CrawlResult hoặc null nếu oEmbed lỗi.
+ */
+async function tryXOEmbed(normalizedUrl: string): Promise<CrawlResult | null> {
+  try {
+    const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(normalizedUrl)}`
+    const ac = new AbortController()
+    const t = setTimeout(() => ac.abort(), 10000)
+    const res = await fetch(oembedUrl, {
+      headers: { Accept: 'application/json' },
+      signal: ac.signal,
+    })
+    clearTimeout(t)
+    if (!res.ok) return null
+    const data = (await res.json()) as { author_name?: string; html?: string; title?: string }
+    const author = typeof data.author_name === 'string' ? data.author_name.trim() : ''
+    const html = typeof data.html === 'string' ? data.html : ''
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    const title = typeof data.title === 'string' && data.title.trim() ? data.title.trim() : author ? `Tweet từ ${author}` : 'X (Twitter)'
+    const description = truncate(text || title, MAX_DESCRIPTION_LENGTH)
+    const captions = buildSuggestedCaptions(title, description, normalizedUrl)
+    return {
+      url: normalizedUrl,
+      title,
+      description,
+      imageUrl: '',
+      siteName: author || 'X',
+      isFromX: true,
+      suggestedCaptionFacebook: captions.suggestedCaptionFacebook,
+      suggestedCaptionTikTok: captions.suggestedCaptionTikTok,
+      raw: {},
+    }
+  } catch {
+    return null
+  }
+}
+
 interface JsonLdArticle {
   '@type'?: string
   headline?: string
@@ -237,6 +280,13 @@ export async function crawlUrl(inputUrl: string): Promise<CrawlResult> {
 
   const isFb = isFacebookUrl(normalizedUrl)
   const isX = isXOrTwitterUrl(normalizedUrl)
+  const onVercel = isVercel()
+
+  if (isX && onVercel) {
+    const oembedResult = await tryXOEmbed(normalizedUrl)
+    if (oembedResult) return oembedResult
+  }
+
   const headers: HeadersInit =
     isFb || isX
       ? {
@@ -254,6 +304,13 @@ export async function crawlUrl(inputUrl: string): Promise<CrawlResult> {
     })
   } catch (err) {
     clearTimeout(timeoutId)
+    if (isX && onVercel) {
+      const fallback = await tryXOEmbed(normalizedUrl)
+      if (fallback) return fallback
+      throw new Error(
+        'Link X (Twitter) không crawl được trên server Vercel (bị chặn). Hãy chạy app tại máy (yarn dev) để crawl link X, hoặc copy nội dung/ảnh tay.'
+      )
+    }
     if (err instanceof Error) {
       if (err.name === 'AbortError') throw new Error('Trang trả lời quá chậm, thử lại sau.')
       if (err.cause?.toString?.().includes('403') || err.message.includes('403')) {
@@ -265,6 +322,13 @@ export async function crawlUrl(inputUrl: string): Promise<CrawlResult> {
   clearTimeout(timeoutId)
 
   if (!res.ok) {
+    if (isX && onVercel) {
+      const fallback = await tryXOEmbed(normalizedUrl)
+      if (fallback) return fallback
+      throw new Error(
+        'Link X (Twitter) không crawl được trên server Vercel (bị chặn). Hãy chạy app tại máy (yarn dev) để crawl link X, hoặc copy nội dung/ảnh tay.'
+      )
+    }
     if (res.status === 403) {
       throw new Error('Trang web từ chối truy cập (403). Một số site như BBC có thể chặn công cụ crawl.')
     }
@@ -319,6 +383,13 @@ export async function crawlUrl(inputUrl: string): Promise<CrawlResult> {
   ])
   const titleLower = title.toLowerCase().trim()
   if ((isFb || isX) && (genericTitles.has(titleLower) || titleLower.length < 5)) {
+    if (isX && onVercel) {
+      const fallback = await tryXOEmbed(normalizedUrl)
+      if (fallback) return fallback
+      throw new Error(
+        'Link X (Twitter) không crawl được trên server Vercel (bị chặn). Hãy chạy app tại máy (yarn dev) để crawl link X, hoặc copy nội dung/ảnh tay.'
+      )
+    }
     const platform = isFb ? 'Facebook' : 'X (Twitter)'
     throw new Error(
       `Không lấy được nội dung bài viết từ ${platform}. Trang thường chặn bot hoặc yêu cầu đăng nhập. Bạn có thể: (1) Copy nội dung và ảnh từ bài gốc rồi dán vào caption, hoặc (2) Nếu bài share link báo khác, hãy dán link bài báo gốc để crawl.`
