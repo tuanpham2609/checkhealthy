@@ -32,8 +32,10 @@ const CAPTION_STRIP_COLOR = 'rgb(54, 118, 42)'
 const CAPTION_FONT = '600 {size}px system-ui, -apple-system, sans-serif'
 const TIKTOK_FRAME_WIDTH = 1080
 const TIKTOK_FRAME_HEIGHT = 1920
-/** Khoảng trống phía dưới để tránh bị UI TikTok (avatar, nút like/comment, caption) che khi up bài. */
+/** Khoảng trống phía dưới để tránh bị UI TikTok che khi up bài. */
 const TIKTOK_SAFE_BOTTOM = 200
+/** Dải xanh đè lên ảnh (như dải hồng) — cắt/che phần dưới ảnh. */
+const STRIP_OVERLAP_IMAGE = 100
 
 type DownloadFormat = 'tiktok' | 'facebook'
 
@@ -78,13 +80,13 @@ function wrapDescriptionForCanvas(text: string, ctx: CanvasRenderingContext2D, m
   return lines
 }
 
-/** Khung 1080×1920. sourceIsX: crawl từ X → ảnh full (contain). Còn lại: cover. */
+/** Khung 1080×1920. Luôn ảnh full (contain, không cắt), đẩy lên trên, dải xanh bên dưới. */
 function drawImageWithTitleCanvas(
   imageUrl: string,
+  title: string,
   description: string,
   safeBottom: number = TIKTOK_SAFE_BOTTOM,
-  format: DownloadFormat = 'tiktok',
-  sourceIsX: boolean = false
+  format: DownloadFormat = 'tiktok'
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -102,41 +104,51 @@ function drawImageWithTitleCanvas(
         reject(new Error('Không tạo được canvas'))
         return
       }
-      if (sourceIsX) {
-        ctx.fillStyle = '#0a0a0a'
-        ctx.fillRect(0, 0, outW, outH)
-      }
-      const scale = sourceIsX
-        ? Math.min(outW / natW, outH / natH)
-        : Math.max(outW / natW, outH / natH)
+      const scale = Math.min(outW / natW, outH / natH)
       const drawW = natW * scale
       const drawH = natH * scale
       const dx = (outW - drawW) / 2
-      const dy = (outH - drawH) / 2
+      const dy = 0
       ctx.drawImage(img, 0, 0, natW, natH, dx, dy, drawW, drawH)
-      const desc = (description || '').trim()
-      if (desc) {
+      const titleStr = (title || '').trim()
+      const descStr = (description || '').trim()
+      if (titleStr || descStr) {
         const paddingH = format === 'tiktok' ? 25 : 10
-        const paddingV = Math.round(outW * 0.03)
-        const extraOverlap = Math.round(outW * 0.04)
-        const fontSize = Math.min(52, Math.round(outW * 0.048))
-        const lineHeight = Math.round(fontSize * 1.35)
-        ctx.font = CAPTION_FONT.replace('{size}', String(fontSize))
+        const paddingV = Math.round(outW * 0.035)
         const maxLineWidth = outW - 2 * paddingH
-        const lines = wrapDescriptionForCanvas(desc, ctx, maxLineWidth)
-        const stripHeight = lines.length * lineHeight + paddingV * 2 + extraOverlap
-        const stripY = sourceIsX
-          ? Math.min(dy + drawH, outH - stripHeight)
-          : outH - stripHeight - safeBottom
+        const fontSizeTitle = Math.min(58, Math.round(outW * 0.052))
+        const fontSizeDesc = Math.min(40, Math.round(outW * 0.037))
+        const lineHeightTitle = Math.round(fontSizeTitle * 1.3)
+        const lineHeightDesc = Math.round(fontSizeDesc * 1.35)
+        ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeTitle))
+        const titleLines = titleStr ? wrapDescriptionForCanvas(titleStr, ctx, maxLineWidth) : []
+        ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeDesc))
+        const descLines = descStr ? wrapDescriptionForCanvas(descStr, ctx, maxLineWidth) : []
+        const titleBlockH = titleLines.length * lineHeightTitle
+        const descBlockH = descLines.length * lineHeightDesc
+        const gap = titleLines.length && descLines.length ? Math.round(outW * 0.02) : 0
+        const stripHeight = titleBlockH + gap + descBlockH + paddingV * 2
+        const stripYRaw = drawH - STRIP_OVERLAP_IMAGE
+        const stripY = format === 'tiktok'
+          ? Math.max(0, Math.min(stripYRaw, outH - stripHeight - TIKTOK_SAFE_BOTTOM))
+          : Math.max(0, stripYRaw)
         ctx.fillStyle = CAPTION_STRIP_COLOR
         ctx.fillRect(0, stripY, outW, outH - stripY)
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
         const textX = outW / 2
-        lines.forEach((line, i) => {
-          const y = stripY + extraOverlap + paddingV + i * lineHeight
+        let y = stripY + paddingV
+        ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeTitle))
+        titleLines.forEach((line) => {
           ctx.fillText(line, textX, y)
+          y += lineHeightTitle
+        })
+        if (gap) y += gap
+        ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeDesc))
+        descLines.forEach((line) => {
+          ctx.fillText(line, textX, y)
+          y += lineHeightDesc
         })
       }
       canvas.toBlob(
@@ -260,16 +272,15 @@ export function CrawlTool() {
     setDownloadTitleError(null)
     setDownloadTitleLoading(true)
     const safeBottom = format === 'tiktok' ? TIKTOK_SAFE_BOTTOM : 0
-    const sourceIsX = result.isFromX === true
     try {
       let blob: Blob
       try {
         blob = await drawImageWithTitleCanvas(
           result.imageUrl,
+          result.title || '',
           result.description || '',
           safeBottom,
-          format,
-          sourceIsX
+          format
         )
       } catch {
         const imageBlob = await fetchImageViaProxy(result.imageUrl)
@@ -277,10 +288,10 @@ export function CrawlTool() {
         try {
           blob = await drawImageWithTitleCanvas(
             objectUrl,
+            result.title || '',
             result.description || '',
             safeBottom,
-            format,
-            sourceIsX
+            format
           )
         } finally {
           URL.revokeObjectURL(objectUrl)
