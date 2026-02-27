@@ -85,6 +85,8 @@ const BACKGROUND_IMAGE_PATH = '/assets/background/field-bg.png'
 
 /** Padding quanh chữ trong dải xanh (trên/dưới/trái phải) */
 const STRIP_PADDING = 20
+/** Padding trái phải cho title và mô tả trong dải xanh */
+const STRIP_PADDING_H = 30
 
 /** Khung 1080×1920. Nền phủ canvas; khối (ảnh + dải xanh) căn giữa; dải xanh overlap lên ảnh. backgroundImageUrl: tùy chọn, mặc định field-bg.png */
 function drawImageWithTitleCanvas(
@@ -126,8 +128,7 @@ function drawImageWithTitleCanvas(
       }
       const titleStr = (title || '').trim()
       const descStr = (description || '').trim()
-      const paddingH = format === 'tiktok' ? 25 : 10
-      const maxLineWidth = outW - 2 * Math.max(paddingH, STRIP_PADDING)
+      const maxLineWidth = outW - 2 * STRIP_PADDING_H
       const fontSizeTitle = Math.min(58, Math.round(outW * 0.052))
       const fontSizeDesc = Math.min(40, Math.round(outW * 0.037))
       const lineHeightTitle = Math.round(fontSizeTitle * 1.3)

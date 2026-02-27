@@ -178,9 +178,48 @@ function isVercel(): boolean {
   return process.env.VERCEL === '1'
 }
 
+/** Trích tweet ID từ URL X/Twitter (ví dụ .../status/1234567890). */
+function extractTweetId(url: string): string | null {
+  try {
+    const path = new URL(url).pathname
+    const m = path.match(/\/status\/(\d+)/i)
+    return m ? m[1] : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Lấy URL ảnh đầu tiên của tweet từ Syndication API (hoạt động trên Vercel, không cần auth).
+ */
+async function fetchXTweetImageUrl(tweetId: string): Promise<string | null> {
+  try {
+    const url = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en`
+    const ac = new AbortController()
+    const t = setTimeout(() => ac.abort(), 8000)
+    const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: ac.signal })
+    clearTimeout(t)
+    if (!res.ok) return null
+    const data = (await res.json()) as Record<string, unknown>
+    const photos = data?.photos as Array<{ url?: string }> | undefined
+    if (Array.isArray(photos) && photos.length > 0 && photos[0]?.url) {
+      return String(photos[0].url)
+    }
+    const entities = data?.entities as { media?: Array<{ media_url_https?: string }> } | undefined
+    const media = entities?.media ?? (data?.extended_entities as { media?: Array<{ media_url_https?: string }> } | undefined)?.media
+    if (Array.isArray(media) && media.length > 0 && media[0]?.media_url_https) {
+      return String(media[0].media_url_https)
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Fallback khi crawl X trên Vercel: dùng oEmbed API (không cần auth, ít bị chặn).
  * Trả về CrawlResult hoặc null nếu oEmbed lỗi.
+ * Cố lấy ảnh từ Syndication API để hiển thị trên Vercel.
  */
 async function tryXOEmbed(normalizedUrl: string): Promise<CrawlResult | null> {
   try {
@@ -200,11 +239,17 @@ async function tryXOEmbed(normalizedUrl: string): Promise<CrawlResult | null> {
     const title = typeof data.title === 'string' && data.title.trim() ? data.title.trim() : author ? `Tweet từ ${author}` : 'X (Twitter)'
     const description = truncate(text || title, MAX_DESCRIPTION_LENGTH)
     const captions = buildSuggestedCaptions(title, description, normalizedUrl)
+    let imageUrl = ''
+    const tweetId = extractTweetId(normalizedUrl)
+    if (tweetId) {
+      const img = await fetchXTweetImageUrl(tweetId)
+      if (img) imageUrl = img
+    }
     return {
       url: normalizedUrl,
       title,
       description,
-      imageUrl: '',
+      imageUrl,
       siteName: author || 'X',
       isFromX: true,
       suggestedCaptionFacebook: captions.suggestedCaptionFacebook,
