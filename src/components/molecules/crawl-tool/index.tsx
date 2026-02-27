@@ -9,7 +9,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { CrawlResult } from '@/lib/utils/crawl'
 import { buildSuggestedCaptions } from '@/lib/utils/crawl'
 import { StoryCaptionTool } from '@/components/molecules/story-caption-tool'
-import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages, X } from 'lucide-react'
+import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages, X, Upload, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/styles'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -86,14 +86,16 @@ const BACKGROUND_IMAGE_PATH = '/assets/background/field-bg.png'
 /** Padding quanh chữ trong dải xanh (trên/dưới/trái phải) */
 const STRIP_PADDING = 20
 
-/** Khung 1080×1920. Nền sân cỏ phủ canvas; khối (ảnh + dải xanh) căn giữa; dải xanh overlap lên ảnh để che vùng hồng, padding chữ 20px. */
+/** Khung 1080×1920. Nền phủ canvas; khối (ảnh + dải xanh) căn giữa; dải xanh overlap lên ảnh. backgroundImageUrl: tùy chọn, mặc định field-bg.png */
 function drawImageWithTitleCanvas(
   imageUrl: string,
   title: string,
   description: string,
   safeBottom: number = TIKTOK_SAFE_BOTTOM,
-  format: DownloadFormat = 'tiktok'
+  format: DownloadFormat = 'tiktok',
+  backgroundImageUrl?: string | null
 ): Promise<Blob> {
+  const bgUrl = backgroundImageUrl && backgroundImageUrl.trim() ? backgroundImageUrl.trim() : BACKGROUND_IMAGE_PATH
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -193,7 +195,7 @@ function drawImageWithTitleCanvas(
     }
     img.onerror = () => reject(new Error('Không tải được ảnh từ link (CORS)'))
     img.src = imageUrl
-    bgImg.src = BACKGROUND_IMAGE_PATH
+    bgImg.src = bgUrl
   })
 }
 
@@ -223,6 +225,8 @@ export function CrawlTool() {
   const [downloadTitleError, setDownloadTitleError] = useState<string | null>(null)
   const [translateLoading, setTranslateLoading] = useState(false)
   const [translateError, setTranslateError] = useState<string | null>(null)
+  const [customBackgroundUrl, setCustomBackgroundUrl] = useState<string | null>(null)
+  const backgroundInputRef = useRef<HTMLInputElement>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -312,7 +316,8 @@ export function CrawlTool() {
           result.title || '',
           result.description || '',
           safeBottom,
-          format
+          format,
+          customBackgroundUrl
         )
       } catch {
         const imageBlob = await fetchImageViaProxy(result.imageUrl)
@@ -323,7 +328,8 @@ export function CrawlTool() {
             result.title || '',
             result.description || '',
             safeBottom,
-            format
+            format,
+            customBackgroundUrl
           )
         } finally {
           URL.revokeObjectURL(objectUrl)
@@ -431,6 +437,53 @@ export function CrawlTool() {
                       <ExternalLink className='size-4 shrink-0' />
                       Mở ảnh / Tải gốc
                     </a>
+                    <div className='space-y-2'>
+                      <div className='flex flex-wrap items-center gap-2'>
+                        <span className='text-muted-foreground text-sm'>Ảnh nền (phía sau ảnh chính):</span>
+                        <input
+                          ref={backgroundInputRef}
+                          type='file'
+                          accept='image/*'
+                          className='hidden'
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              const reader = new FileReader()
+                              reader.onload = () => {
+                                const dataUrl = reader.result
+                                if (typeof dataUrl === 'string') setCustomBackgroundUrl(dataUrl)
+                              }
+                              reader.readAsDataURL(file)
+                            }
+                            e.target.value = ''
+                          }}
+                        />
+                        <Button
+                          type='button'
+                          size='sm'
+                          variant='outline'
+                          className='h-8 gap-1.5'
+                          onClick={() => backgroundInputRef.current?.click()}
+                        >
+                          <Upload className='size-4 shrink-0' />
+                          Chọn ảnh nền
+                        </Button>
+                        {customBackgroundUrl ? (
+                          <Button
+                            type='button'
+                            size='sm'
+                            variant='ghost'
+                            className='h-8 gap-1.5 text-muted-foreground'
+                            onClick={() => setCustomBackgroundUrl(null)}
+                          >
+                            <RotateCcw className='size-4 shrink-0' />
+                            Dùng ảnh mặc định
+                          </Button>
+                        ) : (
+                          <span className='text-muted-foreground text-xs'>Mặc định: sân cỏ</span>
+                        )}
+                      </div>
+                    </div>
                     <div className='grid grid-cols-2 gap-2 sm:gap-3'>
                       <Button
                         type='button'
