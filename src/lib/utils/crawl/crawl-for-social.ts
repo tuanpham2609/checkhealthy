@@ -189,27 +189,59 @@ function extractTweetId(url: string): string | null {
   }
 }
 
+/** Token cho Syndication API (giống react-tweet, giúp request thành công trên Vercel). */
+function getSyndicationToken(tweetId: string): string {
+  return ((Number(tweetId) / 1e15) * Math.PI)
+    .toString(36)
+    .replace(/(0+|\.)/g, '')
+}
+
+/** Features param mà Syndication API mong đợi (theo react-tweet). */
+const SYNDICATION_FEATURES =
+  'tfw_timeline_list:;tfw_follower_count_sunset:true;tfw_tweet_edit_backend:on;tfw_refsrc_session:on;tfw_fosnr_soft_interventions_enabled:on;tfw_show_birdwatch_pivots_enabled:on;tfw_show_business_verified_badge:on;tfw_duplicate_scribes_to_settings:on;tfw_use_profile_image_shape_enabled:on;tfw_show_blue_verified_badge:on;tfw_legacy_timeline_sunset:true;tfw_show_gov_verified_badge:on;tfw_show_business_affiliate_badge:on;tfw_tweet_edit_frontend:on'
+
 /**
- * Lấy URL ảnh đầu tiên của tweet từ Syndication API (hoạt động trên Vercel, không cần auth).
+ * Lấy URL ảnh đầu tiên của tweet từ Syndication API (dùng token + features như react-tweet để chạy trên Vercel).
  */
 async function fetchXTweetImageUrl(tweetId: string): Promise<string | null> {
   try {
-    const url = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en`
+    const url = new URL('https://cdn.syndication.twimg.com/tweet-result')
+    url.searchParams.set('id', tweetId)
+    url.searchParams.set('lang', 'en')
+    url.searchParams.set('features', SYNDICATION_FEATURES)
+    url.searchParams.set('token', getSyndicationToken(tweetId))
     const ac = new AbortController()
-    const t = setTimeout(() => ac.abort(), 8000)
-    const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: ac.signal })
+    const t = setTimeout(() => ac.abort(), 10000)
+    const res = await fetch(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      signal: ac.signal,
+    })
     clearTimeout(t)
     if (!res.ok) return null
+    const contentType = res.headers.get('content-type') ?? ''
+    if (!contentType.includes('application/json')) return null
     const data = (await res.json()) as Record<string, unknown>
+    if (!data || typeof data !== 'object') return null
+    if (data.__typename === 'TweetTombstone') return null
+    if (Object.keys(data).length === 0) return null
     const photos = data?.photos as Array<{ url?: string }> | undefined
     if (Array.isArray(photos) && photos.length > 0 && photos[0]?.url) {
       return String(photos[0].url)
     }
     const entities = data?.entities as { media?: Array<{ media_url_https?: string }> } | undefined
-    const media = entities?.media ?? (data?.extended_entities as { media?: Array<{ media_url_https?: string }> } | undefined)?.media
+    const media =
+      entities?.media ??
+      (data?.extended_entities as { media?: Array<{ media_url_https?: string }> } | undefined)?.media
     if (Array.isArray(media) && media.length > 0 && media[0]?.media_url_https) {
       return String(media[0].media_url_https)
     }
+    const raw = JSON.stringify(data)
+    const m = raw.match(/https:\/\/pbs\.twimg\.com\/[^\s"']+/)
+    if (m?.[0]) return m[0]
     return null
   } catch {
     return null
