@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { CrawlResult } from '@/lib/utils/crawl'
 import { buildSuggestedCaptions, extractTweetId, fetchXTweetImageUrl } from '@/lib/utils/crawl'
 import { StoryCaptionTool } from '@/components/molecules/story-caption-tool'
-import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages, X, Upload, RotateCcw } from 'lucide-react'
+import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages, X, Upload, RotateCcw, Plus } from 'lucide-react'
 import { cn } from '@/lib/styles'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -216,11 +216,15 @@ async function fetchImageViaProxy(imageUrl: string): Promise<Blob> {
   return res.blob()
 }
 
+/** Số link tối đa khi crawl một lần */
+const MAX_CRAWL_URLS = 20
+
 export function CrawlTool() {
-  const [url, setUrl] = useState('')
+  const [urls, setUrls] = useState<string[]>([''])
   const [loading, setLoading] = useState(false)
+  const [crawlProgress, setCrawlProgress] = useState<{ current: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<CrawlResult | null>(null)
+  const [results, setResults] = useState<CrawlResult[]>([])
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [downloadTitleLoading, setDownloadTitleLoading] = useState(false)
   const [downloadTitleError, setDownloadTitleError] = useState<string | null>(null)
@@ -230,17 +234,30 @@ export function CrawlTool() {
   const backgroundInputRef = useRef<HTMLInputElement>(null)
   const [xImageLoading, setXImageLoading] = useState(false)
 
-  // Khi crawl X trên Vercel không có ảnh: thử lấy ảnh từ Syndication API ngay trên trình duyệt (request từ IP user, ít bị chặn)
+  // Khi crawl X trên Vercel không có ảnh: thử lấy ảnh từ Syndication API ngay trên trình duyệt cho từng result
+  const xImageFetchKey = results.map((r) => `${r.url}-${r.isFromX}-${r.imageUrl || ''}`).join('|')
   useEffect(() => {
-    if (!result?.isFromX || result.imageUrl) return
-    const tweetId = extractTweetId(result.url)
-    if (!tweetId) return
+    const indices = results
+      .map((r, i) => (r.isFromX && !r.imageUrl && extractTweetId(r.url) ? i : -1))
+      .filter((i) => i >= 0)
+    if (indices.length === 0) return
     let cancelled = false
     setXImageLoading(true)
-    fetchXTweetImageUrl(tweetId)
-      .then((imageUrl) => {
-        if (cancelled || !imageUrl) return
-        setResult((prev) => (prev ? { ...prev, imageUrl } : prev))
+    Promise.all(
+      indices.map((i) => {
+        const tweetId = extractTweetId(results[i]!.url)
+        return tweetId ? fetchXTweetImageUrl(tweetId).then((imageUrl) => ({ i, imageUrl })) : Promise.resolve({ i, imageUrl: null })
+      })
+    )
+      .then((pairs) => {
+        if (cancelled) return
+        setResults((prev) => {
+          const next = [...prev]
+          for (const { i, imageUrl } of pairs) {
+            if (imageUrl && next[i]) next[i] = { ...next[i]!, imageUrl }
+          }
+          return next
+        })
       })
       .finally(() => {
         if (!cancelled) setXImageLoading(false)
@@ -248,33 +265,44 @@ export function CrawlTool() {
     return () => {
       cancelled = true
     }
-  }, [result?.url, result?.isFromX, result?.imageUrl])
+    // xImageFetchKey encodes which results need X image fetch; re-run when results or their imageUrl change
+  }, [xImageFetchKey, results])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    setResult(null)
-    if (!url.trim()) {
-      setError('Vui lòng nhập URL')
+    setResults([])
+    setCrawlProgress(null)
+    const list = urls
+      .map((u) => u.trim())
+      .filter(Boolean)
+      .slice(0, MAX_CRAWL_URLS)
+    if (list.length === 0) {
+      setError('Vui lòng nhập ít nhất một URL')
       return
     }
     setLoading(true)
+    setCrawlProgress({ current: 0, total: list.length })
+    const accumulated: CrawlResult[] = []
     try {
-      const res = await fetch('/api/crawl', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'Crawl thất bại')
-        return
+      for (let i = 0; i < list.length; i++) {
+        setCrawlProgress({ current: i + 1, total: list.length })
+        const res = await fetch('/api/crawl', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: list[i] }),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          accumulated.push(data)
+        }
       }
-      setResult(data)
+      setResults(accumulated)
     } catch {
       setError('Lỗi kết nối')
     } finally {
       setLoading(false)
+      setCrawlProgress(null)
     }
   }
 
@@ -284,7 +312,8 @@ export function CrawlTool() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  async function handleTranslateToVietnamese() {
+  async function handleTranslateToVietnamese(index: number) {
+    const result = results[index]
     if (!result) return
     setTranslateError(null)
     setTranslateLoading(true)
@@ -311,13 +340,19 @@ export function CrawlTool() {
       const translatedTitle = typeof titleData?.translated === 'string' ? titleData.translated : result.title
       const translatedDesc = typeof descData?.translated === 'string' ? descData.translated : result.description
       const captions = buildSuggestedCaptions(translatedTitle, translatedDesc, result.url)
-      setResult({
-        ...result,
-        title: translatedTitle,
-        description: translatedDesc,
-        suggestedCaptionFacebook: captions.suggestedCaptionFacebook,
-        suggestedCaptionTikTok: captions.suggestedCaptionTikTok,
-      })
+      setResults((prev) =>
+        prev.map((r, i) =>
+          i === index
+            ? {
+                ...r,
+                title: translatedTitle,
+                description: translatedDesc,
+                suggestedCaptionFacebook: captions.suggestedCaptionFacebook,
+                suggestedCaptionTikTok: captions.suggestedCaptionTikTok,
+              }
+            : r
+        )
+      )
     } catch {
       setTranslateError('Lỗi kết nối khi dịch')
     } finally {
@@ -325,11 +360,14 @@ export function CrawlTool() {
     }
   }
 
-  async function handleDownloadWithTitle(format: DownloadFormat) {
+  async function handleDownloadWithTitle(format: DownloadFormat, index: number) {
+    const result = results[index]
     if (!result?.imageUrl) return
     setDownloadTitleError(null)
     setDownloadTitleLoading(true)
     const safeBottom = format === 'tiktok' ? TIKTOK_SAFE_BOTTOM : 0
+    const filename =
+      format === 'tiktok' ? `anh-${index + 1}-tiktok.png` : `anh-${index + 1}-fanpage.png`
     try {
       let blob: Blob
       try {
@@ -357,8 +395,57 @@ export function CrawlTool() {
           URL.revokeObjectURL(objectUrl)
         }
       }
-      const filename = format === 'tiktok' ? 'anh-co-mo-ta-tiktok.png' : 'anh-co-mo-ta-fanpage.png'
       downloadBlob(blob, filename)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Không tạo được ảnh.'
+      setDownloadTitleError(msg)
+      setTimeout(() => setDownloadTitleError(null), 6000)
+    } finally {
+      setDownloadTitleLoading(false)
+    }
+  }
+
+  async function handleDownloadAll(format: DownloadFormat) {
+    const withImage = results.filter((r) => r.imageUrl)
+    if (withImage.length === 0) return
+    setDownloadTitleError(null)
+    setDownloadTitleLoading(true)
+    const safeBottom = format === 'tiktok' ? TIKTOK_SAFE_BOTTOM : 0
+    const suffix = format === 'tiktok' ? 'tiktok' : 'fanpage'
+    try {
+      let globalIndex = 0
+      for (const result of results) {
+        if (!result.imageUrl) continue
+        const index = globalIndex++
+        let blob: Blob
+        try {
+          blob = await drawImageWithTitleCanvas(
+            result.imageUrl,
+            result.title || '',
+            result.description || '',
+            safeBottom,
+            format,
+            customBackgroundUrl
+          )
+        } catch {
+          const imageBlob = await fetchImageViaProxy(result.imageUrl)
+          const objectUrl = URL.createObjectURL(imageBlob)
+          try {
+            blob = await drawImageWithTitleCanvas(
+              objectUrl,
+              result.title || '',
+              result.description || '',
+              safeBottom,
+              format,
+              customBackgroundUrl
+            )
+          } finally {
+            URL.revokeObjectURL(objectUrl)
+          }
+        }
+        downloadBlob(blob, `anh-${index + 1}-${suffix}.png`)
+        await new Promise((r) => setTimeout(r, 200))
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Không tạo được ảnh.'
       setDownloadTitleError(msg)
@@ -385,44 +472,71 @@ export function CrawlTool() {
         <CardContent className='p-4 sm:p-5 md:p-6 lg:p-7'>
           <form
             onSubmit={handleSubmit}
-            className='flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-4'
+            className='flex flex-col gap-3'
           >
-            <div className='relative flex-1'>
-              <Link2 className='text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2 sm:left-4 sm:size-5' />
-              <Input
-                type='url'
-                placeholder='https://example.com/bai-viet'
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                className='h-11 w-full pl-10 pr-10 text-[16px] sm:h-12 sm:pl-12 sm:pr-12 min-[768px]:text-[15px]'
-                disabled={loading}
-              />
-              {url.trim() && (
-                <button
-                  type='button'
-                  onClick={() => setUrl('')}
-                  aria-label='Xóa link'
-                  className='text-muted-foreground hover:text-foreground absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:pointer-events-none sm:right-4'
-                  disabled={loading}
-                >
-                  <X className='size-4 sm:size-5' />
-                </button>
-              )}
+            <div className='flex flex-col gap-2'>
+              {urls.map((url, index) => (
+                <div key={index} className='relative flex flex-1 flex-col gap-1 sm:flex-row sm:items-stretch sm:gap-2'>
+                  <div className='relative flex-1'>
+                    <Link2 className='text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2 sm:left-4 sm:size-5' />
+                    <Input
+                      type='url'
+                      placeholder='https://example.com/bai-viet'
+                      value={url}
+                      onChange={(e) => {
+                        setUrls((prev) => {
+                          const next = [...prev]
+                          next[index] = e.target.value
+                          return next
+                        })
+                      }}
+                      className='h-11 w-full pl-10 pr-10 text-[16px] sm:h-12 sm:pl-12 sm:pr-12 min-[768px]:text-[15px]'
+                      disabled={loading}
+                    />
+                    {urls.length > 1 && (
+                      <button
+                        type='button'
+                        onClick={() => setUrls((prev) => prev.filter((_, i) => i !== index))}
+                        aria-label='Xóa link'
+                        className='text-muted-foreground hover:text-foreground absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:pointer-events-none sm:right-4'
+                        disabled={loading}
+                      >
+                        <X className='size-4 sm:size-5' />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-            <Button
-              type='submit'
-              disabled={loading}
-              className='h-11 shrink-0 gap-2 bg-emerald-600 px-5 font-medium hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 sm:h-12 sm:px-6 md:px-8'
-            >
-              {loading ? (
-                <>
-                  <Loader2 className='size-5 shrink-0 animate-spin' />
-                  <span className='hidden sm:inline'>Đang crawl...</span>
-                </>
-              ) : (
-                'Crawl'
-              )}
-            </Button>
+            <div className='flex flex-wrap items-center gap-2'>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                className='gap-1.5'
+                disabled={loading || urls.length >= MAX_CRAWL_URLS}
+                onClick={() => setUrls((prev) => [...prev, ''])}
+              >
+                <Plus className='size-4 shrink-0' />
+                Thêm link
+              </Button>
+              <Button
+                type='submit'
+                disabled={loading}
+                className='gap-2 bg-emerald-600 px-5 font-medium hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 sm:px-6 md:px-8'
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className='size-5 shrink-0 animate-spin' />
+                    <span className='hidden sm:inline'>
+                      {crawlProgress ? `Đang crawl ${crawlProgress.current}/${crawlProgress.total}...` : 'Đang crawl...'}
+                    </span>
+                  </>
+                ) : (
+                  'Crawl'
+                )}
+              </Button>
+            </div>
           </form>
           {error && (
             <p className='text-destructive mt-3 text-sm' role='alert'>
@@ -432,273 +546,314 @@ export function CrawlTool() {
         </CardContent>
       </Card>
 
-      {/* Results - grid on large screens */}
-      {result && (
-        <div className='grid gap-4 sm:gap-5 lg:grid-cols-2 lg:gap-6'>
-          {/* Left column: Image + Meta */}
-          <div className='flex flex-col gap-4 sm:gap-5'>
-            {(result.imageUrl || result.isFromX) && (
-              <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
-                <CardHeader className='flex flex-row items-center gap-2 border-b bg-muted/40 px-4 py-3 sm:px-5 sm:py-4'>
-                  <ImageIcon className='size-5 shrink-0 text-emerald-600 dark:text-emerald-400' />
-                  <CardTitle className='text-base font-semibold sm:text-lg'>
-                    {result.isFromX ? 'Ảnh (X / Twitter)' : 'Ảnh (OG Image)'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className='p-4 sm:p-5'>
-                  {result.imageUrl ? (
-                    <>
-                  <img
-                    src={result.imageUrl}
-                    alt={result.title}
-                    className='max-h-64 w-full rounded-xl border bg-muted/30 object-contain sm:max-h-80 md:max-h-96'
-                  />
-                  <div className='mt-3 space-y-3'>
-                    <a
-                      href={result.imageUrl}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-2 transition-colors'
-                    >
-                      <ExternalLink className='size-4 shrink-0' />
-                      Mở ảnh / Tải gốc
-                    </a>
-                    <div className='space-y-2'>
-                      <div className='flex flex-wrap items-center gap-2'>
-                        <span className='text-muted-foreground text-sm'>Ảnh nền (phía sau ảnh chính):</span>
-                        <input
-                          ref={backgroundInputRef}
-                          type='file'
-                          accept='image/*'
-                          className='hidden'
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) {
-                              const reader = new FileReader()
-                              reader.onload = () => {
-                                const dataUrl = reader.result
-                                if (typeof dataUrl === 'string') setCustomBackgroundUrl(dataUrl)
-                              }
-                              reader.readAsDataURL(file)
-                            }
-                            e.target.value = ''
-                          }}
-                        />
-                        <Button
-                          type='button'
-                          size='sm'
-                          variant='outline'
-                          className='h-8 gap-1.5'
-                          onClick={() => backgroundInputRef.current?.click()}
-                        >
-                          <Upload className='size-4 shrink-0' />
-                          Chọn ảnh nền
-                        </Button>
-                        {customBackgroundUrl ? (
-                          <Button
-                            type='button'
-                            size='sm'
-                            variant='ghost'
-                            className='h-8 gap-1.5 text-muted-foreground'
-                            onClick={() => setCustomBackgroundUrl(null)}
-                          >
-                            <RotateCcw className='size-4 shrink-0' />
-                            Dùng ảnh mặc định
-                          </Button>
-                        ) : (
-                          <span className='text-muted-foreground text-xs'>Mặc định: sân cỏ</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className='grid grid-cols-2 gap-2 sm:gap-3'>
-                      <Button
-                        type='button'
-                        size='sm'
-                        variant='outline'
-                        className='gap-1.5'
-                        disabled={downloadTitleLoading}
-                        onClick={() => handleDownloadWithTitle('tiktok')}
-                      >
-                        {downloadTitleLoading ? (
-                          <Loader2 className='size-4 shrink-0 animate-spin' />
-                        ) : (
-                          <Download className='size-4 shrink-0' />
-                        )}
-                        Tải cho TikTok
-                      </Button>
-                      <Button
-                        type='button'
-                        size='sm'
-                        className='gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
-                        disabled={downloadTitleLoading}
-                        onClick={() => handleDownloadWithTitle('facebook')}
-                      >
-                        {downloadTitleLoading ? (
-                          <Loader2 className='size-4 shrink-0 animate-spin' />
-                        ) : (
-                          <Download className='size-4 shrink-0' />
-                        )}
-                        Tải cho Fanpage FB
-                      </Button>
-                    </div>
-                  </div>
-                  {downloadTitleError && (
-                    <p className='text-destructive mt-2 text-sm' role='alert'>
-                      {downloadTitleError}
-                    </p>
-                  )}
-                    </>
-                  ) : (
-                    <div className='flex min-h-[200px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 p-6 text-center'>
-                      {xImageLoading ? (
-                        <>
-                          <Loader2 className='size-6 animate-spin text-emerald-600' />
-                          <p className='text-muted-foreground text-sm'>Đang tải ảnh từ X (từ trình duyệt)...</p>
-                        </>
-                      ) : (
-                        <p className='text-muted-foreground text-sm'>Không lấy được ảnh từ link X. Tweet có thể không có ảnh hoặc bị giới hạn.</p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            <Card className='flex-1 overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
-              <CardHeader className='flex flex-col gap-2 border-b bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4'>
-                <CardTitle className='text-base font-semibold sm:text-lg'>Thông tin trang</CardTitle>
+      {/* Results */}
+      {results.length > 0 && (
+        <div className='flex flex-col gap-6'>
+          {/* Ảnh nền chung + Tải tất cả */}
+          <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
+            <CardHeader className='border-b bg-muted/40 px-4 py-3 sm:px-5 sm:py-4'>
+              <CardTitle className='text-base font-semibold sm:text-lg'>Tải ảnh hàng loạt</CardTitle>
+            </CardHeader>
+            <CardContent className='flex flex-wrap items-center gap-3 p-4 sm:p-5'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <span className='text-muted-foreground text-sm'>Ảnh nền (dùng chung):</span>
+                <input
+                  ref={backgroundInputRef}
+                  type='file'
+                  accept='image/*'
+                  className='hidden'
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      const reader = new FileReader()
+                      reader.onload = () => {
+                        const dataUrl = reader.result
+                        if (typeof dataUrl === 'string') setCustomBackgroundUrl(dataUrl)
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                    e.target.value = ''
+                  }}
+                />
                 <Button
                   type='button'
-                  variant='outline'
                   size='sm'
-                  className='w-full gap-1.5 sm:w-auto'
-                  disabled={translateLoading}
-                  onClick={handleTranslateToVietnamese}
+                  variant='outline'
+                  className='h-8 gap-1.5'
+                  onClick={() => backgroundInputRef.current?.click()}
                 >
-                  {translateLoading ? (
+                  <Upload className='size-4 shrink-0' />
+                  Chọn ảnh nền
+                </Button>
+                {customBackgroundUrl ? (
+                  <Button
+                    type='button'
+                    size='sm'
+                    variant='ghost'
+                    className='h-8 gap-1.5 text-muted-foreground'
+                    onClick={() => setCustomBackgroundUrl(null)}
+                  >
+                    <RotateCcw className='size-4 shrink-0' />
+                    Dùng ảnh mặc định
+                  </Button>
+                ) : (
+                  <span className='text-muted-foreground text-xs'>Mặc định: sân cỏ</span>
+                )}
+              </div>
+              <div className='flex gap-2'>
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='outline'
+                  className='gap-1.5'
+                  disabled={downloadTitleLoading || !results.some((r) => r.imageUrl)}
+                  onClick={() => handleDownloadAll('tiktok')}
+                >
+                  {downloadTitleLoading ? (
                     <Loader2 className='size-4 shrink-0 animate-spin' />
                   ) : (
-                    <Languages className='size-4 shrink-0' />
+                    <Download className='size-4 shrink-0' />
                   )}
-                  Dịch sang tiếng Việt
+                  Tải tất cả (TikTok)
                 </Button>
-              </CardHeader>
-              <CardContent className='space-y-3 p-4 text-sm sm:space-y-4 sm:p-5 sm:text-[15px]'>
-                {translateError && (
-                  <p className='text-destructive text-sm' role='alert'>
-                    {translateError}
-                  </p>
+                <Button
+                  type='button'
+                  size='sm'
+                  className='gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
+                  disabled={downloadTitleLoading || !results.some((r) => r.imageUrl)}
+                  onClick={() => handleDownloadAll('facebook')}
+                >
+                  {downloadTitleLoading ? (
+                    <Loader2 className='size-4 shrink-0 animate-spin' />
+                  ) : (
+                    <Download className='size-4 shrink-0' />
+                  )}
+                  Tải tất cả (Fanpage)
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          {downloadTitleError && (
+            <p className='text-destructive text-sm' role='alert'>
+              {downloadTitleError}
+            </p>
+          )}
+
+          {/* Danh sách từng kết quả */}
+          {results.map((result, index) => (
+            <div key={index} className='grid gap-4 sm:gap-5 lg:grid-cols-2 lg:gap-6'>
+              <div className='flex flex-col gap-4 sm:gap-5'>
+                {(result.imageUrl || result.isFromX) && (
+                  <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
+                    <CardHeader className='flex flex-row items-center gap-2 border-b bg-muted/40 px-4 py-3 sm:px-5 sm:py-4'>
+                      <ImageIcon className='size-5 shrink-0 text-emerald-600 dark:text-emerald-400' />
+                      <CardTitle className='text-base font-semibold sm:text-lg'>
+                        #{index + 1} — {result.isFromX ? 'Ảnh (X / Twitter)' : 'Ảnh (OG Image)'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className='p-4 sm:p-5'>
+                      {result.imageUrl ? (
+                        <>
+                          <img
+                            src={result.imageUrl}
+                            alt={result.title}
+                            className='max-h-64 w-full rounded-xl border bg-muted/30 object-contain sm:max-h-80 md:max-h-96'
+                          />
+                          <div className='mt-3 space-y-3'>
+                            <a
+                              href={result.imageUrl}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              className='text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-2 transition-colors'
+                            >
+                              <ExternalLink className='size-4 shrink-0' />
+                              Mở ảnh / Tải gốc
+                            </a>
+                            <div className='grid grid-cols-2 gap-2 sm:gap-3'>
+                              <Button
+                                type='button'
+                                size='sm'
+                                variant='outline'
+                                className='gap-1.5'
+                                disabled={downloadTitleLoading}
+                                onClick={() => handleDownloadWithTitle('tiktok', index)}
+                              >
+                                {downloadTitleLoading ? (
+                                  <Loader2 className='size-4 shrink-0 animate-spin' />
+                                ) : (
+                                  <Download className='size-4 shrink-0' />
+                                )}
+                                Tải cho TikTok
+                              </Button>
+                              <Button
+                                type='button'
+                                size='sm'
+                                className='gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
+                                disabled={downloadTitleLoading}
+                                onClick={() => handleDownloadWithTitle('facebook', index)}
+                              >
+                                {downloadTitleLoading ? (
+                                  <Loader2 className='size-4 shrink-0 animate-spin' />
+                                ) : (
+                                  <Download className='size-4 shrink-0' />
+                                )}
+                                Tải cho Fanpage FB
+                              </Button>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className='flex min-h-[200px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 p-6 text-center'>
+                          {xImageLoading ? (
+                            <>
+                              <Loader2 className='size-6 animate-spin text-emerald-600' />
+                              <p className='text-muted-foreground text-sm'>Đang tải ảnh từ X...</p>
+                            </>
+                          ) : (
+                            <p className='text-muted-foreground text-sm'>Không lấy được ảnh từ link X.</p>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 )}
-                <div>
-                  <div className='flex flex-wrap items-center justify-between gap-2'>
-                    <span className='text-muted-foreground font-medium'>Tiêu đề:</span>
+
+                <Card className='flex-1 overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
+                  <CardHeader className='flex flex-col gap-2 border-b bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4'>
+                    <CardTitle className='text-base font-semibold sm:text-lg'>Thông tin trang #{index + 1}</CardTitle>
                     <Button
                       type='button'
                       variant='outline'
                       size='sm'
-                      className='h-8 gap-1.5 shrink-0'
-                      onClick={() => copyToClipboard(result.title, 'title')}
+                      className='w-full gap-1.5 sm:w-auto'
+                      disabled={translateLoading}
+                      onClick={() => handleTranslateToVietnamese(index)}
                     >
-                      {copiedId === 'title' ? (
-                        <Check className='size-4 text-emerald-600' />
+                      {translateLoading ? (
+                        <Loader2 className='size-4 shrink-0 animate-spin' />
                       ) : (
-                        <Copy className='size-4' />
+                        <Languages className='size-4 shrink-0' />
                       )}
-                      {copiedId === 'title' ? 'Đã copy' : 'Copy'}
+                      Dịch sang tiếng Việt
                     </Button>
-                  </div>
-                  <p className='mt-0.5 font-medium'>{result.title}</p>
-                </div>
-                <div>
-                  <div className='flex flex-wrap items-center justify-between gap-2'>
-                    <span className='text-muted-foreground font-medium'>Mô tả:</span>
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      className='h-8 gap-1.5 shrink-0'
-                      onClick={() => copyToClipboard(result.description, 'desc')}
-                    >
-                      {copiedId === 'desc' ? (
-                        <Check className='size-4 text-emerald-600' />
-                      ) : (
-                        <Copy className='size-4' />
-                      )}
-                      {copiedId === 'desc' ? 'Đã copy' : 'Copy'}
-                    </Button>
-                  </div>
-                  <p className='mt-0.5'>{result.description}</p>
-                </div>
-                <div>
-                  <span className='text-muted-foreground font-medium'>URL:</span>
-                  <a
-                    href={result.url}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className={cn(
-                      'mt-0.5 block break-all font-medium text-emerald-600 underline underline-offset-2',
-                      'hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300'
+                  </CardHeader>
+                  <CardContent className='space-y-3 p-4 text-sm sm:space-y-4 sm:p-5 sm:text-[15px]'>
+                    {translateError && (
+                      <p className='text-destructive text-sm' role='alert'>
+                        {translateError}
+                      </p>
                     )}
-                  >
-                    {result.url}
-                  </a>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                    <div>
+                      <div className='flex flex-wrap items-center justify-between gap-2'>
+                        <span className='text-muted-foreground font-medium'>Tiêu đề:</span>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          className='h-8 gap-1.5 shrink-0'
+                          onClick={() => copyToClipboard(result.title, `title-${index}`)}
+                        >
+                          {copiedId === `title-${index}` ? (
+                            <Check className='size-4 text-emerald-600' />
+                          ) : (
+                            <Copy className='size-4' />
+                          )}
+                          {copiedId === `title-${index}` ? 'Đã copy' : 'Copy'}
+                        </Button>
+                      </div>
+                      <p className='mt-0.5 font-medium'>{result.title}</p>
+                    </div>
+                    <div>
+                      <div className='flex flex-wrap items-center justify-between gap-2'>
+                        <span className='text-muted-foreground font-medium'>Mô tả:</span>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          className='h-8 gap-1.5 shrink-0'
+                          onClick={() => copyToClipboard(result.description, `desc-${index}`)}
+                        >
+                          {copiedId === `desc-${index}` ? (
+                            <Check className='size-4 text-emerald-600' />
+                          ) : (
+                            <Copy className='size-4' />
+                          )}
+                          {copiedId === `desc-${index}` ? 'Đã copy' : 'Copy'}
+                        </Button>
+                      </div>
+                      <p className='mt-0.5'>{result.description}</p>
+                    </div>
+                    <div>
+                      <span className='text-muted-foreground font-medium'>URL:</span>
+                      <a
+                        href={result.url}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className={cn(
+                          'mt-0.5 block break-all font-medium text-emerald-600 underline underline-offset-2',
+                          'hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300'
+                        )}
+                      >
+                        {result.url}
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          {/* Right column: Captions */}
-          <div className='flex flex-col gap-4 sm:gap-5'>
-            <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
-              <CardHeader className='flex flex-col gap-2 border-b bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4'>
-                <CardTitle className='text-base font-semibold sm:text-lg'>Caption Facebook</CardTitle>
-                <Button
-                  type='button'
-                  variant='outline'
-                  size='sm'
-                  className='w-full gap-1.5 sm:w-auto'
-                  onClick={() => copyToClipboard(result.suggestedCaptionFacebook, 'fb')}
-                >
-                  {copiedId === 'fb' ? (
-                    <Check className='size-4 text-emerald-600' />
-                  ) : (
-                    <Copy className='size-4' />
-                  )}
-                  {copiedId === 'fb' ? 'Đã copy' : 'Copy'}
-                </Button>
-              </CardHeader>
-              <CardContent className='p-4 sm:p-5'>
-                <pre className='max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted/50 p-4 text-sm sm:max-h-56 sm:text-[15px]'>
-                  {result.suggestedCaptionFacebook}
-                </pre>
-              </CardContent>
-            </Card>
+              <div className='flex flex-col gap-4 sm:gap-5'>
+                <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
+                  <CardHeader className='flex flex-col gap-2 border-b bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4'>
+                    <CardTitle className='text-base font-semibold sm:text-lg'>Caption Facebook #{index + 1}</CardTitle>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      size='sm'
+                      className='w-full gap-1.5 sm:w-auto'
+                      onClick={() => copyToClipboard(result.suggestedCaptionFacebook, `fb-${index}`)}
+                    >
+                      {copiedId === `fb-${index}` ? (
+                        <Check className='size-4 text-emerald-600' />
+                      ) : (
+                        <Copy className='size-4' />
+                      )}
+                      {copiedId === `fb-${index}` ? 'Đã copy' : 'Copy'}
+                    </Button>
+                  </CardHeader>
+                  <CardContent className='p-4 sm:p-5'>
+                    <pre className='max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted/50 p-4 text-sm sm:max-h-56 sm:text-[15px]'>
+                      {result.suggestedCaptionFacebook}
+                    </pre>
+                  </CardContent>
+                </Card>
 
-            <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
-              <CardHeader className='flex flex-col gap-2 border-b bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4'>
-                <CardTitle className='text-base font-semibold sm:text-lg'>Caption TikTok</CardTitle>
-                <Button
-                  type='button'
-                  variant='outline'
-                  size='sm'
-                  className='w-full gap-1.5 sm:w-auto'
-                  onClick={() => copyToClipboard(result.suggestedCaptionTikTok, 'tt')}
-                >
-                  {copiedId === 'tt' ? (
-                    <Check className='size-4 text-emerald-600' />
-                  ) : (
-                    <Copy className='size-4' />
-                  )}
-                  {copiedId === 'tt' ? 'Đã copy' : 'Copy'}
-                </Button>
-              </CardHeader>
-              <CardContent className='p-4 sm:p-5'>
-                <pre className='max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted/50 p-4 text-sm sm:max-h-56 sm:text-[15px]'>
-                  {result.suggestedCaptionTikTok}
-                </pre>
-              </CardContent>
-            </Card>
-          </div>
+                <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
+                  <CardHeader className='flex flex-col gap-2 border-b bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4'>
+                    <CardTitle className='text-base font-semibold sm:text-lg'>Caption TikTok #{index + 1}</CardTitle>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      size='sm'
+                      className='w-full gap-1.5 sm:w-auto'
+                      onClick={() => copyToClipboard(result.suggestedCaptionTikTok, `tt-${index}`)}
+                    >
+                      {copiedId === `tt-${index}` ? (
+                        <Check className='size-4 text-emerald-600' />
+                      ) : (
+                        <Copy className='size-4' />
+                      )}
+                      {copiedId === `tt-${index}` ? 'Đã copy' : 'Copy'}
+                    </Button>
+                  </CardHeader>
+                  <CardContent className='p-4 sm:p-5'>
+                    <pre className='max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted/50 p-4 text-sm sm:max-h-56 sm:text-[15px]'>
+                      {result.suggestedCaptionTikTok}
+                    </pre>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          ))}
         </div>
       )}
         </div>
