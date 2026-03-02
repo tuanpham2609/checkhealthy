@@ -17,13 +17,15 @@ import { Download, Image as ImageIcon, Palette } from 'lucide-react'
 const W = 1080
 const H = 1920
 const MARGIN_H = 15
-const PADDING_H = 0
+const PADDING_H = 24
 const CAPTION_RADIUS = 12
 const FONT_SIZE_PRESETS = [20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 96, 112] as const
 const FONT_SIZE_MIN = 16
 const FONT_SIZE_MAX = 120
 
 const FONT_STRING = '600 {size}px system-ui, -apple-system, sans-serif'
+
+const DEFAULT_BACKGROUND_IMAGE = '/assets/background/field-bg.png'
 
 /**
  * Wrap caption by measured pixel width so line breaks match the chosen font size.
@@ -102,12 +104,20 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(a.href)
 }
 
+function getDefaultCaption(): string {
+  const d = new Date()
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `Tin tức 60s Update ${dd}/${mm}/${yyyy}`
+}
+
 export function StoryCaptionTool() {
-  const [backgroundType, setBackgroundType] = useState<'image' | 'color'>('color')
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [backgroundType, setBackgroundType] = useState<'image' | 'color'>('image')
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(DEFAULT_BACKGROUND_IMAGE)
   const [colorHex, setColorHex] = useState('#36762a')
-  const [caption, setCaption] = useState('')
-  const [fontSize, setFontSize] = useState(36)
+  const [caption, setCaption] = useState(getDefaultCaption)
+  const [fontSize, setFontSize] = useState(80)
   const [captionBgColor, setCaptionBgColor] = useState('#36762a')
   const [exporting, setExporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -118,7 +128,7 @@ export function StoryCaptionTool() {
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file?.type.startsWith('image/')) return
-    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl)
+    if (imagePreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(imagePreviewUrl)
     setImagePreviewUrl(URL.createObjectURL(file))
     e.target.value = ''
   }, [imagePreviewUrl])
@@ -127,9 +137,10 @@ export function StoryCaptionTool() {
     (ctx: CanvasRenderingContext2D) => {
       const lines = wrapCaptionByMeasure(caption, fontSize, wrapWidth)
       if (lines.length === 0) return
-      const paddingV = Math.round(fontSize * 0.5)
       const lineHeight = Math.round(fontSize * 1.35)
-      const stripHeight = lines.length * lineHeight + paddingV * 2
+      const textBlockHeight = lines.length * lineHeight
+      const paddingV = Math.round(fontSize * 0.9)
+      const stripHeight = textBlockHeight + paddingV * 2
       const stripX = (W - stripWidth) / 2
       const stripY = (H - stripHeight) / 2
 
@@ -146,10 +157,11 @@ export function StoryCaptionTool() {
       ctx.fillStyle = '#ffffff'
       ctx.font = FONT_STRING.replace('{size}', String(fontSize))
       ctx.textAlign = 'center'
-      ctx.textBaseline = 'top'
+      ctx.textBaseline = 'middle'
       const textX = stripX + stripWidth / 2
+      const firstLineCenterY = stripY + (stripHeight - textBlockHeight) / 2 + lineHeight / 2
       lines.forEach((line, i) => {
-        const y = stripY + paddingV + i * lineHeight
+        const y = firstLineCenterY + i * lineHeight
         ctx.fillText(line, textX, y)
       })
     },
@@ -201,9 +213,10 @@ export function StoryCaptionTool() {
   }, [backgroundType, colorHex, imagePreviewUrl, drawCaptionStrip])
 
   const lines = wrapCaptionByMeasure(caption, fontSize, wrapWidth)
-  const paddingV = Math.round(fontSize * 0.5)
   const lineHeight = Math.round(fontSize * 1.35)
-  const stripHeight = lines.length * lineHeight + paddingV * 2
+  const textBlockHeight = lines.length * lineHeight
+  const paddingV = Math.round(fontSize * 0.9)
+  const stripHeight = textBlockHeight + paddingV * 2
   const hasBackground = backgroundType === 'color' || imagePreviewUrl
   const previewScale = 280 / W
 
@@ -374,7 +387,7 @@ export function StoryCaptionTool() {
                 >
                   {lines.length > 0 && (
                     <div
-                      className='flex flex-col items-center justify-center px-2 py-2 text-center text-white'
+                      className='flex flex-col items-center justify-center text-center text-white'
                       style={{
                         backgroundColor: captionBgColor,
                         borderRadius: CAPTION_RADIUS,
@@ -382,6 +395,12 @@ export function StoryCaptionTool() {
                         fontSize: `${fontSize * previewScale}px`,
                         lineHeight: 1.35,
                         maxWidth: `${stripWidth * previewScale}px`,
+                        minHeight: `${stripHeight * previewScale}px`,
+                        boxSizing: 'border-box',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
                       }}
                     >
                       {lines.map((line, i) => (
