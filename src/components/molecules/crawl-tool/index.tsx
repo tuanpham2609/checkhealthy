@@ -405,56 +405,6 @@ export function CrawlTool() {
     }
   }
 
-  async function handleDownloadAll(format: DownloadFormat) {
-    const withImage = results.filter((r) => r.imageUrl)
-    if (withImage.length === 0) return
-    setDownloadTitleError(null)
-    setDownloadTitleLoading(true)
-    const safeBottom = format === 'tiktok' ? TIKTOK_SAFE_BOTTOM : 0
-    const suffix = format === 'tiktok' ? 'tiktok' : 'fanpage'
-    try {
-      let globalIndex = 0
-      for (const result of results) {
-        if (!result.imageUrl) continue
-        const index = globalIndex++
-        let blob: Blob
-        try {
-          blob = await drawImageWithTitleCanvas(
-            result.imageUrl,
-            result.title || '',
-            result.description || '',
-            safeBottom,
-            format,
-            customBackgroundUrl
-          )
-        } catch {
-          const imageBlob = await fetchImageViaProxy(result.imageUrl)
-          const objectUrl = URL.createObjectURL(imageBlob)
-          try {
-            blob = await drawImageWithTitleCanvas(
-              objectUrl,
-              result.title || '',
-              result.description || '',
-              safeBottom,
-              format,
-              customBackgroundUrl
-            )
-          } finally {
-            URL.revokeObjectURL(objectUrl)
-          }
-        }
-        downloadBlob(blob, `anh-${index + 1}-${suffix}.png`)
-        await new Promise((r) => setTimeout(r, 200))
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Không tạo được ảnh.'
-      setDownloadTitleError(msg)
-      setTimeout(() => setDownloadTitleError(null), 6000)
-    } finally {
-      setDownloadTitleLoading(false)
-    }
-  }
-
   return (
     <Tabs defaultValue='crawl' className='w-full'>
       <TabsList className='mb-4 w-full max-w-md sm:mb-6'>
@@ -549,7 +499,7 @@ export function CrawlTool() {
       {/* Results */}
       {results.length > 0 && (
         <div className='flex flex-col gap-6'>
-          {/* Ảnh nền chung + Tải tất cả */}
+          {/* Ảnh nền chung */}
           <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
             <CardHeader className='border-b bg-muted/40 px-4 py-3 sm:px-5 sm:py-4'>
               <CardTitle className='text-base font-semibold sm:text-lg'>Tải ảnh hàng loạt</CardTitle>
@@ -597,39 +547,8 @@ export function CrawlTool() {
                     Dùng ảnh mặc định
                   </Button>
                 ) : (
-                  <span className='text-muted-foreground text-xs'>Mặc định: sân cỏ</span>
+                  <span className='text-muted-foreground text-xs'>Mặc định: news</span>
                 )}
-              </div>
-              <div className='flex gap-2'>
-                <Button
-                  type='button'
-                  size='sm'
-                  variant='outline'
-                  className='gap-1.5'
-                  disabled={downloadTitleLoading || !results.some((r) => r.imageUrl)}
-                  onClick={() => handleDownloadAll('tiktok')}
-                >
-                  {downloadTitleLoading ? (
-                    <Loader2 className='size-4 shrink-0 animate-spin' />
-                  ) : (
-                    <Download className='size-4 shrink-0' />
-                  )}
-                  Tải tất cả (TikTok)
-                </Button>
-                <Button
-                  type='button'
-                  size='sm'
-                  className='gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
-                  disabled={downloadTitleLoading || !results.some((r) => r.imageUrl)}
-                  onClick={() => handleDownloadAll('facebook')}
-                >
-                  {downloadTitleLoading ? (
-                    <Loader2 className='size-4 shrink-0 animate-spin' />
-                  ) : (
-                    <Download className='size-4 shrink-0' />
-                  )}
-                  Tải tất cả (Fanpage)
-                </Button>
               </div>
             </CardContent>
           </Card>
