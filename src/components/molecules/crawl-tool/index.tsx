@@ -220,6 +220,69 @@ async function fetchImageViaProxy(imageUrl: string): Promise<Blob> {
   return res.blob()
 }
 
+const TTS_CHUNK_LEN = 200
+const TTS_SPEED = 0.88
+
+/** Gọi API TTS cho từng đoạn text (tối đa TTS_CHUNK_LEN ký tự), trả về ArrayBuffer. Giọng chậm hơn, tự nhiên. */
+async function fetchTtsChunk(text: string, speed = TTS_SPEED): Promise<ArrayBuffer> {
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const res = await fetch(`${origin}/api/tts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: text.slice(0, TTS_CHUNK_LEN), speed }),
+  })
+  if (!res.ok) throw new Error('TTS failed')
+  return res.arrayBuffer()
+}
+
+/** Chia text thành các đoạn theo khoảng trắng, mỗi đoạn ≤ maxLen. */
+function chunkText(text: string, maxLen: number): string[] {
+  const parts: string[] = []
+  let rest = text.trim()
+  while (rest.length > 0) {
+    if (rest.length <= maxLen) {
+      parts.push(rest)
+      break
+    }
+    const slice = rest.slice(0, maxLen)
+    const lastSpace = slice.lastIndexOf(' ')
+    const chunk = lastSpace > maxLen / 2 ? slice.slice(0, lastSpace + 1) : slice
+    parts.push(chunk)
+    rest = rest.slice(chunk.length).trim()
+  }
+  return parts
+}
+
+/** Lấy audio (AudioBuffer) cho một đoạn text; text dài được chunk và nối. */
+async function fetchTtsAsAudioBuffer(ctx: AudioContext, text: string): Promise<AudioBuffer | null> {
+  const chunks = chunkText(text, TTS_CHUNK_LEN)
+  const buffers: AudioBuffer[] = []
+  for (const chunk of chunks) {
+    if (!chunk.trim()) continue
+    try {
+      const ab = await fetchTtsChunk(chunk)
+      const buf = await ctx.decodeAudioData(ab.slice(0))
+      buffers.push(buf)
+    } catch {
+      return null
+    }
+  }
+  if (buffers.length === 0) return null
+  if (buffers.length === 1) return buffers[0]!
+  const totalLength = buffers.reduce((s, b) => s + b.length, 0)
+  const numChannels = buffers[0]!.numberOfChannels
+  const sampleRate = buffers[0]!.sampleRate
+  const out = ctx.createBuffer(numChannels, totalLength, sampleRate)
+  let offset = 0
+  for (const b of buffers) {
+    for (let c = 0; c < numChannels; c++) {
+      out.getChannelData(c).set(b.getChannelData(c), offset)
+    }
+    offset += b.length
+  }
+  return out
+}
+
 /** Số link tối đa khi crawl một lần */
 const MAX_CRAWL_URLS = 20
 
@@ -436,7 +499,9 @@ export function CrawlTool() {
     }
     const voices = window.speechSynthesis.getVoices()
     const viVoices = voices.filter((v) => v.lang.startsWith('vi'))
+    const malePattern = /nam|male|nam giới/i
     const viVoice =
+      viVoices.find((v) => malePattern.test(v.name)) ??
       viVoices.find((v) => /google|microsoft|natural|premium/i.test(v.name)) ??
       viVoices[0] ??
       voices[0] ??
@@ -448,8 +513,8 @@ export function CrawlTool() {
         return
       }
       const u = new SpeechSynthesisUtterance(texts[idx]!)
-      u.rate = 1.2
-      u.pitch = 1
+      u.rate = 0.92
+      u.pitch = 0.98
       u.lang = 'vi-VN'
       if (viVoice) u.voice = viVoice
       u.onend = () => {
@@ -477,12 +542,37 @@ export function CrawlTool() {
     setVideoError(null)
     setIsGeneratingVideo(true)
     speechCancelRef.current = false
-    const VIDEO_SLIDE_DURATION_MS = 6000
+    const FALLBACK_SLIDE_MS = 6000
     const outW = TIKTOK_FRAME_WIDTH
     const outH = TIKTOK_FRAME_HEIGHT
     const bgUrl = customBackgroundUrl?.trim() || BACKGROUND_IMAGE_PATH
     try {
-      speakAll()
+      const texts = results.map((r) => [r.title, r.description].filter(Boolean).join('. ').trim()).filter(Boolean)
+      let audioBuffers: AudioBuffer[] | null = null
+      let durationsSec: number[] = []
+      if (texts.length > 0 && typeof window !== 'undefined' && window.AudioContext) {
+        try {
+          const ac = new AudioContext()
+          const bufs: AudioBuffer[] = []
+          for (const t of texts) {
+            const buf = await fetchTtsAsAudioBuffer(ac, t)
+            if (!buf) {
+              bufs.length = 0
+              break
+            }
+            bufs.push(buf)
+          }
+          if (bufs.length === texts.length) {
+            audioBuffers = bufs
+            durationsSec = bufs.map((b) => b.duration)
+          }
+        } catch {
+          audioBuffers = null
+        }
+      }
+      if (!audioBuffers?.length) {
+        speakAll()
+      }
       const canvas = document.createElement('canvas')
       canvas.width = outW
       canvas.height = outH
@@ -525,7 +615,32 @@ export function CrawlTool() {
           }
         }
       }
-      const stream = canvas.captureStream(15)
+      const canvasStream = canvas.captureStream(15)
+      let stream: MediaStream = canvasStream
+      let totalDurationSec = 0
+      if (audioBuffers && audioBuffers.length > 0 && durationsSec.length === results.length) {
+        try {
+          const ac = new AudioContext()
+          const dest = ac.createMediaStreamDestination()
+          let atTime = 0
+          for (let i = 0; i < audioBuffers.length; i++) {
+            const src = ac.createBufferSource()
+            src.buffer = audioBuffers[i]!
+            src.connect(dest)
+            src.start(atTime)
+            src.stop(atTime + durationsSec[i]!)
+            atTime += durationsSec[i]!
+          }
+          totalDurationSec = atTime
+          const videoTrack = canvasStream.getVideoTracks()[0]
+          const audioTrack = dest.stream.getAudioTracks()[0]
+          if (videoTrack && audioTrack) {
+            stream = new MediaStream([videoTrack, audioTrack])
+          }
+        } catch {
+          totalDurationSec = 0
+        }
+      }
       const preferMp4 = MediaRecorder.isTypeSupported('video/mp4')
       const mimeType = preferMp4
         ? 'video/mp4'
@@ -605,16 +720,28 @@ export function CrawlTool() {
         }
       }
       drawSlide(0)
-      const intervalId = setInterval(() => {
-        slideIndex += 1
-        if (slideIndex >= results.length) {
-          clearInterval(intervalId)
+      if (totalDurationSec > 0 && durationsSec.length === results.length) {
+        let cumul = 0
+        for (let i = 1; i < results.length; i++) {
+          cumul += durationsSec[i - 1]!
+          setTimeout(() => drawSlide(i), cumul * 1000)
+        }
+        setTimeout(() => {
           mediaRecorder.stop()
           stopSpeaking()
-          return
-        }
-        drawSlide(slideIndex)
-      }, VIDEO_SLIDE_DURATION_MS)
+        }, totalDurationSec * 1000 + 500)
+      } else {
+        const intervalId = setInterval(() => {
+          slideIndex += 1
+          if (slideIndex >= results.length) {
+            clearInterval(intervalId)
+            mediaRecorder.stop()
+            stopSpeaking()
+            return
+          }
+          drawSlide(slideIndex)
+        }, FALLBACK_SLIDE_MS)
+      }
       await new Promise<void>((resolve) => {
         mediaRecorder.onstop = () => resolve()
       })
@@ -801,7 +928,7 @@ export function CrawlTool() {
               <Button
                 type='button'
                 size='sm'
-                className='gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
+                className='min-w-[13rem] shrink-0 gap-1.5 whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
                 disabled={isSpeaking || isGeneratingVideo || results.length === 0}
                 onClick={generateVideoWithVoice}
               >
