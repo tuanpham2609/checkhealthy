@@ -525,6 +525,7 @@ export function CrawlTool() {
       mediaRecorder.start(500)
       let slideIndex = 0
       function drawSlide(i: number) {
+        if (!ctx) return
         const r = results[i]
         const contentImg = contentImages[i]
         if (!r) return
