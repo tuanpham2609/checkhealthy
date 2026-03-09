@@ -5,6 +5,7 @@
   "scripts": {
     "analyze": "ANALYZE=true next build",
     "dev": "next dev --turbopack",
+    "dev:stable": "next dev",
     "dev:content": "contentlayer2 dev",
     "build": "next build --turbopack",
     "start": "next start",

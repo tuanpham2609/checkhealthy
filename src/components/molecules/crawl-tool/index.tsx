@@ -17,15 +17,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { CrawlResult } from '@/lib/utils/crawl'
 import { buildSuggestedCaptions, extractTweetId, fetchXTweetImageUrl } from '@/lib/utils/crawl'
 import { StoryCaptionTool } from '@/components/molecules/story-caption-tool'
-import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages, X, Upload, RotateCcw, Plus, Volume2, Video } from 'lucide-react'
+import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages, X, Upload, RotateCcw, Plus, Video } from 'lucide-react'
 import { cn } from '@/lib/styles'
 
 function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
+  a.href = url
   a.download = filename
+  a.style.display = 'none'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(a.href)
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 200)
 }
 
 const CAPTION_STRIP_COLOR = 'rgb(54, 118, 42)'
@@ -422,16 +426,21 @@ export function CrawlTool() {
     speechCancelRef.current = false
     setIsSpeaking(true)
     const texts: string[] = []
-    results.forEach((r, i) => {
+    results.forEach((r) => {
       const t = [r.title, r.description].filter(Boolean).join('. ')
-      if (t.trim()) texts.push(`Bài ${i + 1}. ${t.trim()}`)
+      if (t.trim()) texts.push(t.trim())
     })
     if (texts.length === 0) {
       setIsSpeaking(false)
       return
     }
     const voices = window.speechSynthesis.getVoices()
-    const viVoice = voices.find((v) => v.lang.startsWith('vi')) ?? voices[0] ?? null
+    const viVoices = voices.filter((v) => v.lang.startsWith('vi'))
+    const viVoice =
+      viVoices.find((v) => /google|microsoft|natural|premium/i.test(v.name)) ??
+      viVoices[0] ??
+      voices[0] ??
+      null
     let idx = 0
     function speakNext() {
       if (speechCancelRef.current || idx >= texts.length) {
@@ -439,7 +448,8 @@ export function CrawlTool() {
         return
       }
       const u = new SpeechSynthesisUtterance(texts[idx]!)
-      u.rate = 0.95
+      u.rate = 1.2
+      u.pitch = 1
       u.lang = 'vi-VN'
       if (viVoice) u.voice = viVoice
       u.onend = () => {
@@ -516,9 +526,13 @@ export function CrawlTool() {
         }
       }
       const stream = canvas.captureStream(15)
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-        ? 'video/webm;codecs=vp9'
-        : 'video/webm'
+      const preferMp4 = MediaRecorder.isTypeSupported('video/mp4')
+      const mimeType = preferMp4
+        ? 'video/mp4'
+        : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+          ? 'video/webm;codecs=vp9'
+          : 'video/webm'
+      const fileExt = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm'
       const mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 1500000 })
       const chunks: Blob[] = []
       mediaRecorder.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data)
@@ -604,8 +618,15 @@ export function CrawlTool() {
       await new Promise<void>((resolve) => {
         mediaRecorder.onstop = () => resolve()
       })
-      const blob = new Blob(chunks, { type: 'video/webm' })
-      downloadBlob(blob, 'crawl-video.webm')
+      const blob = new Blob(chunks, { type: mimeType })
+      const date = new Date()
+      const yyyy = date.getFullYear()
+      const mm = String(date.getMonth() + 1).padStart(2, '0')
+      const dd = String(date.getDate()).padStart(2, '0')
+      const hh = String(date.getHours()).padStart(2, '0')
+      const min = String(date.getMinutes()).padStart(2, '0')
+      const filename = `crawl-video-${yyyy}-${mm}-${dd}-${hh}${min}.${fileExt}`
+      downloadBlob(blob, filename)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Không tạo được video.'
       setVideoError(msg)
@@ -773,30 +794,10 @@ export function CrawlTool() {
             <CardHeader className='border-b bg-muted/40 px-4 py-3 sm:px-5 sm:py-4'>
               <CardTitle className='text-base font-semibold sm:text-lg'>Video có giọng đọc</CardTitle>
               <p className='text-muted-foreground mt-1 text-sm'>
-                Phát đọc nội dung tất cả bài viết bằng giọng Việt, hoặc tạo một video (hình + chữ) và phát giọng đọc khi tạo.
+                Phát đọc nội dung tất cả bài viết bằng giọng Việt, hoặc tạo video dọc 9:16 (như TikTok). File tải về: .mp4 (Safari) hoặc .webm (Chrome/Firefox), dùng được cho TikTok/Facebook.
               </p>
             </CardHeader>
             <CardContent className='flex flex-wrap items-center gap-3 p-4 sm:p-5'>
-              <Button
-                type='button'
-                size='sm'
-                variant='outline'
-                className='gap-1.5'
-                disabled={isGeneratingVideo || results.length === 0}
-                onClick={isSpeaking ? stopSpeaking : speakAll}
-              >
-                {isSpeaking ? (
-                  <>
-                    <Loader2 className='size-4 shrink-0 animate-spin' />
-                    Dừng đọc
-                  </>
-                ) : (
-                  <>
-                    <Volume2 className='size-4 shrink-0' />
-                    Phát đọc tất cả
-                  </>
-                )}
-              </Button>
               <Button
                 type='button'
                 size='sm'
