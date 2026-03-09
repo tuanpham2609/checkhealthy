@@ -13,6 +13,8 @@ import { crawlUrl } from '@/lib/utils/crawl'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15
 
+const CORS_HEADERS = { 'Access-Control-Allow-Origin': '*' }
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -21,14 +23,18 @@ export async function POST(request: Request) {
     if (!url) {
       return NextResponse.json(
         { error: 'Thiếu tham số url (chuỗi)' },
-        { status: 400 }
+        { status: 400, headers: CORS_HEADERS }
       )
     }
 
     const result = await crawlUrl(url)
-    return NextResponse.json(result)
+    return NextResponse.json(result, { headers: CORS_HEADERS })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Crawl thất bại'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500, headers: CORS_HEADERS })
   }
+}
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: { ...CORS_HEADERS, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } })
 }

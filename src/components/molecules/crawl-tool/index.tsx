@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { CrawlResult } from '@/lib/utils/crawl'
 import { buildSuggestedCaptions, extractTweetId, fetchXTweetImageUrl } from '@/lib/utils/crawl'
 import { StoryCaptionTool } from '@/components/molecules/story-caption-tool'
-import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages, X, Upload, RotateCcw, Plus } from 'lucide-react'
+import { Link2, Loader2, Copy, Check, Image as ImageIcon, ExternalLink, Download, Languages, X, Upload, RotateCcw, Plus, Volume2, Video } from 'lucide-react'
 import { cn } from '@/lib/styles'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -233,6 +233,10 @@ export function CrawlTool() {
   const [customBackgroundUrl, setCustomBackgroundUrl] = useState<string | null>(null)
   const backgroundInputRef = useRef<HTMLInputElement>(null)
   const [xImageLoading, setXImageLoading] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false)
+  const [videoError, setVideoError] = useState<string | null>(null)
+  const speechCancelRef = useRef(false)
 
   // Khi crawl X trên Vercel không có ảnh: thử lấy ảnh từ Syndication API ngay trên trình duyệt cho từng result
   const xImageFetchKey = results.map((r) => `${r.url}-${r.isFromX}-${r.imageUrl || ''}`).join('|')
@@ -405,6 +409,211 @@ export function CrawlTool() {
     }
   }
 
+  function stopSpeaking() {
+    speechCancelRef.current = true
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel()
+    }
+    setIsSpeaking(false)
+  }
+
+  function speakAll() {
+    if (results.length === 0) return
+    speechCancelRef.current = false
+    setIsSpeaking(true)
+    const texts: string[] = []
+    results.forEach((r, i) => {
+      const t = [r.title, r.description].filter(Boolean).join('. ')
+      if (t.trim()) texts.push(`Bài ${i + 1}. ${t.trim()}`)
+    })
+    if (texts.length === 0) {
+      setIsSpeaking(false)
+      return
+    }
+    const voices = window.speechSynthesis.getVoices()
+    const viVoice = voices.find((v) => v.lang.startsWith('vi')) ?? voices[0] ?? null
+    let idx = 0
+    function speakNext() {
+      if (speechCancelRef.current || idx >= texts.length) {
+        setIsSpeaking(false)
+        return
+      }
+      const u = new SpeechSynthesisUtterance(texts[idx]!)
+      u.rate = 0.95
+      u.lang = 'vi-VN'
+      if (viVoice) u.voice = viVoice
+      u.onend = () => {
+        idx += 1
+        speakNext()
+      }
+      u.onerror = () => {
+        idx += 1
+        speakNext()
+      }
+      window.speechSynthesis.speak(u)
+    }
+    if (voices.length > 0) {
+      speakNext()
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.onvoiceschanged = null
+        speakNext()
+      }
+    }
+  }
+
+  async function generateVideoWithVoice() {
+    if (results.length === 0) return
+    setVideoError(null)
+    setIsGeneratingVideo(true)
+    speechCancelRef.current = false
+    const VIDEO_SLIDE_DURATION_MS = 6000
+    const outW = TIKTOK_FRAME_WIDTH
+    const outH = TIKTOK_FRAME_HEIGHT
+    const bgUrl = customBackgroundUrl?.trim() || BACKGROUND_IMAGE_PATH
+    try {
+      speakAll()
+      const canvas = document.createElement('canvas')
+      canvas.width = outW
+      canvas.height = outH
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Không tạo được canvas')
+      const bgImg = new Image()
+      bgImg.crossOrigin = 'anonymous'
+      await new Promise<void>((resolve, reject) => {
+        bgImg.onload = () => resolve()
+        bgImg.onerror = () => reject(new Error('Không tải ảnh nền'))
+        bgImg.src = bgUrl
+      })
+      const contentImages: (HTMLImageElement | null)[] = []
+      for (const r of results) {
+        if (!r.imageUrl) {
+          contentImages.push(null)
+          continue
+        }
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        try {
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve()
+            img.onerror = () => reject(new Error(''))
+            img.src = r.imageUrl!
+          })
+          contentImages.push(img)
+        } catch {
+          try {
+            const blob = await fetchImageViaProxy(r.imageUrl!)
+            const url = URL.createObjectURL(blob)
+            await new Promise<void>((resolve, reject) => {
+              img.onload = () => resolve()
+              img.onerror = () => reject(new Error(''))
+              img.src = url
+            })
+            contentImages.push(img)
+          } catch {
+            contentImages.push(null)
+          }
+        }
+      }
+      const stream = canvas.captureStream(15)
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm'
+      const mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 1500000 })
+      const chunks: Blob[] = []
+      mediaRecorder.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data)
+      mediaRecorder.start(500)
+      let slideIndex = 0
+      function drawSlide(i: number) {
+        const r = results[i]
+        const contentImg = contentImages[i]
+        if (!r) return
+        if (bgImg.complete && bgImg.naturalWidth > 0) {
+          const bw = bgImg.naturalWidth
+          const bh = bgImg.naturalHeight
+          const scale = Math.max(outW / bw, outH / bh)
+          ctx.drawImage(bgImg, (bw - outW / scale) / 2, (bh - outH / scale) / 2, outW / scale, outH / scale, 0, 0, outW, outH)
+        }
+        const titleStr = (r.title || '').trim()
+        const descStr = (r.description || '').trim()
+        const maxLineWidth = outW - 2 * STRIP_PADDING_H
+        const fontSizeTitle = Math.min(52, Math.round(outW * 0.048))
+        const fontSizeDesc = Math.min(35, Math.round(outW * 0.032))
+        const lineHeightTitle = Math.round(fontSizeTitle * 1.3)
+        const lineHeightDesc = Math.round(fontSizeDesc * 1.35)
+        ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeTitle))
+        const titleLines = titleStr ? wrapDescriptionForCanvas(titleStr, ctx, maxLineWidth) : []
+        ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeDesc))
+        const descLines = descStr ? wrapDescriptionForCanvas(descStr, ctx, maxLineWidth) : []
+        const titleBlockH = titleLines.length * lineHeightTitle
+        const descBlockH = descLines.length * lineHeightDesc
+        const gap = titleLines.length && descLines.length ? Math.round(outW * 0.02) : 0
+        const stripHeight =
+          titleStr || descStr ? STRIP_PADDING * 2 + titleBlockH + gap + descBlockH : 0
+        const contentH = outH - stripHeight
+        let drawW = outW
+        let drawH = contentH
+        let dx = 0
+        let dy = 0
+        if (contentImg && contentImg.naturalWidth > 0) {
+          const natW = contentImg.naturalWidth
+          const natH = contentImg.naturalHeight
+          const scale = Math.min(outW / natW, contentH / natH)
+          drawW = natW * scale
+          drawH = natH * scale
+          const totalBlockH = drawH + stripHeight
+          const startY = Math.max(0, (outH - totalBlockH) / 2)
+          dy = startY
+          dx = (outW - drawW) / 2
+          ctx.drawImage(contentImg, 0, 0, natW, natH, dx, dy, drawW, drawH)
+        }
+        const stripY = dy + drawH - STRIP_OVERLAP_IMAGE
+        if (stripHeight > 0) {
+          ctx.fillStyle = CAPTION_STRIP_COLOR
+          ctx.fillRect(0, stripY, outW, stripHeight)
+          ctx.fillStyle = '#ffffff'
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'top'
+          const textX = outW / 2
+          let y = stripY + STRIP_PADDING
+          ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeTitle))
+          titleLines.forEach((line) => {
+            ctx.fillText(line, textX, y)
+            y += lineHeightTitle
+          })
+          if (gap) y += gap
+          ctx.font = CAPTION_FONT.replace('{size}', String(fontSizeDesc))
+          descLines.forEach((line) => {
+            ctx.fillText(line, textX, y)
+            y += lineHeightDesc
+          })
+        }
+      }
+      drawSlide(0)
+      const intervalId = setInterval(() => {
+        slideIndex += 1
+        if (slideIndex >= results.length) {
+          clearInterval(intervalId)
+          mediaRecorder.stop()
+          stopSpeaking()
+          return
+        }
+        drawSlide(slideIndex)
+      }, VIDEO_SLIDE_DURATION_MS)
+      await new Promise<void>((resolve) => {
+        mediaRecorder.onstop = () => resolve()
+      })
+      const blob = new Blob(chunks, { type: 'video/webm' })
+      downloadBlob(blob, 'crawl-video.webm')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Không tạo được video.'
+      setVideoError(msg)
+      stopSpeaking()
+    } finally {
+      setIsGeneratingVideo(false)
+    }
+  }
+
   return (
     <Tabs defaultValue='crawl' className='w-full'>
       <TabsList className='mb-4 w-full max-w-md sm:mb-6'>
@@ -555,6 +764,62 @@ export function CrawlTool() {
           {downloadTitleError && (
             <p className='text-destructive text-sm' role='alert'>
               {downloadTitleError}
+            </p>
+          )}
+
+          {/* Video có giọng đọc */}
+          <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
+            <CardHeader className='border-b bg-muted/40 px-4 py-3 sm:px-5 sm:py-4'>
+              <CardTitle className='text-base font-semibold sm:text-lg'>Video có giọng đọc</CardTitle>
+              <p className='text-muted-foreground mt-1 text-sm'>
+                Phát đọc nội dung tất cả bài viết bằng giọng Việt, hoặc tạo một video (hình + chữ) và phát giọng đọc khi tạo.
+              </p>
+            </CardHeader>
+            <CardContent className='flex flex-wrap items-center gap-3 p-4 sm:p-5'>
+              <Button
+                type='button'
+                size='sm'
+                variant='outline'
+                className='gap-1.5'
+                disabled={isGeneratingVideo || results.length === 0}
+                onClick={isSpeaking ? stopSpeaking : speakAll}
+              >
+                {isSpeaking ? (
+                  <>
+                    <Loader2 className='size-4 shrink-0 animate-spin' />
+                    Dừng đọc
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className='size-4 shrink-0' />
+                    Phát đọc tất cả
+                  </>
+                )}
+              </Button>
+              <Button
+                type='button'
+                size='sm'
+                className='gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
+                disabled={isSpeaking || isGeneratingVideo || results.length === 0}
+                onClick={generateVideoWithVoice}
+              >
+                {isGeneratingVideo ? (
+                  <>
+                    <Loader2 className='size-4 shrink-0 animate-spin' />
+                    Đang tạo video...
+                  </>
+                ) : (
+                  <>
+                    <Video className='size-4 shrink-0' />
+                    Tạo video có giọng đọc
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+          {videoError && (
+            <p className='text-destructive text-sm' role='alert'>
+              {videoError}
             </p>
           )}
 

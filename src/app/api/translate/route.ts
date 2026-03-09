@@ -12,6 +12,8 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
+const CORS_HEADERS = { 'Access-Control-Allow-Origin': '*' }
+
 const MYMEMORY_MAX_CHARS = 500
 const CHUNK_SIZE = 400
 
@@ -69,14 +71,18 @@ export async function POST(request: Request) {
     if (!text) {
       return NextResponse.json(
         { error: 'Thiếu tham số text (chuỗi cần dịch)' },
-        { status: 400 }
+        { status: 400, headers: CORS_HEADERS }
       )
     }
 
     const translated = await translateLongText(text, sourceLang)
-    return NextResponse.json({ translated })
+    return NextResponse.json({ translated }, { headers: CORS_HEADERS })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Dịch thất bại'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500, headers: CORS_HEADERS })
   }
+}
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: { ...CORS_HEADERS, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } })
 }
