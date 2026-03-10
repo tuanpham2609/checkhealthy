@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
 import type { CrawlResult } from '@/lib/utils/crawl'
 import { buildSuggestedCaptions, extractTweetId, fetchXTweetImageUrl } from '@/lib/utils/crawl'
 import { StoryCaptionTool } from '@/components/molecules/story-caption-tool'
@@ -237,6 +238,11 @@ export function CrawlTool() {
   const [customBackgroundUrl, setCustomBackgroundUrl] = useState<string | null>(null)
   const backgroundInputRef = useRef<HTMLInputElement>(null)
   const [xImageLoading, setXImageLoading] = useState(false)
+  const [editableResults, setEditableResults] = useState<CrawlResult[]>([])
+
+  useEffect(() => {
+    setEditableResults(results.map((r) => ({ ...r })))
+  }, [results])
 
   // Khi crawl X trên Vercel không có ảnh: thử lấy ảnh từ Syndication API ngay trên trình duyệt cho từng result
   const xImageFetchKey = results.map((r) => `${r.url}-${r.isFromX}-${r.imageUrl || ''}`).join('|')
@@ -367,6 +373,7 @@ export function CrawlTool() {
   async function handleDownloadWithTitle(format: DownloadFormat, index: number) {
     const result = results[index]
     if (!result?.imageUrl) return
+    const edited = editableResults[index] ?? result
     setDownloadTitleError(null)
     setDownloadTitleLoading(true)
     const safeBottom = format === 'tiktok' ? TIKTOK_SAFE_BOTTOM : 0
@@ -377,8 +384,8 @@ export function CrawlTool() {
       try {
         blob = await drawImageWithTitleCanvas(
           result.imageUrl,
-          result.title || '',
-          result.description || '',
+          edited.title || '',
+          edited.description || '',
           safeBottom,
           format,
           customBackgroundUrl
@@ -389,8 +396,8 @@ export function CrawlTool() {
         try {
           blob = await drawImageWithTitleCanvas(
             objectUrl,
-            result.title || '',
-            result.description || '',
+            edited.title || '',
+            edited.description || '',
             safeBottom,
             format,
             customBackgroundUrl
@@ -506,7 +513,7 @@ export function CrawlTool() {
           {/* Ảnh nền chung */}
           <Card className='overflow-hidden border-emerald-200/60 shadow-lg dark:border-emerald-800/40'>
             <CardHeader className='border-b bg-muted/40 px-4 py-3 sm:px-5 sm:py-4'>
-              <CardTitle className='text-base font-semibold sm:text-lg'>Tải ảnh hàng loạt</CardTitle>
+              <CardTitle className='text-base font-semibold sm:text-lg'>Thay đổi ảnh nền bạn muốn</CardTitle>
             </CardHeader>
             <CardContent className='flex flex-wrap items-center gap-3 p-4 sm:p-5'>
               <div className='flex flex-wrap items-center gap-2'>
@@ -674,7 +681,7 @@ export function CrawlTool() {
                           variant='outline'
                           size='sm'
                           className='h-8 gap-1.5 shrink-0'
-                          onClick={() => copyToClipboard(result.title, `title-${index}`)}
+                          onClick={() => copyToClipboard(editableResults[index]?.title ?? result.title, `title-${index}`)}
                         >
                           {copiedId === `title-${index}` ? (
                             <Check className='size-4 text-emerald-600' />
@@ -684,7 +691,20 @@ export function CrawlTool() {
                           {copiedId === `title-${index}` ? 'Đã copy' : 'Copy'}
                         </Button>
                       </div>
-                      <p className='mt-0.5 font-medium'>{result.title}</p>
+                      <Textarea
+                        value={editableResults[index]?.title ?? result.title}
+                        onChange={(e) =>
+                          setEditableResults((prev) => {
+                            const next = [...prev]
+                            if (!next[index]) next[index] = { ...result }
+                            next[index] = { ...next[index]!, title: e.target.value }
+                            return next
+                          })
+                        }
+                        placeholder='Tiêu đề'
+                        className='mt-0.5 min-h-[4rem] font-medium'
+                        rows={2}
+                      />
                     </div>
                     <div>
                       <div className='flex flex-wrap items-center justify-between gap-2'>
@@ -694,7 +714,7 @@ export function CrawlTool() {
                           variant='outline'
                           size='sm'
                           className='h-8 gap-1.5 shrink-0'
-                          onClick={() => copyToClipboard(result.description, `desc-${index}`)}
+                          onClick={() => copyToClipboard(editableResults[index]?.description ?? result.description, `desc-${index}`)}
                         >
                           {copiedId === `desc-${index}` ? (
                             <Check className='size-4 text-emerald-600' />
@@ -704,7 +724,20 @@ export function CrawlTool() {
                           {copiedId === `desc-${index}` ? 'Đã copy' : 'Copy'}
                         </Button>
                       </div>
-                      <p className='mt-0.5'>{result.description}</p>
+                      <Textarea
+                        value={editableResults[index]?.description ?? result.description}
+                        onChange={(e) =>
+                          setEditableResults((prev) => {
+                            const next = [...prev]
+                            if (!next[index]) next[index] = { ...result }
+                            next[index] = { ...next[index]!, description: e.target.value }
+                            return next
+                          })
+                        }
+                        placeholder='Mô tả'
+                        className='mt-0.5 min-h-[5rem]'
+                        rows={3}
+                      />
                     </div>
                     <div>
                       <span className='text-muted-foreground font-medium'>URL:</span>
@@ -733,7 +766,7 @@ export function CrawlTool() {
                       variant='outline'
                       size='sm'
                       className='w-full gap-1.5 sm:w-auto'
-                      onClick={() => copyToClipboard(result.suggestedCaptionFacebook, `fb-${index}`)}
+                      onClick={() => copyToClipboard(editableResults[index]?.suggestedCaptionFacebook ?? result.suggestedCaptionFacebook, `fb-${index}`)}
                     >
                       {copiedId === `fb-${index}` ? (
                         <Check className='size-4 text-emerald-600' />
@@ -744,9 +777,20 @@ export function CrawlTool() {
                     </Button>
                   </CardHeader>
                   <CardContent className='p-4 sm:p-5'>
-                    <pre className='max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted/50 p-4 text-sm sm:max-h-56 sm:text-[15px]'>
-                      {result.suggestedCaptionFacebook}
-                    </pre>
+                    <Textarea
+                      value={editableResults[index]?.suggestedCaptionFacebook ?? result.suggestedCaptionFacebook}
+                      onChange={(e) =>
+                        setEditableResults((prev) => {
+                          const next = [...prev]
+                          if (!next[index]) next[index] = { ...result }
+                          next[index] = { ...next[index]!, suggestedCaptionFacebook: e.target.value }
+                          return next
+                        })
+                      }
+                      placeholder='Caption Facebook...'
+                      className='min-h-[8rem] max-h-56 resize-y whitespace-pre-wrap break-words text-sm sm:text-[15px]'
+                      rows={6}
+                    />
                   </CardContent>
                 </Card>
 
@@ -758,7 +802,7 @@ export function CrawlTool() {
                       variant='outline'
                       size='sm'
                       className='w-full gap-1.5 sm:w-auto'
-                      onClick={() => copyToClipboard(result.suggestedCaptionTikTok, `tt-${index}`)}
+                      onClick={() => copyToClipboard(editableResults[index]?.suggestedCaptionTikTok ?? result.suggestedCaptionTikTok, `tt-${index}`)}
                     >
                       {copiedId === `tt-${index}` ? (
                         <Check className='size-4 text-emerald-600' />
@@ -769,9 +813,20 @@ export function CrawlTool() {
                     </Button>
                   </CardHeader>
                   <CardContent className='p-4 sm:p-5'>
-                    <pre className='max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted/50 p-4 text-sm sm:max-h-56 sm:text-[15px]'>
-                      {result.suggestedCaptionTikTok}
-                    </pre>
+                    <Textarea
+                      value={editableResults[index]?.suggestedCaptionTikTok ?? result.suggestedCaptionTikTok}
+                      onChange={(e) =>
+                        setEditableResults((prev) => {
+                          const next = [...prev]
+                          if (!next[index]) next[index] = { ...result }
+                          next[index] = { ...next[index]!, suggestedCaptionTikTok: e.target.value }
+                          return next
+                        })
+                      }
+                      placeholder='Caption TikTok...'
+                      className='min-h-[8rem] max-h-56 resize-y whitespace-pre-wrap break-words text-sm sm:text-[15px]'
+                      rows={6}
+                    />
                   </CardContent>
                 </Card>
               </div>
