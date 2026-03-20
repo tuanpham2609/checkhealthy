@@ -1,27 +1,51 @@
 /**
  * Copyright (c) 2025 Mythuatcmc. All rights reserved.
- *
- * This source code is proprietary and confidential.
- * Unauthorized copying, distribution, or modification of this file,
- * in whole or in part, is strictly prohibited without prior written consent
- * from Mythuatcmc.
  */
 
+/**
+ * Nội dung & SEO on-page. Xếp hạng Google phụ thuộc backlink, chất lượng nội dung, cạnh tranh từ khóa,
+ * Core Web Vitals, v.v. — không có cách “đảm bảo top 1” chỉ bằng code.
+ */
+/** Favicon, OG/Twitter, manifest, JSON-LD — `public/assets/ivf-heart-brand.png` */
+const SITE_LOGO_PATH = '/assets/ivf-heart-brand.png'
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
+
 export const SITE_METADATA = {
-  title: 'MỸ THUẬT CMC - Shop Họa Cụ Mỹ Thuật Chuyên Nghiệp | Mua Online Shopee',
-  titleHeader: 'MỸ THUẬT CMC',
-  author: 'Mythuatcmc',
+  titleHeader: 'Tâm sự IVF',
+  /** Tiêu đề đầy đủ cho thẻ <title> / OG (ưu tiên ~50–60 ký tự phần nhìn thấy) */
+  title: 'Tâm sự IVF — Cộng đồng chia sẻ hành trình thụ tinh trong ống nghiệm',
+  author: 'Tâm sự IVF',
+  /** Meta description: ~150–160 ký tự, một câu chào + lợi ích + từ khóa tự nhiên */
   description:
-    'Shop họa cụ mỹ thuật chuyên nghiệp với đầy đủ sản phẩm từ màu nước, màu dầu, cọ vẽ, canvas đến dụng cụ vẽ. Mua sắm online tại Shopee với nhiều ưu đãi hấp dẫn. Chất lượng cao, giá cả hợp lý, giao hàng nhanh chóng.',
+    'Nơi chị em ẩn danh chia sẻ tâm sự IVF: tiêm kích thích, chọc hút, chuyển phôi, chờ beta… được lắng nghe và đồng hành. Mong mỗi hành trình đều về đích — một em bé như mong ước.',
+  /** Mô tả dài hơn cho đoạn giới thiệu trên trang (SEO + UX) */
+  introParagraph:
+    'Đây là không gian dành riêng cho những ai đang đi qua hành trình thiên sứ của đời mình : kể những điều khó nói với người ngoài, hỏi kinh nghiệm, hoặc chỉ cần một chỗ để thở ra. Chúng mình tin vào sự tử tế — và mong tất cả chị em, dù hành trình ra sao, đều được nâng đỡ và một ngày nào đó ôm em bé trong lòng, đúng như điều mình đã mơ.',
+  /** Dòng phụ dưới logo trên header */
+  tagline: 'Chia sẻ hành trình IVF — lắng nghe, động viên, cùng nhau bước tiếp',
+  /** Chân trang thân thiện + gợi ý kỹ thuật ngắn */
+  footerMessage:
+    'Mỗi câu chuyện đều đáng được trân trọng. Chúc chị em luôn có thêm một chút hy vọng mỗi ngày. Đăng bài ẩn danh — hãy giữ không gian này ấm áp và tôn trọng nhau.',
   language: 'vi',
-  locale: 'vi',
-  stickyNav: true,
-  theme: 'dark', // system, dark or light
-  siteUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://mythuatcmc.vn',
-  siteLogo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://mythuatcmc.vn'}/assets/logocmc.png`,
-  socialBanner: `${process.env.NEXT_PUBLIC_APP_URL || 'https://mythuatcmc.vn'}/assets/social-banner.png`,
-  email: 'contact@mythuatcmc.vn',
-  x: 'https://x.com/mythuatcmc',
-  telegram: 'https://t.me/mythuatcmc',
-  discord: 'https://discord.com/invite/mythuatcmc',
-}
+  locale: 'vi-VN',
+  siteUrl: SITE_URL,
+  /** Đường dẫn tương đối logo trong `public` */
+  siteLogoPath: SITE_LOGO_PATH,
+  /** URL tuyệt đối logo — Open Graph, Twitter, Schema.org */
+  siteLogo: `${SITE_URL}${SITE_LOGO_PATH}`,
+  email: 'hello@example.com',
+  keywords: [
+    'tâm sự IVF',
+    'IVF',
+    'thụ tinh trong ống nghiệm',
+    'chia sẻ IVF',
+    'cộng đồng IVF',
+    'hành trình IVF',
+    'kích thích buồng trứng',
+    'chọc hút trứng',
+    'chuyển phôi',
+    'mang thai IVF',
+    'hỗ trợ tâm lý IVF',
+    'ẩn danh chia sẻ',
+  ] as const,
+} as const

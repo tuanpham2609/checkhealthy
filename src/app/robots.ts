@@ -15,7 +15,7 @@ import { SITE_METADATA } from '@/constants/site-metadata.constants'
  * Allows all crawlers and points to sitemap
  */
 export default function robots(): MetadataRoute.Robots {
-  const siteUrl = SITE_METADATA.siteUrl || 'https://officialwalletweb.vercel.app'
+  const origin = SITE_METADATA.siteUrl.replace(/\/$/, '')
 
   return {
     rules: [
@@ -23,22 +23,19 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: '/',
         disallow: ['/api/', '/_next/', '/admin/'],
-        crawlDelay: 0,
       },
       {
         userAgent: 'Googlebot',
         allow: '/',
         disallow: ['/api/', '/_next/', '/admin/'],
-        crawlDelay: 0,
       },
       {
         userAgent: 'Bingbot',
         allow: '/',
         disallow: ['/api/', '/_next/', '/admin/'],
-        crawlDelay: 0,
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    sitemap: `${origin}/sitemap.xml`,
+    host: origin,
   }
 }

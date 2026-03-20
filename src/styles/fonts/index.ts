@@ -1,23 +1,22 @@
 /**
  * Copyright (c) 2025 Mythuatcmc. All rights reserved.
- *
- * This source code is proprietary and confidential.
- * Unauthorized copying, distribution, or modification of this file,
- * in whole or in part, is strictly prohibited without prior written consent
- * from Mythuatcmc.
  */
 
-import { Poppins } from 'next/font/google'
-import localFont from 'next/font/local'
+import { Lora, Outfit } from 'next/font/google'
 
-const FONT_POPPINS = Poppins({
-  subsets: ['latin'],
+/** Sans hiện đại, dễ đọc — toàn UI */
+const FONT_SANS = Outfit({
+  subsets: ['latin', 'latin-ext'],
   display: 'swap',
-  style: ['normal', 'italic'],
-  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-sans',
 })
 
-const FONT_CLASH_DISPLAY = localFont({ src: './ClashDisplay-Variable.woff2', variable: '--font-clash-display' })
+/** Serif ấm — tiêu đề, nhấn mạnh */
+const FONT_SERIF = Lora({
+  subsets: ['latin', 'latin-ext', 'vietnamese'],
+  display: 'swap',
+  variable: '--font-serif',
+  weight: ['400', '500', '600', '700'],
+})
 
-export { FONT_POPPINS, FONT_CLASH_DISPLAY }
+export { FONT_SANS, FONT_SERIF }

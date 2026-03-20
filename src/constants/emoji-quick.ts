@@ -1,0 +1,43 @@
+/**
+ * Copyright (c) 2025 Mythuatcmc. All rights reserved.
+ */
+
+/** Emoji thường dùng — chèn vào textarea (không cần thư viện nặng) */
+export const QUICK_EMOJIS = [
+  '😀',
+  '😂',
+  '🥰',
+  '😍',
+  '🤔',
+  '😢',
+  '😡',
+  '👍',
+  '👎',
+  '❤️',
+  '🔥',
+  '✨',
+  '🎉',
+  '💯',
+  '🙏',
+  '👏',
+  '💪',
+  '😴',
+  '🤝',
+  '💔',
+  '🌸',
+  '☀️',
+  '🌙',
+  '⭐',
+  '💤',
+  '🎵',
+  '📷',
+  '☕',
+  '🍀',
+  '🥺',
+  '😎',
+  '🤗',
+  '😮',
+  '🫶',
+  '💬',
+  '🙌',
+] as const

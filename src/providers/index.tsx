@@ -1,20 +1,16 @@
 /**
  * Copyright (c) 2025 Mythuatcmc. All rights reserved.
- *
- * This source code is proprietary and confidential.
- * Unauthorized copying, distribution, or modification of this file,
- * in whole or in part, is strictly prohibited without prior written consent
- * from Mythuatcmc.
  */
 
+'use client'
+
+import { ThemeProvider } from 'next-themes'
 import { PropsWithChildren } from 'react'
-import { SidebarProvider } from '@/components/ui/sidebar'
-import DebugProvider from '@/providers/debug.provider'
 
 export default function ProviderRegistry({ children }: Readonly<PropsWithChildren>) {
   return (
-    <DebugProvider>
-      <SidebarProvider defaultOpen={false}>{children}</SidebarProvider>
-    </DebugProvider>
+    <ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange={false}>
+      {children}
+    </ThemeProvider>
   )
 }
