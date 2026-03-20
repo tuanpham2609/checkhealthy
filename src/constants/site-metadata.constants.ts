@@ -3,12 +3,29 @@
  */
 
 /**
+ * URL công khai cho OG / JSON-LD / sitemap. Ưu tiên `NEXT_PUBLIC_APP_URL`;
+ * trên Vercel có thể dùng `VERCEL_URL` nếu chưa set biến kia (HTTPS).
+ */
+function publicSiteUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '')
+  if (explicit) return explicit
+  const vercel = process.env.VERCEL_URL?.trim().replace(/\/$/, '')
+  if (vercel) return `https://${vercel}`
+  return 'http://localhost:3000'
+}
+
+/**
  * Nội dung & SEO on-page. Xếp hạng Google phụ thuộc backlink, chất lượng nội dung, cạnh tranh từ khóa,
  * Core Web Vitals, v.v. — không có cách “đảm bảo top 1” chỉ bằng code.
  */
-/** Favicon, OG/Twitter, manifest, JSON-LD — `public/assets/ivf-heart-brand.png` */
+/** Favicon, manifest, logo Schema — `public/assets/ivf-heart-brand.png` */
 const SITE_LOGO_PATH = '/assets/ivf-heart-brand.png'
-const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
+/**
+ * Ảnh chia sẻ 1200×630 — `npm run og:generate` từ logo (Messenger / Facebook / Zalo cần kích thước đủ lớn).
+ */
+const SITE_OG_IMAGE_PATH = '/assets/og-share.png'
+
+const SITE_URL = publicSiteUrl()
 
 export const SITE_METADATA = {
   titleHeader: 'Tâm sự IVF',
@@ -31,8 +48,14 @@ export const SITE_METADATA = {
   siteUrl: SITE_URL,
   /** Đường dẫn tương đối logo trong `public` */
   siteLogoPath: SITE_LOGO_PATH,
-  /** URL tuyệt đối logo — Open Graph, Twitter, Schema.org */
+  /** URL tuyệt đối logo — favicon, Schema Organization */
   siteLogo: `${SITE_URL}${SITE_LOGO_PATH}`,
+  /** Ảnh Open Graph / Zalo / Messenger (kích thước chuẩn link preview) */
+  siteOgImagePath: SITE_OG_IMAGE_PATH,
+  siteOgImage: `${SITE_URL}${SITE_OG_IMAGE_PATH}`,
+  /** Kích thước file `og-share.png` sau `og:generate` */
+  siteOgImageWidth: 1200,
+  siteOgImageHeight: 630,
   email: 'hello@example.com',
   keywords: [
     'tâm sự IVF',

@@ -107,7 +107,7 @@ export function ConfessionComposer({ onSubmit, className }: ConfessionComposerPr
             placeholder='Tên hoặc nickname (tuỳ chọn, có thể để Ẩn danh)'
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            className='ui-input text-sm'
+            className='ui-input'
             maxLength={40}
           />
           <textarea

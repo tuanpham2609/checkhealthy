@@ -20,13 +20,29 @@ export const metadata: Metadata = {
     type: 'website',
     locale: SITE_METADATA.locale,
     siteName: SITE_METADATA.titleHeader,
-    images: [{ url: SITE_METADATA.siteLogo, alt: `${SITE_METADATA.titleHeader} — biểu tượng trái tim` }],
+    images: [
+      {
+        url: SITE_METADATA.siteOgImage,
+        secureUrl: SITE_METADATA.siteUrl.startsWith('https:') ? SITE_METADATA.siteOgImage : undefined,
+        width: SITE_METADATA.siteOgImageWidth,
+        height: SITE_METADATA.siteOgImageHeight,
+        alt: `${SITE_METADATA.titleHeader} — ảnh chia sẻ`,
+        type: 'image/png',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: SITE_METADATA.title,
     description: SITE_METADATA.description,
-    images: [SITE_METADATA.siteLogo],
+    images: [
+      {
+        url: SITE_METADATA.siteOgImage,
+        width: SITE_METADATA.siteOgImageWidth,
+        height: SITE_METADATA.siteOgImageHeight,
+        alt: SITE_METADATA.titleHeader,
+      },
+    ],
   },
   robots: { index: true, follow: true },
 }

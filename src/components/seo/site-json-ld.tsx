@@ -10,6 +10,7 @@ import { SITE_METADATA } from '@/constants/site-metadata.constants'
 export function SiteJsonLd() {
   const base = SITE_METADATA.siteUrl.replace(/\/$/, '')
   const logoId = `${base}/#logo`
+  const shareImageId = `${base}/#og-image`
 
   const graph = {
     '@context': 'https://schema.org',
@@ -52,6 +53,14 @@ export function SiteJsonLd() {
         '@id': logoId,
         url: SITE_METADATA.siteLogo,
         contentUrl: SITE_METADATA.siteLogo,
+      },
+      {
+        '@type': 'ImageObject',
+        '@id': shareImageId,
+        url: SITE_METADATA.siteOgImage,
+        contentUrl: SITE_METADATA.siteOgImage,
+        width: SITE_METADATA.siteOgImageWidth,
+        height: SITE_METADATA.siteOgImageHeight,
       },
       {
         '@type': 'WebApplication',

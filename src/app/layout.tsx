@@ -42,9 +42,12 @@ export const metadata: Metadata = {
     description: SITE_METADATA.description,
     images: [
       {
-        url: SITE_METADATA.siteLogo,
-        alt: `${SITE_METADATA.titleHeader} — biểu tượng trái tim`,
+        url: SITE_METADATA.siteOgImage,
+        secureUrl: SITE_METADATA.siteUrl.startsWith('https:') ? SITE_METADATA.siteOgImage : undefined,
+        alt: `${SITE_METADATA.titleHeader} — cộng đồng chia sẻ hành trình IVF`,
         type: 'image/png',
+        width: SITE_METADATA.siteOgImageWidth,
+        height: SITE_METADATA.siteOgImageHeight,
       },
     ],
   },
@@ -52,7 +55,14 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: SITE_METADATA.title,
     description: SITE_METADATA.description,
-    images: [SITE_METADATA.siteLogo],
+    images: [
+      {
+        url: SITE_METADATA.siteOgImage,
+        width: SITE_METADATA.siteOgImageWidth,
+        height: SITE_METADATA.siteOgImageHeight,
+        alt: SITE_METADATA.titleHeader,
+      },
+    ],
   },
   robots: {
     index: true,
