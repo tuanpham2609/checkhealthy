@@ -3,7 +3,7 @@
  */
 
 import '@/styles/globals.css'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import ProviderRegistry from '@/providers'
 import { SiteJsonLd } from '@/components/seo/site-json-ld'
 import { cn } from '@/lib/styles'
@@ -11,8 +11,20 @@ import { PropsWithChildren } from 'react'
 import { FONT_SANS, FONT_SERIF } from '@/styles/fonts'
 import { AppShell } from '@/components/templates/app-shell'
 import { SITE_METADATA } from '@/constants/site-metadata.constants'
+import { THEME_CHROME } from '@/constants/theme-chrome.constants'
 
 const baseUrl = new URL(SITE_METADATA.siteUrl)
+
+/** Lần paint đầu (trước JS): theo hệ thống: client ThemeColorSync sẽ khớp toggle theme */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: THEME_CHROME.light },
+    { media: '(prefers-color-scheme: dark)', color: THEME_CHROME.dark },
+  ],
+}
 
 export const metadata: Metadata = {
   metadataBase: baseUrl,
