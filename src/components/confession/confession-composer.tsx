@@ -89,7 +89,10 @@ export function ConfessionComposer({ onSubmit, className }: ConfessionComposerPr
   const canSubmit = (content.trim().length > 0 || imageUrls.length > 0) && !pending
 
   return (
-    <form onSubmit={handleSubmit} className={cn('ui-surface', className)}>
+    <form
+      onSubmit={handleSubmit}
+      className={cn('ui-surface !overflow-visible', className)}
+    >
       <input
         ref={fileInputRef}
         type='file'

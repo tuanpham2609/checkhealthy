@@ -34,6 +34,18 @@ export function EmojiQuickPicker({ onPick, className, children }: EmojiQuickPick
     }
   }, [open])
 
+  /** Khóa scroll nền khi popup fixed trên mobile (tránh kéo nền) */
+  useEffect(() => {
+    if (!open) return
+    const mq = window.matchMedia('(max-width: 639px)')
+    if (!mq.matches) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
+
   return (
     <div ref={rootRef} className={cn('relative', className)}>
       <button
@@ -47,27 +59,42 @@ export function EmojiQuickPicker({ onPick, className, children }: EmojiQuickPick
         {children}
       </button>
       {open && (
-        <div
-          role='dialog'
-          aria-label='Chọn emoji'
-          className='ui-surface absolute bottom-full left-0 z-50 mb-2 w-[min(100vw-2rem,280px)] p-2.5 shadow-xl'
-        >
-          <div className='grid grid-cols-6 gap-1 sm:grid-cols-9'>
-            {QUICK_EMOJIS.map((em) => (
-              <button
-                key={em}
-                type='button'
-                className='flex h-9 w-9 items-center justify-center rounded-xl text-lg transition-all duration-200 hover:bg-slate-100 hover:ring-1 hover:ring-slate-200/80 active:scale-95 dark:hover:bg-zinc-800 dark:hover:ring-zinc-600'
-                onClick={() => {
-                  onPick(em)
-                  setOpen(false)
-                }}
-              >
-                {em}
-              </button>
-            ))}
+        <>
+          <button
+            type='button'
+            tabIndex={-1}
+            aria-hidden
+            className='fixed inset-0 z-[60] bg-black/35 backdrop-blur-[2px] sm:hidden'
+            onClick={() => setOpen(false)}
+          />
+          <div
+            role='dialog'
+            aria-label='Chọn emoji'
+            className={cn(
+              'ui-surface z-[70] flex w-[min(calc(100vw-1.5rem),360px)] flex-col p-0 shadow-xl',
+              'max-sm:fixed max-sm:left-1/2 max-sm:top-1/2 max-sm:max-h-[min(88dvh,560px)] max-sm:-translate-x-1/2 max-sm:-translate-y-1/2',
+              'sm:absolute sm:bottom-full sm:left-0 sm:mb-2 sm:max-h-none sm:w-[min(100vw-2rem,280px)] sm:translate-x-0 sm:translate-y-0'
+            )}
+          >
+            <div className='min-h-0 overflow-y-auto overscroll-contain p-2.5 max-sm:max-h-[min(82dvh,480px)] sm:max-h-none sm:overflow-visible'>
+              <div className='grid grid-cols-6 gap-1 sm:grid-cols-9'>
+                {QUICK_EMOJIS.map((em) => (
+                  <button
+                    key={em}
+                    type='button'
+                    className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg transition-all duration-200 hover:bg-slate-100 hover:ring-1 hover:ring-slate-200/80 active:scale-95 dark:hover:bg-zinc-800 dark:hover:ring-zinc-600'
+                    onClick={() => {
+                      onPick(em)
+                      setOpen(false)
+                    }}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   )
