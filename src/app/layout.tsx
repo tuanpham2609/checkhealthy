@@ -56,7 +56,7 @@ export const metadata: Metadata = {
       {
         url: SITE_METADATA.siteOgImage,
         secureUrl: SITE_METADATA.siteUrl.startsWith('https:') ? SITE_METADATA.siteOgImage : undefined,
-        alt: `${SITE_METADATA.titleHeader} — cộng đồng chia sẻ hành trình IVF`,
+        alt: SITE_METADATA.siteOgImageAlt,
         type: 'image/png',
         width: SITE_METADATA.siteOgImageWidth,
         height: SITE_METADATA.siteOgImageHeight,
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
         url: SITE_METADATA.siteOgImage,
         width: SITE_METADATA.siteOgImageWidth,
         height: SITE_METADATA.siteOgImageHeight,
-        alt: SITE_METADATA.titleHeader,
+        alt: SITE_METADATA.siteOgImageAlt,
       },
     ],
   },

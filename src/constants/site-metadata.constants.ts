@@ -21,17 +21,18 @@ function publicSiteUrl(): string {
 /** Favicon, manifest, logo Schema — `public/assets/ivf-heart-brand.png` */
 const SITE_LOGO_PATH = '/assets/ivf-heart-brand.png'
 /**
- * Ảnh Open Graph — `public/assets/og-share.png` (Facebook / Messenger / Zalo).
- * Thay file: cập nhật `siteOgImageWidth` / `siteOgImageHeight` cho khớp kích thước thật.
+ * Ảnh Open Graph trên Supabase Storage (HTTPS, public bucket) — Facebook / Messenger / Zalo.
+ * Đổi ảnh: upload cùng tên hoặc cập nhật URL + width/height cho khớp file thật.
  */
-const SITE_OG_IMAGE_PATH = '/assets/og-share.png'
+const SITE_OG_IMAGE_URL =
+  'https://fibvupouywniaoyibwvv.supabase.co/storage/v1/object/public/confession-media/posts/og-share.png'
 
 const SITE_URL = publicSiteUrl()
 
 export const SITE_METADATA = {
   titleHeader: 'Tâm sự IVF',
   /** Tiêu đề đầy đủ cho thẻ <title> / OG (ưu tiên ~50–60 ký tự phần nhìn thấy) */
-  title: 'Tâm sự IVF — Cộng đồng chia sẻ hành trình thụ tinh trong ống nghiệm',
+  title: 'Tâm sự IVF — Cộng đồng chia sẻ hành trình IVF',
   author: 'Tâm sự IVF',
   /** Meta description: ~150–160 ký tự, một câu chào + lợi ích + từ khóa tự nhiên */
   description:
@@ -51,12 +52,14 @@ export const SITE_METADATA = {
   siteLogoPath: SITE_LOGO_PATH,
   /** URL tuyệt đối logo — favicon, Schema Organization */
   siteLogo: `${SITE_URL}${SITE_LOGO_PATH}`,
-  /** Ảnh Open Graph / Zalo / Messenger (kích thước chuẩn link preview) */
-  siteOgImagePath: SITE_OG_IMAGE_PATH,
-  siteOgImage: `${SITE_URL}${SITE_OG_IMAGE_PATH}`,
-  /** Kích thước thật của `og-share.png` (ảnh banner chia sẻ) */
-  siteOgImageWidth: 1376,
-  siteOgImageHeight: 768,
+  /** URL tuyệt đối ảnh Open Graph / Zalo / Messenger */
+  siteOgImage: SITE_OG_IMAGE_URL,
+  /** 1200×630 nếu file trên bucket đúng tỷ lệ Meta khuyến nghị; chỉnh nếu bạn đổi kích thước ảnh */
+  siteOgImageWidth: 1200,
+  siteOgImageHeight: 630,
+  /** Alt cho og:image / Twitter */
+  siteOgImageAlt:
+    'Tâm sự IVF — banner cộng đồng: tim, biểu tượng y tế và sắc xanh thân thiện khi chia sẻ link',
   email: 'hello@example.com',
   keywords: [
     'tâm sự IVF',

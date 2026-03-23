@@ -61,6 +61,7 @@ export function SiteJsonLd() {
         contentUrl: SITE_METADATA.siteOgImage,
         width: SITE_METADATA.siteOgImageWidth,
         height: SITE_METADATA.siteOgImageHeight,
+        caption: SITE_METADATA.siteOgImageAlt,
       },
       {
         '@type': 'WebApplication',
