@@ -3,11 +3,12 @@
  */
 
 /**
- * Màu vùng chrome (status bar / tai thỏ iOS, theme-color) — trùng nền trang confession.
- * Không dùng màu accent (#2fca62) để tránh thanh hệ thống bị xanh.
+ * Màu vùng chrome (status bar / tai thỏ iOS, theme-color).
+ * Light: trùng header (`bg-white/90` + blur → nhìn như nền trắng), không dùng #f0f2f5 (nền body).
+ * Dark: trùng `dark:bg-zinc-950/85` trên header / nền trang.
  */
 export const THEME_CHROME = {
-  light: '#f0f2f5',
+  light: '#ffffff',
   /** Cùng tông `dark:bg-zinc-950` trên confession */
   dark: '#09090b',
 } as const
