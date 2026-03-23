@@ -9,6 +9,7 @@ import Image from 'next/image'
 import { ImageIcon, Smile, SendHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/styles'
 import { AvatarCircle } from '@/components/confession/avatar-circle'
+import { ConfessionImageLightbox } from '@/components/confession/confession-image-lightbox'
 import { EmojiQuickPicker } from '@/components/confession/emoji-quick-picker'
 
 interface ConfessionComposerProps {
@@ -22,6 +23,7 @@ export function ConfessionComposer({ onSubmit, className }: ConfessionComposerPr
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [pending, setPending] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -70,6 +72,7 @@ export function ConfessionComposer({ onSubmit, className }: ConfessionComposerPr
 
   function removeImage(url: string) {
     setImageUrls((prev) => prev.filter((u) => u !== url))
+    setLightboxIndex(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -125,16 +128,25 @@ export function ConfessionComposer({ onSubmit, className }: ConfessionComposerPr
 
           {imageUrls.length > 0 && (
             <div className='flex flex-wrap gap-2'>
-              {imageUrls.map((url) => (
+              {imageUrls.map((url, i) => (
                 <div
                   key={url}
                   className='relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-zinc-600 dark:bg-zinc-800'
                 >
+                  <button
+                    type='button'
+                    className='absolute inset-0 z-[1] cursor-zoom-in focus-visible:ring-2 focus-visible:ring-[var(--highlight)] focus-visible:ring-offset-2 focus-visible:outline-none'
+                    aria-label='Xem ảnh phóng to'
+                    onClick={() => setLightboxIndex(i)}
+                  />
                   <Image src={url} alt='' fill className='object-cover' sizes='80px' />
                   <button
                     type='button'
-                    onClick={() => removeImage(url)}
-                    className='absolute top-1 right-1 flex size-7 items-center justify-center rounded-xl border border-white/20 bg-black/55 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/75'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeImage(url)
+                    }}
+                    className='absolute top-1 right-1 z-[2] flex size-7 items-center justify-center rounded-xl border border-white/20 bg-black/55 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/75'
                     aria-label='Xóa ảnh'
                   >
                     <X className='size-3.5' />
@@ -167,6 +179,15 @@ export function ConfessionComposer({ onSubmit, className }: ConfessionComposerPr
           </div>
         </div>
       </div>
+
+      {lightboxIndex !== null && imageUrls.length > 0 ? (
+        <ConfessionImageLightbox
+          urls={imageUrls}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onIndexChange={setLightboxIndex}
+        />
+      ) : null}
     </form>
   )
 }

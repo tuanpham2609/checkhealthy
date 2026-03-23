@@ -11,6 +11,7 @@ import { formatRelativeTime } from '@/lib/confession-time'
 import type { ConfessionPost } from '@/types/confession.types'
 import { AvatarCircle } from '@/components/confession/avatar-circle'
 import { ConfessionCommentBlock } from '@/components/confession/confession-comment-block'
+import { ConfessionImageLightbox } from '@/components/confession/confession-image-lightbox'
 import { cn } from '@/lib/styles'
 
 interface ConfessionPostCardProps {
@@ -25,6 +26,7 @@ export function ConfessionPostCard({ post, onComment, onReply, className }: Conf
   const [commentText, setCommentText] = useState('')
   const [commentName, setCommentName] = useState('')
   const [commentPending, setCommentPending] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   async function submitComment(e: React.FormEvent) {
     e.preventDefault()
@@ -63,16 +65,16 @@ export function ConfessionPostCard({ post, onComment, onReply, className }: Conf
 
           {post.imageUrls?.length ? (
             <div className='mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3'>
-              {post.imageUrls.map((src) => (
-                <a
+              {post.imageUrls.map((src, i) => (
+                <button
                   key={src}
-                  href={src}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='relative aspect-square overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200/80'
+                  type='button'
+                  onClick={() => setLightboxIndex(i)}
+                  className='relative aspect-square cursor-zoom-in overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200/80 transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-[var(--highlight)] focus-visible:ring-offset-2 focus-visible:outline-none dark:ring-zinc-600'
+                  aria-label={`Xem ảnh ${i + 1} phóng to`}
                 >
                   <Image src={src} alt='' fill className='object-cover' sizes='(max-width:640px) 45vw, 200px' />
-                </a>
+                </button>
               ))}
             </div>
           ) : null}
@@ -126,6 +128,15 @@ export function ConfessionPostCard({ post, onComment, onReply, className }: Conf
           )}
         </div>
       </div>
+
+      {lightboxIndex !== null && post.imageUrls && post.imageUrls.length > 0 ? (
+        <ConfessionImageLightbox
+          urls={post.imageUrls}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onIndexChange={setLightboxIndex}
+        />
+      ) : null}
     </article>
   )
 }
