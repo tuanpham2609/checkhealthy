@@ -5,15 +5,13 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:stable": "next dev",
-    "prebuild": "node scripts/generate-og-share.mjs",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint --no-cache",
     "lint:fix": "eslint --no-cache --fix",
     "format": "prettier --check --ignore-path .gitignore .",
     "format:write": "prettier --write --ignore-path .gitignore .",
-    "copyright": "node scripts/copyright.js",
-    "og:generate": "node scripts/generate-og-share.mjs"
+    "copyright": "node scripts/copyright.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.3",

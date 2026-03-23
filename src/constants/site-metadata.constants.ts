@@ -21,7 +21,8 @@ function publicSiteUrl(): string {
 /** Favicon, manifest, logo Schema — `public/assets/ivf-heart-brand.png` */
 const SITE_LOGO_PATH = '/assets/ivf-heart-brand.png'
 /**
- * Ảnh chia sẻ 1200×630 — `npm run og:generate` từ logo (Messenger / Facebook / Zalo cần kích thước đủ lớn).
+ * Ảnh Open Graph — `public/assets/og-share.png` (Facebook / Messenger / Zalo).
+ * Thay file: cập nhật `siteOgImageWidth` / `siteOgImageHeight` cho khớp kích thước thật.
  */
 const SITE_OG_IMAGE_PATH = '/assets/og-share.png'
 
@@ -53,9 +54,9 @@ export const SITE_METADATA = {
   /** Ảnh Open Graph / Zalo / Messenger (kích thước chuẩn link preview) */
   siteOgImagePath: SITE_OG_IMAGE_PATH,
   siteOgImage: `${SITE_URL}${SITE_OG_IMAGE_PATH}`,
-  /** Kích thước file `og-share.png` sau `og:generate` */
-  siteOgImageWidth: 1200,
-  siteOgImageHeight: 630,
+  /** Kích thước thật của `og-share.png` (ảnh banner chia sẻ) */
+  siteOgImageWidth: 1376,
+  siteOgImageHeight: 768,
   email: 'hello@example.com',
   keywords: [
     'tâm sự IVF',
