@@ -5,13 +5,7 @@
   "icons": [
     {
       "src": "/assets/ivf-heart-brand.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/ivf-heart-brand.png",
-      "sizes": "512x512",
+      "sizes": "895x901",
       "type": "image/png",
       "purpose": "any"
     }
