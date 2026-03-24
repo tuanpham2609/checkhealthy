@@ -90,7 +90,7 @@ export function ConfessionPage() {
           </>
         )}
 
-        <p className={cn('mt-8 pb-8 text-center text-xs leading-relaxed text-slate-400 dark:text-zinc-500')}>
+        <p className={cn('mt-8 pb-8 text-center text-sm leading-relaxed text-slate-400 dark:text-zinc-500')}>
           {SITE_METADATA.footerMessage}
         </p>
       </main>
