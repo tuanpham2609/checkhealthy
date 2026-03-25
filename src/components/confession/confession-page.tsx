@@ -14,7 +14,7 @@ import { SITE_METADATA } from '@/constants/site-metadata.constants'
 import { cn } from '@/lib/styles'
 
 export function ConfessionPage() {
-  const { posts, page, totalPages, ready, error, refresh, setPage, addPost, addComment, addReply } =
+  const { posts, page, totalPages, ready, error, refresh, setPage, addPost, addComment, addReply, updatePostLike } =
     useConfessionFeed()
 
   return (
@@ -82,7 +82,12 @@ export function ConfessionPage() {
             <ul className='flex flex-col gap-4'>
               {posts.map((post) => (
                 <li key={post.id}>
-                  <ConfessionPostCard post={post} onComment={addComment} onReply={addReply} />
+                  <ConfessionPostCard
+                    post={post}
+                    onComment={addComment}
+                    onReply={addReply}
+                    onLikeSync={updatePostLike}
+                  />
                 </li>
               ))}
             </ul>

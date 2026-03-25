@@ -2,10 +2,12 @@
  * Copyright (c) 2025 Mythuatcmc. All rights reserved.
  */
 
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { createSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin'
 import { mapRowsToPosts } from '@/lib/confession/map-db-to-feed'
 import { validatePostBody } from '@/lib/confession/validate'
+import { VISITOR_COOKIE_NAME } from '@/lib/confession/visitor-id'
 
 const DEFAULT_LIMIT = 25
 const MAX_LIMIT = 50
@@ -47,7 +49,7 @@ export async function GET(request: Request) {
 
     const { data: posts, error: e1 } = await supabase
       .from('confession_posts')
-      .select('id, author, content, created_at, image_urls')
+      .select('id, author, content, created_at, image_urls, like_count')
       .order('created_at', { ascending: false })
       .range(rangeStart, rangeEnd)
 
@@ -77,7 +79,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Không đọc được bình luận' }, { status: 500 })
     }
 
-    const mapped = mapRowsToPosts(posts ?? [], comments ?? [])
+    const cookieStore = await cookies()
+    const visitorId = cookieStore.get(VISITOR_COOKIE_NAME)?.value
+    let likedPostIds: Set<string> | undefined
+    if (visitorId && postIds.length > 0) {
+      const { data: likeRows } = await supabase
+        .from('confession_post_likes')
+        .select('post_id')
+        .eq('visitor_id', visitorId)
+        .in('post_id', postIds)
+      likedPostIds = new Set((likeRows ?? []).map((r) => r.post_id as string))
+    }
+
+    const mapped = mapRowsToPosts(posts ?? [], comments ?? [], likedPostIds)
     return NextResponse.json({
       posts: mapped,
       page: safePage,
@@ -117,7 +131,7 @@ export async function POST(request: Request) {
         content: parsed.content,
         image_urls: parsed.imageUrls,
       })
-      .select('id, author, content, created_at, image_urls')
+      .select('id, author, content, created_at, image_urls, like_count')
       .single()
 
     if (error || !data) {

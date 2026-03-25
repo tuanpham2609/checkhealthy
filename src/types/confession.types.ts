@@ -25,4 +25,8 @@ export interface ConfessionPost {
   imageUrls: string[]
   createdAt: number
   comments: ConfessionComment[]
+  /** Số tim (server) */
+  likeCount: number
+  /** Đã tim (theo cookie ẩn danh), có thể thiếu trên feed nếu chưa batch */
+  liked?: boolean
 }

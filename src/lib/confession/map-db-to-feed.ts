@@ -10,6 +10,7 @@ export interface ConfessionPostRow {
   content: string
   created_at: string
   image_urls?: unknown
+  like_count?: number | null
 }
 
 export interface ConfessionCommentRow {
@@ -21,7 +22,11 @@ export interface ConfessionCommentRow {
   created_at: string
 }
 
-export function mapRowsToPosts(posts: ConfessionPostRow[], comments: ConfessionCommentRow[]): ConfessionPost[] {
+export function mapRowsToPosts(
+  posts: ConfessionPostRow[],
+  comments: ConfessionCommentRow[],
+  likedPostIds?: Set<string>
+): ConfessionPost[] {
   const topByPost = new Map<string, ConfessionCommentRow[]>()
   const repliesByParent = new Map<string, ConfessionCommentRow[]>()
 
@@ -67,13 +72,21 @@ export function mapRowsToPosts(posts: ConfessionPostRow[], comments: ConfessionC
       }
     })
 
-    return {
+    const likeCount =
+      typeof p.like_count === 'number' && Number.isFinite(p.like_count) ? Math.max(0, p.like_count) : 0
+
+    const out: ConfessionPost = {
       id: p.id,
       author: p.author,
       content: p.content,
       imageUrls: parseImageUrls(p.image_urls),
       createdAt: new Date(p.created_at).getTime(),
       comments: confessionComments,
+      likeCount,
     }
+    if (likedPostIds) {
+      out.liked = likedPostIds.has(p.id)
+    }
+    return out
   })
 }

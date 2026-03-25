@@ -118,6 +118,10 @@ export function useConfessionFeed() {
     [load, page]
   )
 
+  const updatePostLike = useCallback((postId: string, likeCount: number, liked: boolean) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likeCount, liked } : p)))
+  }, [])
+
   const addReply = useCallback(
     async (postId: string, commentId: string, content: string, author: string) => {
       const trimmed = content.trim()
@@ -153,5 +157,6 @@ export function useConfessionFeed() {
     addPost,
     addComment,
     addReply,
+    updatePostLike,
   }
 }

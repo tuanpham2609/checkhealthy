@@ -4,9 +4,7 @@
 
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
-import Image from 'next/image'
+import { useCallback, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/styles'
 
@@ -17,10 +15,11 @@ interface ConfessionImageLightboxProps {
   onIndexChange: (next: number) => void
 }
 
+/**
+ * Overlay cố định trong cây React (không dùng createPortal vào body) để tránh lỗi
+ * `removeChild` khi chuyển route / unmount cùng Next/Image.
+ */
 export function ConfessionImageLightbox({ urls, index, onClose, onIndexChange }: ConfessionImageLightboxProps) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
   const safe = urls.length ? Math.min(Math.max(0, index), urls.length - 1) : 0
   const url = urls[safe]
   const hasPrev = safe > 0
@@ -35,16 +34,20 @@ export function ConfessionImageLightbox({ urls, index, onClose, onIndexChange }:
   }, [hasNext, onIndexChange, safe])
 
   useEffect(() => {
-    if (!mounted || !url) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    if (!url) return
+    const body = typeof document !== 'undefined' ? document.body : null
+    if (!body) return
+    const prev = body.style.overflow
+    body.style.overflow = 'hidden'
     return () => {
-      document.body.style.overflow = prev
+      if (typeof document !== 'undefined' && document.body) {
+        document.body.style.overflow = prev
+      }
     }
-  }, [mounted, url])
+  }, [url])
 
   useEffect(() => {
-    if (!mounted) return
+    if (!url) return
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
       if (e.key === 'ArrowLeft') goPrev()
@@ -52,11 +55,11 @@ export function ConfessionImageLightbox({ urls, index, onClose, onIndexChange }:
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [mounted, onClose, goPrev, goNext])
+  }, [url, onClose, goPrev, goNext])
 
-  if (!url || urls.length === 0 || !mounted) return null
+  if (!url || urls.length === 0) return null
 
-  return createPortal(
+  return (
     <div
       className='fixed inset-0 z-[200] flex items-center justify-center bg-black/92 p-3 pt-16 pb-8 backdrop-blur-sm sm:p-6 sm:pt-20'
       role='dialog'
@@ -114,21 +117,20 @@ export function ConfessionImageLightbox({ urls, index, onClose, onIndexChange }:
 
       <div
         className={cn(
-          'relative z-10 h-[min(85dvh,calc(100vw-2rem))] w-full max-w-[min(100vw-2rem,1200px)]',
+          'relative z-10 flex h-[min(85dvh,calc(100vw-2rem))] w-full max-w-[min(100vw-2rem,1200px)] items-center justify-center',
           'touch-pan-y'
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element -- tránh Next/Image gỡ DOM khi đổi route */}
+        <img
           src={url}
           alt=''
-          fill
-          className='object-contain'
-          sizes='(max-width: 1200px) 100vw, 1200px'
-          priority
+          className='max-h-[min(85dvh,calc(100vw-2rem))] w-auto max-w-full object-contain'
+          decoding='async'
+          fetchPriority='high'
         />
       </div>
-    </div>,
-    document.body
+    </div>
   )
 }
