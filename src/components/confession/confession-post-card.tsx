@@ -5,9 +5,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
 import { Heart, MessageCircle, Share2 } from 'lucide-react'
+import { ClientNavLink } from '@/components/atoms/client-nav-link'
 import { formatRelativeTime } from '@/lib/confession-time'
 import { copyPostUrlToClipboard, getPostPublicUrl } from '@/lib/confession/post-share-url'
 import type { ConfessionPost } from '@/types/confession.types'
@@ -147,17 +146,18 @@ export function ConfessionPostCard({
     'hover:bg-slate-50/80 dark:hover:bg-zinc-800/50',
     'focus-visible:ring-2 focus-visible:ring-[var(--highlight)] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950'
   )
+  const detailHref = `/post/${post.id}`
 
   return (
     <>
     <article className={cn('ui-surface', className)}>
       {!detailMode ? (
-        <Link href={`/post/${post.id}`} className={linkClass} aria-label='Xem chi tiết bài viết'>
+        <ClientNavLink href={detailHref} className={linkClass} aria-label='Xem chi tiết bài viết'>
           <div className='shrink-0'>
             <AvatarCircle name={post.author} size='lg' />
           </div>
           <div className='min-w-0 flex-1'>{headerBlock}</div>
-        </Link>
+        </ClientNavLink>
       ) : (
         <div className='flex gap-3 p-3 sm:p-4'>
           <div className='shrink-0'>
@@ -171,13 +171,19 @@ export function ConfessionPostCard({
         <div className='mt-3 grid grid-cols-2 gap-2 px-3 sm:grid-cols-3 sm:px-4'>
           {post.imageUrls.map((src, i) => (
             <button
-              key={src}
+              key={`${post.id}-img-${i}`}
               type='button'
               onClick={() => setLightboxIndex(i)}
               className='relative aspect-square cursor-zoom-in overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200/80 transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-[var(--highlight)] focus-visible:ring-offset-2 focus-visible:outline-none dark:ring-zinc-600'
               aria-label={`Xem ảnh ${i + 1} phóng to`}
             >
-              <Image src={src} alt='' fill className='object-cover' sizes='(max-width:640px) 45vw, 200px' />
+              <img
+                src={src}
+                alt=''
+                className='absolute inset-0 h-full w-full object-cover'
+                loading='lazy'
+                decoding='async'
+              />
             </button>
           ))}
         </div>

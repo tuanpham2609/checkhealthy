@@ -11,6 +11,22 @@ type Props = {
   params: Promise<{ postId: string }>
 }
 
+/** Ảnh preview khi share link chi tiết bài — Supabase `confession-media/posts/og-share.png` */
+function postDetailShareImages(): Pick<Metadata, 'openGraph' | 'twitter'> {
+  const url = SITE_METADATA.siteOgImage
+  const image = {
+    url,
+    width: SITE_METADATA.siteOgImageWidth,
+    height: SITE_METADATA.siteOgImageHeight,
+    alt: SITE_METADATA.siteOgImageAlt,
+    type: 'image/png',
+  } as const
+  return {
+    openGraph: { images: [image] },
+    twitter: { card: 'summary_large_image', images: [url] },
+  }
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { postId } = await params
   const base = SITE_METADATA.siteUrl.replace(/\/$/, '')
@@ -20,6 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: fallbackTitle,
       robots: { index: false, follow: true },
+      ...postDetailShareImages(),
     }
   }
 
@@ -30,6 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: fallbackTitle,
       alternates: { canonical },
       robots: { index: true, follow: true },
+      ...postDetailShareImages(),
     }
   }
 
@@ -42,11 +60,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         title: `Không tìm thấy | ${SITE_METADATA.titleHeader}`,
         alternates: { canonical },
         robots: { index: false, follow: true },
+        ...postDetailShareImages(),
       }
     }
 
     const description = data.content.trim().slice(0, 160) || SITE_METADATA.description
     const title = `${data.author} — ${SITE_METADATA.titleHeader}`
+    const share = postDetailShareImages()
 
     return {
       title,
@@ -59,11 +79,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         type: 'article',
         locale: SITE_METADATA.locale,
         siteName: SITE_METADATA.titleHeader,
+        ...share.openGraph,
       },
       twitter: {
         card: 'summary_large_image',
         title,
         description,
+        ...share.twitter,
       },
       robots: { index: true, follow: true },
     }
@@ -72,6 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: fallbackTitle,
       alternates: { canonical },
       robots: { index: true, follow: true },
+      ...postDetailShareImages(),
     }
   }
 }

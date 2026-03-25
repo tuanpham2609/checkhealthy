@@ -39,7 +39,9 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    reactCompiler: true,
+    // Tắt React Compiler: một số bản build + React 19 có thể gây lỗi commitDeletion/removeChild khi đổi route.
+    // Bật lại khi nâng Next/React và đã xác nhận ổn định.
+    reactCompiler: false,
     scrollRestoration: true,
   },
 }

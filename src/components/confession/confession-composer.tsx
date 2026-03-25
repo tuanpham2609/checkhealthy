@@ -5,7 +5,6 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import Image from 'next/image'
 import { ImageIcon, Smile, SendHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/styles'
 import { AvatarCircle } from '@/components/confession/avatar-circle'
@@ -139,7 +138,13 @@ export function ConfessionComposer({ onSubmit, className }: ConfessionComposerPr
                     aria-label='Xem ảnh phóng to'
                     onClick={() => setLightboxIndex(i)}
                   />
-                  <Image src={url} alt='' fill className='object-cover' sizes='80px' />
+                  <img
+                    src={url}
+                    alt=''
+                    className='absolute inset-0 h-full w-full object-cover'
+                    loading='lazy'
+                    decoding='async'
+                  />
                   <button
                     type='button'
                     onClick={(e) => {

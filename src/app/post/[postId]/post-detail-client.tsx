@@ -5,8 +5,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { ClientNavLink } from '@/components/atoms/client-nav-link'
 import { ThemeToggle } from '@/components/atoms/theme-toggle'
 import { ConfessionPostCard } from '@/components/confession/confession-post-card'
 import { SITE_METADATA } from '@/constants/site-metadata.constants'
@@ -151,13 +151,13 @@ export function PostDetailClient({ postId }: PostDetailClientProps) {
             className='mb-4 border-b border-slate-200/80 pb-3 dark:border-zinc-800/90'
             aria-label='Quay về danh sách'
           >
-            <Link
+            <ClientNavLink
               href='/'
               className='inline-flex max-w-full items-center gap-2 rounded-lg text-sm font-medium text-slate-600 transition-colors hover:text-[var(--highlight-strong)] dark:text-zinc-400 dark:hover:text-[var(--highlight)]'
             >
               <ArrowLeft className='size-4 shrink-0' aria-hidden />
               <span>Trang chủ</span>
-            </Link>
+            </ClientNavLink>
           </nav>
         ) : null}
 

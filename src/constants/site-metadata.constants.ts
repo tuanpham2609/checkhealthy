@@ -52,7 +52,7 @@ export const SITE_METADATA = {
   siteLogoPath: SITE_LOGO_PATH,
   /** URL tuyệt đối logo — favicon, Schema Organization */
   siteLogo: `${SITE_URL}${SITE_LOGO_PATH}`,
-  /** URL tuyệt đối ảnh Open Graph / Zalo / Messenger */
+  /** URL ảnh Open Graph (trang chủ + share trang chi tiết bài) — Supabase public bucket */
   siteOgImage: SITE_OG_IMAGE_URL,
   /** 1200×630 nếu file trên bucket đúng tỷ lệ Meta khuyến nghị; chỉnh nếu bạn đổi kích thước ảnh */
   siteOgImageWidth: 1200,
