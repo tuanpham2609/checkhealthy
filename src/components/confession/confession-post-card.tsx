@@ -4,9 +4,12 @@
 
 'use client'
 
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Heart, MessageCircle, Share2 } from 'lucide-react'
 import { ClientNavLink } from '@/components/atoms/client-nav-link'
+import { fetchConfessionPost } from '@/lib/confession/fetchers'
+import { confessionKeys } from '@/lib/confession/query-keys'
 import { formatRelativeTime } from '@/lib/confession-time'
 import { copyPostUrlToClipboard, getPostPublicUrl } from '@/lib/confession/post-share-url'
 import type { ConfessionPost } from '@/types/confession.types'
@@ -44,6 +47,15 @@ export function ConfessionPostCard({
   const [liked, setLiked] = useState(!!post.liked)
   const [likePending, setLikePending] = useState(false)
   const [shareHint, setShareHint] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
+  const prefetchPostDetail = () => {
+    void queryClient.prefetchQuery({
+      queryKey: confessionKeys.post(post.id),
+      queryFn: () => fetchConfessionPost(post.id),
+      staleTime: 60_000,
+    })
+  }
 
   useEffect(() => {
     setLikeCount(post.likeCount)
@@ -152,7 +164,13 @@ export function ConfessionPostCard({
     <>
     <article className={cn('ui-surface', className)}>
       {!detailMode ? (
-        <ClientNavLink href={detailHref} className={linkClass} aria-label='Xem chi tiết bài viết'>
+        <ClientNavLink
+          href={detailHref}
+          className={linkClass}
+          aria-label='Xem chi tiết bài viết'
+          onMouseEnter={prefetchPostDetail}
+          onFocus={prefetchPostDetail}
+        >
           <div className='shrink-0'>
             <AvatarCircle name={post.author} size='lg' />
           </div>

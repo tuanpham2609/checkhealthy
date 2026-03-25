@@ -4,23 +4,17 @@
 
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useMemo, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { ClientNavLink } from '@/components/atoms/client-nav-link'
 import { ThemeToggle } from '@/components/atoms/theme-toggle'
 import { ConfessionPostCard } from '@/components/confession/confession-post-card'
 import { SITE_METADATA } from '@/constants/site-metadata.constants'
+import { fetchConfessionPost, parseJsonError } from '@/lib/confession/fetchers'
+import { confessionKeys } from '@/lib/confession/query-keys'
 import type { ConfessionPost } from '@/types/confession.types'
 import { cn } from '@/lib/styles'
-
-async function parseJsonError(res: Response): Promise<string> {
-  try {
-    const j = (await res.json()) as { error?: string }
-    return j.error ?? `Lỗi ${res.status}`
-  } catch {
-    return `Lỗi ${res.status}`
-  }
-}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -29,46 +23,35 @@ interface PostDetailClientProps {
 }
 
 export function PostDetailClient({ postId }: PostDetailClientProps) {
-  const [post, setPost] = useState<ConfessionPost | null>(null)
-  const [ready, setReady] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const [actionError, setActionError] = useState<string | null>(null)
+  const invalidId = !UUID_RE.test(postId)
 
-  const loadPost = useCallback(async () => {
-    if (!UUID_RE.test(postId)) {
-      setError('Liên kết bài viết không hợp lệ')
-      setPost(null)
-      setReady(true)
-      return
-    }
-    setReady(false)
-    setError(null)
-    const res = await fetch(`/api/confession/posts/${postId}`, { cache: 'no-store' })
-    if (res.status === 404) {
-      setError('Không tìm thấy bài viết')
-      setPost(null)
-      setReady(true)
-      return
-    }
-    if (!res.ok) {
-      setError(await parseJsonError(res))
-      setPost(null)
-      setReady(true)
-      return
-    }
-    const data = (await res.json()) as { post?: ConfessionPost }
-    setPost(data.post ?? null)
-    setError(null)
-    setReady(true)
-  }, [postId])
+  const query = useQuery({
+    queryKey: confessionKeys.post(postId),
+    queryFn: () => fetchConfessionPost(postId),
+    enabled: !invalidId,
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+  })
 
-  useEffect(() => {
-    void loadPost()
-  }, [loadPost])
+  const errorMessage = useMemo(() => {
+    if (invalidId) return 'Liên kết bài viết không hợp lệ'
+    if (query.isError && query.error instanceof Error) return query.error.message
+    if (query.isSuccess && query.data === null) return 'Không tìm thấy bài viết'
+    return null
+  }, [invalidId, query.isError, query.isSuccess, query.data, query.error])
+
+  const bannerError = errorMessage ?? actionError
+
+  const ready = invalidId || !query.isPending
+  const post = query.data ?? null
 
   const addComment = useCallback(
     async (pid: string, content: string, author: string) => {
       const trimmed = content.trim()
       if (!trimmed) return
+      setActionError(null)
       const res = await fetch(`/api/confession/posts/${pid}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,19 +61,20 @@ export function PostDetailClient({ postId }: PostDetailClientProps) {
         }),
       })
       if (!res.ok) {
-        setError(await parseJsonError(res))
+        setActionError(await parseJsonError(res))
         return
       }
-      setError(null)
-      await loadPost()
+      await queryClient.invalidateQueries({ queryKey: confessionKeys.post(pid) })
+      await queryClient.invalidateQueries({ queryKey: confessionKeys.posts() })
     },
-    [loadPost]
+    [queryClient]
   )
 
   const addReply = useCallback(
     async (pid: string, commentId: string, content: string, author: string) => {
       const trimmed = content.trim()
       if (!trimmed) return
+      setActionError(null)
       const res = await fetch(`/api/confession/posts/${pid}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,18 +85,33 @@ export function PostDetailClient({ postId }: PostDetailClientProps) {
         }),
       })
       if (!res.ok) {
-        setError(await parseJsonError(res))
+        setActionError(await parseJsonError(res))
         return
       }
-      setError(null)
-      await loadPost()
+      await queryClient.invalidateQueries({ queryKey: confessionKeys.post(pid) })
+      await queryClient.invalidateQueries({ queryKey: confessionKeys.posts() })
     },
-    [loadPost]
+    [queryClient]
   )
 
-  const syncLike = useCallback((pid: string, likeCount: number, liked: boolean) => {
-    setPost((p) => (p && p.id === pid ? { ...p, likeCount, liked } : p))
-  }, [])
+  const syncLike = useCallback(
+    (pid: string, likeCount: number, liked: boolean) => {
+      queryClient.setQueryData<ConfessionPost | null>(confessionKeys.post(pid), (old) =>
+        old && old.id === pid ? { ...old, likeCount, liked } : old
+      )
+      queryClient.setQueriesData<{ posts: ConfessionPost[]; page: number; total: number; totalPages: number }>(
+        { queryKey: confessionKeys.posts() },
+        (old) => {
+          if (!old?.posts) return old
+          return {
+            ...old,
+            posts: old.posts.map((p) => (p.id === pid ? { ...p, likeCount, liked } : p)),
+          }
+        }
+      )
+    },
+    [queryClient]
+  )
 
   return (
     <div className='min-h-dvh bg-[#f0f2f5] text-slate-900 transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100'>
@@ -137,12 +136,12 @@ export function PostDetailClient({ postId }: PostDetailClientProps) {
       </header>
 
       <main className='mx-auto max-w-[680px] px-3 py-4 sm:px-4 lg:max-w-2xl'>
-        {error && (
+        {bannerError && (
           <div
             role='alert'
             className='mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 transition-colors duration-300 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100'
           >
-            {error}
+            {bannerError}
           </div>
         )}
 
@@ -171,7 +170,7 @@ export function PostDetailClient({ postId }: PostDetailClientProps) {
             detailMode
             onLikeSync={syncLike}
           />
-        ) : ready && !error ? (
+        ) : ready && !post && !errorMessage ? (
           <p className='rounded-2xl border border-dashed border-slate-300/90 bg-white/70 px-4 py-12 text-center text-sm text-slate-600 shadow-sm ring-1 ring-slate-900/5 transition-colors duration-300 dark:border-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400 dark:ring-white/10'>
             Không có dữ liệu bài viết.
           </p>
