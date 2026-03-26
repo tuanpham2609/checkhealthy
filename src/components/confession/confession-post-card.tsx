@@ -46,7 +46,6 @@ export function ConfessionPostCard({
   const [likeCount, setLikeCount] = useState(post.likeCount)
   const [liked, setLiked] = useState(!!post.liked)
   const [likePending, setLikePending] = useState(false)
-  const [shareHint, setShareHint] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
   const prefetchPostDetail = () => {
@@ -99,24 +98,13 @@ export function ConfessionPostCard({
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
         await navigator.share({ title, text, url })
-        setShareHint('Đã mở chia sẻ')
-        window.setTimeout(() => setShareHint(null), 2000)
         return
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
-        /* không có quyền / lỗi → copy */
       }
     }
 
-    const ok = await copyPostUrlToClipboard(post.id)
-    if (ok) {
-      setShareHint('Đã copy link')
-      window.setTimeout(() => setShareHint(null), 2000)
-      return
-    }
-
-    setShareHint(`Không copy được — copy thủ công: ${url}`)
-    window.setTimeout(() => setShareHint(null), 8000)
+    await copyPostUrlToClipboard(post.id)
   }
 
   async function submitComment(e: React.FormEvent) {
@@ -207,7 +195,7 @@ export function ConfessionPostCard({
         </div>
       ) : null}
 
-      <div className='mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 px-3 pt-2 pb-px sm:px-4 dark:border-zinc-800'>
+      <div className='mt-3 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-slate-100 px-3 pt-2 pb-px sm:gap-x-10 sm:px-4 dark:border-zinc-800'>
         <button
           type='button'
           onClick={toggleLike}
@@ -226,19 +214,6 @@ export function ConfessionPostCard({
         </button>
         <button
           type='button'
-          onClick={() => void sharePost()}
-          className='inline-flex items-center gap-1.5 rounded-xl border border-transparent px-2.5 py-2 text-sm font-medium text-slate-600 transition-all hover:border-slate-200/80 hover:bg-slate-50 hover:text-[var(--highlight-strong)] dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80 dark:hover:text-[var(--highlight)]'
-        >
-          <Share2 className='size-4' aria-hidden />
-          Chia sẻ
-        </button>
-        {shareHint ? (
-          <span className='max-w-[min(100%,14rem)] break-words text-xs text-slate-500 dark:text-zinc-400' role='status'>
-            {shareHint}
-          </span>
-        ) : null}
-        <button
-          type='button'
           onClick={() => setShowCommentBox((v) => !v)}
           className='inline-flex items-center gap-1.5 rounded-xl border border-transparent px-2.5 py-2 text-sm font-medium text-slate-600 transition-all hover:border-slate-200/80 hover:bg-slate-50 hover:text-[var(--highlight-strong)] dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80 dark:hover:text-[var(--highlight)]'
         >
@@ -247,6 +222,14 @@ export function ConfessionPostCard({
           {post.comments.length > 0 && (
             <span className='text-slate-400 dark:text-zinc-500'>({post.comments.length})</span>
           )}
+        </button>
+        <button
+          type='button'
+          onClick={() => void sharePost()}
+          className='inline-flex items-center gap-1.5 rounded-xl border border-transparent px-2.5 py-2 text-sm font-medium text-slate-600 transition-all hover:border-slate-200/80 hover:bg-slate-50 hover:text-[var(--highlight-strong)] dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80 dark:hover:text-[var(--highlight)]'
+        >
+          <Share2 className='size-4' aria-hidden />
+          Chia sẻ
         </button>
       </div>
 

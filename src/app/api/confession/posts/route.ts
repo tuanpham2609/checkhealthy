@@ -5,12 +5,15 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { createSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin'
+import { escapeIlikePattern, parseConfessionSort } from '@/lib/confession/feed-sort'
 import { mapRowsToPosts } from '@/lib/confession/map-db-to-feed'
 import { validatePostBody } from '@/lib/confession/validate'
 import { VISITOR_COOKIE_NAME } from '@/lib/confession/visitor-id'
 
 const DEFAULT_LIMIT = 25
 const MAX_LIMIT = 50
+
+const POST_SELECT = 'id, author, content, created_at, image_urls, like_count'
 
 export async function GET(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -26,14 +29,22 @@ export async function GET(request: Request) {
   const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? pageRaw : 1
   const limit =
     Number.isFinite(limitRaw) && limitRaw >= 1 ? Math.min(limitRaw, MAX_LIMIT) : DEFAULT_LIMIT
-  const offset = (page - 1) * limit
+
+  const sort = parseConfessionSort(searchParams.get('sort'))
+  const qRaw = searchParams.get('q')?.trim().slice(0, 200) ?? ''
+  const q = qRaw.replace(/,/g, ' ').trim()
 
   try {
     const supabase = createSupabaseAdmin()
 
-    const { count: totalCount, error: cErr } = await supabase
-      .from('confession_posts')
-      .select('*', { count: 'exact', head: true })
+    const searchPattern = q ? `%${escapeIlikePattern(q)}%` : null
+
+    let countQuery = supabase.from('confession_posts').select('*', { count: 'exact', head: true })
+    if (searchPattern) {
+      countQuery = countQuery.or(`content.ilike.${searchPattern},author.ilike.${searchPattern}`)
+    }
+
+    const { count: totalCount, error: cErr } = await countQuery
 
     if (cErr) {
       console.error(cErr)
@@ -41,17 +52,25 @@ export async function GET(request: Request) {
     }
 
     const total = totalCount ?? 0
-    const totalPages = Math.max(1, Math.ceil(total / limit))
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / limit))
     const safePage = Math.min(page, totalPages)
 
     const rangeStart = (safePage - 1) * limit
     const rangeEnd = rangeStart + limit - 1
 
-    const { data: posts, error: e1 } = await supabase
-      .from('confession_posts')
-      .select('id, author, content, created_at, image_urls, like_count')
-      .order('created_at', { ascending: false })
-      .range(rangeStart, rangeEnd)
+    let dataQuery = supabase.from('confession_posts').select(POST_SELECT)
+    if (searchPattern) {
+      dataQuery = dataQuery.or(`content.ilike.${searchPattern},author.ilike.${searchPattern}`)
+    }
+    if (sort === 'likes') {
+      dataQuery = dataQuery.order('like_count', { ascending: false }).order('created_at', { ascending: false })
+    } else if (sort === 'oldest') {
+      dataQuery = dataQuery.order('created_at', { ascending: true })
+    } else {
+      dataQuery = dataQuery.order('created_at', { ascending: false })
+    }
+
+    const { data: posts, error: e1 } = await dataQuery.range(rangeStart, rangeEnd)
 
     if (e1) {
       console.error(e1)

@@ -5,8 +5,9 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CONFESSION_PAGE_SIZE } from '@/lib/confession/constants'
+import type { ConfessionSort } from '@/lib/confession/feed-sort'
 import { fetchConfessionPostsList, parseJsonError } from '@/lib/confession/fetchers'
 import { confessionKeys } from '@/lib/confession/query-keys'
 import type { ConfessionPost } from '@/types/confession.types'
@@ -16,11 +17,28 @@ export { CONFESSION_PAGE_SIZE } from '@/lib/confession/constants'
 export function useConfessionFeed() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
+  const [sort, setSortState] = useState<ConfessionSort>('newest')
+  const [searchInput, setSearchInput] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
   const [mutationError, setMutationError] = useState<string | null>(null)
 
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedQ(searchInput.trim()), 400)
+    return () => window.clearTimeout(t)
+  }, [searchInput])
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedQ])
+
+  const setSort = useCallback((s: ConfessionSort) => {
+    setSortState(s)
+    setPage(1)
+  }, [])
+
   const query = useQuery({
-    queryKey: confessionKeys.postsList(page, CONFESSION_PAGE_SIZE),
-    queryFn: () => fetchConfessionPostsList(page, CONFESSION_PAGE_SIZE),
+    queryKey: confessionKeys.postsList(page, CONFESSION_PAGE_SIZE, sort, debouncedQ),
+    queryFn: () => fetchConfessionPostsList(page, CONFESSION_PAGE_SIZE, sort, debouncedQ),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   })
@@ -142,6 +160,11 @@ export function useConfessionFeed() {
     error,
     refresh,
     setPage: setPageSafe,
+    sort,
+    setSort,
+    searchInput,
+    setSearchInput,
+    debouncedQ,
     addPost,
     addComment,
     addReply,

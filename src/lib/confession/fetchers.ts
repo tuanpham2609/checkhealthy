@@ -3,6 +3,7 @@
  */
 
 import { CONFESSION_PAGE_SIZE } from '@/lib/confession/constants'
+import type { ConfessionSort } from '@/lib/confession/feed-sort'
 import type { ConfessionPost } from '@/types/confession.types'
 
 export async function parseJsonError(res: Response): Promise<string> {
@@ -23,9 +24,19 @@ export interface ConfessionListResponse {
 
 export async function fetchConfessionPostsList(
   page: number,
-  limit: number = CONFESSION_PAGE_SIZE
+  limit: number = CONFESSION_PAGE_SIZE,
+  sort: ConfessionSort = 'newest',
+  q = ''
 ): Promise<ConfessionListResponse> {
-  const res = await fetch(`/api/confession/posts?page=${page}&limit=${limit}`, {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+    sort,
+  })
+  const trimmed = q.trim()
+  if (trimmed) params.set('q', trimmed)
+
+  const res = await fetch(`/api/confession/posts?${params.toString()}`, {
     cache: 'default',
   })
   if (!res.ok) {

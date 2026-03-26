@@ -7,15 +7,35 @@
 import { RefreshCw } from 'lucide-react'
 import { ThemeToggle } from '@/components/atoms/theme-toggle'
 import { useConfessionFeed } from '@/hooks/use-confession-feed'
+import { useConfessionHomeScrollRestore } from '@/hooks/use-confession-home-scroll-restore'
 import { ConfessionComposer } from '@/components/confession/confession-composer'
+import { ConfessionFeedControls } from '@/components/confession/confession-feed-controls'
 import { ConfessionPagination } from '@/components/confession/confession-pagination'
 import { ConfessionPostCard } from '@/components/confession/confession-post-card'
 import { SITE_METADATA } from '@/constants/site-metadata.constants'
 import { cn } from '@/lib/styles'
 
 export function ConfessionPage() {
-  const { posts, page, totalPages, ready, error, refresh, setPage, addPost, addComment, addReply, updatePostLike } =
-    useConfessionFeed()
+  const {
+    posts,
+    page,
+    totalPages,
+    ready,
+    error,
+    refresh,
+    setPage,
+    sort,
+    setSort,
+    searchInput,
+    setSearchInput,
+    debouncedQ,
+    addPost,
+    addComment,
+    addReply,
+    updatePostLike,
+  } = useConfessionFeed()
+
+  useConfessionHomeScrollRestore(ready)
 
   return (
     <div className='min-h-dvh bg-[#f0f2f5] text-slate-900 transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100'>
@@ -66,11 +86,21 @@ export function ConfessionPage() {
 
         <ConfessionComposer onSubmit={addPost} className='mb-4' />
 
+        <ConfessionFeedControls
+          sort={sort}
+          onSortChange={setSort}
+          searchInput={searchInput}
+          onSearchInputChange={setSearchInput}
+          className='mb-4'
+        />
+
         {!ready ? (
           <p className='py-12 text-center text-sm text-slate-500 dark:text-zinc-400'>Đang tải những chia sẻ…</p>
         ) : posts.length === 0 && !error ? (
           <p className='rounded-2xl border border-dashed border-slate-300/90 bg-white/70 px-4 py-12 text-center text-sm leading-relaxed text-slate-600 shadow-sm ring-1 ring-slate-900/5 transition-colors duration-300 dark:border-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400 dark:ring-white/10'>
-            Chưa có tâm sự nào. Nếu hôm nay bạn cần một nơi để viết ra — về thuốc, về chờ đợi, về hy vọng hay mệt mỏi — hãy là người mở lời đầu tiên. Có thể bạn sẽ giúp một chị em khác cảm thấy bớt cô đơn.
+            {debouncedQ
+              ? `Không có bài nào khớp “${debouncedQ}”. Thử từ khóa khác hoặc xóa ô tìm kiếm.`
+              : 'Chưa có tâm sự nào. Nếu hôm nay bạn cần một nơi để viết ra — về thuốc, về chờ đợi, về hy vọng hay mệt mỏi — hãy là người mở lời đầu tiên. Có thể bạn sẽ giúp một chị em khác cảm thấy bớt cô đơn.'}
           </p>
         ) : posts.length === 0 && error ? (
           <p className='rounded-2xl border border-dashed border-slate-300/90 bg-white/70 py-12 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-900/5 transition-colors duration-300 dark:border-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400 dark:ring-white/10'>
