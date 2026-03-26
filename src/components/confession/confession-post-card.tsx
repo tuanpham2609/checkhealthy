@@ -195,29 +195,29 @@ export function ConfessionPostCard({
         </div>
       ) : null}
 
-      <div className='mt-3 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-slate-100 px-3 pt-2 pb-px sm:gap-x-10 sm:px-4 dark:border-zinc-800'>
+      <div className='mt-3 flex w-full min-w-0 flex-nowrap items-center justify-between gap-x-2 border-t border-slate-100 px-[20px] pt-2 pb-1 sm:gap-x-4 sm:px-[30px] lg:px-[60px] dark:border-zinc-800'>
         <button
           type='button'
           onClick={toggleLike}
           disabled={likePending}
           aria-pressed={liked}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-xl border border-transparent px-2.5 py-2 text-sm font-medium transition-all hover:border-slate-200/80 hover:bg-slate-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80',
+            'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-2 py-2 text-xs font-medium transition-all hover:border-slate-200/80 hover:bg-slate-50 sm:px-2.5 sm:text-sm dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80',
             liked
               ? 'text-rose-600 dark:text-rose-400'
               : 'text-slate-600 hover:text-[var(--highlight-strong)] dark:text-zinc-300 dark:hover:text-[var(--highlight)]'
           )}
         >
-          <Heart className={cn('size-4', liked && 'fill-current')} aria-hidden />
+          <Heart className={cn('size-4 shrink-0', liked && 'fill-current')} aria-hidden />
           <span>Thả tim</span>
           {likeCount > 0 && <span className='text-slate-400 dark:text-zinc-500'>({likeCount})</span>}
         </button>
         <button
           type='button'
           onClick={() => setShowCommentBox((v) => !v)}
-          className='inline-flex items-center gap-1.5 rounded-xl border border-transparent px-2.5 py-2 text-sm font-medium text-slate-600 transition-all hover:border-slate-200/80 hover:bg-slate-50 hover:text-[var(--highlight-strong)] dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80 dark:hover:text-[var(--highlight)]'
+          className='inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-2 py-2 text-xs font-medium text-slate-600 transition-all hover:border-slate-200/80 hover:bg-slate-50 hover:text-[var(--highlight-strong)] sm:px-2.5 sm:text-sm dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80 dark:hover:text-[var(--highlight)]'
         >
-          <MessageCircle className='size-4' aria-hidden />
+          <MessageCircle className='size-4 shrink-0' aria-hidden />
           Bình luận
           {post.comments.length > 0 && (
             <span className='text-slate-400 dark:text-zinc-500'>({post.comments.length})</span>
@@ -226,9 +226,9 @@ export function ConfessionPostCard({
         <button
           type='button'
           onClick={() => void sharePost()}
-          className='inline-flex items-center gap-1.5 rounded-xl border border-transparent px-2.5 py-2 text-sm font-medium text-slate-600 transition-all hover:border-slate-200/80 hover:bg-slate-50 hover:text-[var(--highlight-strong)] dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80 dark:hover:text-[var(--highlight)]'
+          className='inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-2 py-2 text-xs font-medium text-slate-600 transition-all hover:border-slate-200/80 hover:bg-slate-50 hover:text-[var(--highlight-strong)] sm:px-2.5 sm:text-sm dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80 dark:hover:text-[var(--highlight)]'
         >
-          <Share2 className='size-4' aria-hidden />
+          <Share2 className='size-4 shrink-0' aria-hidden />
           Chia sẻ
         </button>
       </div>
