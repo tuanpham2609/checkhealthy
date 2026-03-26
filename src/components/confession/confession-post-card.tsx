@@ -147,6 +147,7 @@ export function ConfessionPostCard({
     'focus-visible:ring-2 focus-visible:ring-[var(--highlight)] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950'
   )
   const detailHref = `/post/${post.id}`
+  const hasCommentSection = showCommentBox || post.comments.length > 0
 
   return (
     <>
@@ -195,17 +196,17 @@ export function ConfessionPostCard({
         </div>
       ) : null}
 
-      <div className='mt-3 flex w-full min-w-0 flex-nowrap items-center justify-between gap-x-2 border-t border-slate-100 px-[20px] pt-2 pb-1 sm:gap-x-4 sm:px-[30px] lg:px-[60px] dark:border-zinc-800'>
+      <div className='mt-3 flex w-full min-w-0 flex-nowrap items-center justify-between gap-x-2 border-t border-slate-100 px-[20px] py-5 sm:gap-x-4 sm:px-[30px] lg:px-[60px] dark:border-zinc-800'>
         <button
           type='button'
           onClick={toggleLike}
           disabled={likePending}
           aria-pressed={liked}
           className={cn(
-            'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-2 py-2 text-xs font-medium transition-all hover:border-slate-200/80 hover:bg-slate-50 sm:px-2.5 sm:text-sm dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80',
+            'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-2 py-0 text-sm font-medium leading-none sm:px-2.5 sm:text-base',
             liked
               ? 'text-rose-600 dark:text-rose-400'
-              : 'text-slate-600 hover:text-[var(--highlight-strong)] dark:text-zinc-300 dark:hover:text-[var(--highlight)]'
+              : 'text-slate-600 dark:text-zinc-300'
           )}
         >
           <Heart className={cn('size-4 shrink-0', liked && 'fill-current')} aria-hidden />
@@ -215,7 +216,7 @@ export function ConfessionPostCard({
         <button
           type='button'
           onClick={() => setShowCommentBox((v) => !v)}
-          className='inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-2 py-2 text-xs font-medium text-slate-600 transition-all hover:border-slate-200/80 hover:bg-slate-50 hover:text-[var(--highlight-strong)] sm:px-2.5 sm:text-sm dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80 dark:hover:text-[var(--highlight)]'
+          className='inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-2 py-0 text-sm font-medium leading-none text-slate-600 sm:px-2.5 sm:text-base dark:text-zinc-300'
         >
           <MessageCircle className='size-4 shrink-0' aria-hidden />
           Bình luận
@@ -226,14 +227,14 @@ export function ConfessionPostCard({
         <button
           type='button'
           onClick={() => void sharePost()}
-          className='inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-2 py-2 text-xs font-medium text-slate-600 transition-all hover:border-slate-200/80 hover:bg-slate-50 hover:text-[var(--highlight-strong)] sm:px-2.5 sm:text-sm dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/80 dark:hover:text-[var(--highlight)]'
+          className='inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-2 py-0 text-sm font-medium leading-none text-slate-600 sm:px-2.5 sm:text-base dark:text-zinc-300'
         >
           <Share2 className='size-4 shrink-0' aria-hidden />
           Chia sẻ
         </button>
       </div>
 
-      <div className='px-3 pb-3 sm:px-4'>
+      <div className={cn('px-3 sm:px-4', hasCommentSection && 'pb-3')}>
         {showCommentBox && (
           <form onSubmit={submitComment} className='ui-surface-muted mt-3 space-y-2'>
             <input
