@@ -117,7 +117,12 @@ export function PostDetailClient({ postId }: PostDetailClientProps) {
     <div className='min-h-dvh bg-[#f0f2f5] text-slate-900 transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100'>
       <header className='sticky top-0 z-40 border-b border-slate-200/70 bg-white/90 shadow-[0_1px_0_rgba(15,23,42,0.06)] backdrop-blur-xl transition-colors duration-300 dark:border-zinc-800/80 dark:bg-zinc-950/85 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]'>
         <div className='mx-auto flex max-w-[680px] items-center justify-between gap-3 px-4 py-3 lg:max-w-2xl'>
-          <div className='flex min-w-0 flex-1 items-center gap-2.5'>
+          <button
+            type='button'
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className='flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border-0 bg-transparent p-0 text-left text-inherit ring-offset-2 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--highlight)] focus-visible:ring-offset-2 dark:ring-offset-zinc-950'
+            aria-label='Cuộn lên đầu trang'
+          >
             <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--highlight)] to-[var(--highlight-strong)] text-lg shadow-md ring-2 ring-[color-mix(in_lab,var(--highlight)_30%,transparent)]'>
               🤍
             </div>
@@ -130,7 +135,7 @@ export function PostDetailClient({ postId }: PostDetailClientProps) {
               </p>
               <p className='line-clamp-2 text-xs text-slate-500 dark:text-zinc-400 sm:line-clamp-1'>{SITE_METADATA.tagline}</p>
             </div>
-          </div>
+          </button>
           <ThemeToggle />
         </div>
       </header>
