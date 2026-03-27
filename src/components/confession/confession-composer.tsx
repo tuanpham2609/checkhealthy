@@ -4,7 +4,7 @@
 
 'use client'
 
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { ImageIcon, Smile, SendHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/styles'
 import { AvatarCircle } from '@/components/confession/avatar-circle'
@@ -16,6 +16,9 @@ interface ConfessionComposerProps {
   className?: string
 }
 
+/** Khớp với min-h trên textarea — auto-grow không thấp hơn mức này */
+const COMPOSER_TEXTAREA_MIN_HEIGHT_PX = 88
+
 export function ConfessionComposer({ onSubmit, className }: ConfessionComposerProps) {
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
@@ -25,6 +28,26 @@ export function ConfessionComposer({ onSubmit, className }: ConfessionComposerPr
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  /** Auto-grow: reset height rồi theo scrollHeight — ổn định trên Safari iOS khi gõ/xoá dòng */
+  useLayoutEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+
+    const apply = () => {
+      el.style.height = '0px'
+      el.style.overflow = 'hidden'
+      const maxH = Math.min(window.innerHeight * 0.5, 400)
+      const sh = el.scrollHeight
+      const h = Math.min(Math.max(sh, COMPOSER_TEXTAREA_MIN_HEIGHT_PX), maxH)
+      el.style.height = `${h}px`
+      el.style.overflowY = sh > maxH ? 'auto' : 'hidden'
+    }
+
+    apply()
+    window.addEventListener('resize', apply)
+    return () => window.removeEventListener('resize', apply)
+  }, [content])
 
   function insertEmoji(emoji: string) {
     const el = textareaRef.current
@@ -120,9 +143,9 @@ export function ConfessionComposer({ onSubmit, className }: ConfessionComposerPr
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder='Chia sẻ cảm xúc, cột mốc điều trị, điều lo lắng hay điều bạn cần được lắng nghe…'
-            rows={3}
+            rows={1}
             maxLength={5000}
-            className='ui-input min-h-[88px] resize-y'
+            className='ui-input min-h-[88px] max-h-[50vh] resize-none overflow-x-hidden'
           />
 
           {imageUrls.length > 0 && (
