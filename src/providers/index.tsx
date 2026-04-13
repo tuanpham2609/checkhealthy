@@ -12,7 +12,13 @@ import { QueryProvider } from '@/providers/query-provider'
 export default function ProviderRegistry({ children }: Readonly<PropsWithChildren>) {
   return (
     <QueryProvider>
-      <ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange={false}>
+      <ThemeProvider
+        attribute='class'
+        defaultTheme='light'
+        enableSystem={false}
+        forcedTheme='light'
+        disableTransitionOnChange={false}
+      >
         <ThemeColorSync />
         {children}
       </ThemeProvider>

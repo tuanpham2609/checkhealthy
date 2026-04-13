@@ -15,15 +15,12 @@ import { THEME_CHROME } from '@/constants/theme-chrome.constants'
 
 const baseUrl = new URL(SITE_METADATA.siteUrl)
 
-/** Lần paint đầu (trước JS): theo hệ thống: client ThemeColorSync sẽ khớp toggle theme */
+/** Chỉ light mode — theme-color cố định; ThemeColorSync đồng bộ cùng giá trị. */
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: THEME_CHROME.light },
-    { media: '(prefers-color-scheme: dark)', color: THEME_CHROME.dark },
-  ],
+  themeColor: THEME_CHROME.light,
 }
 
 export const metadata: Metadata = {
