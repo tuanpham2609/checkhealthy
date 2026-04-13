@@ -1,7 +1,6 @@
 {
-  "name": "Tâm sự",
-  "short_name": "Tâm sự",
-  "description": "Chia sẻ ẩn danh và công cụ nội bộ.",
+  "name": "Phần mềm quản lý công việc",
+  "short_name": "QLCV",
   "icons": [
     {
       "src": "/assets/app-brand.png",
@@ -15,6 +14,5 @@
   "display": "standalone",
   "start_url": "/",
   "orientation": "portrait-primary",
-  "lang": "vi",
-  "categories": ["social", "utilities"]
+  "lang": "vi"
 }

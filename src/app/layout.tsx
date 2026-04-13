@@ -9,10 +9,8 @@ import { cn } from '@/lib/styles'
 import { PropsWithChildren } from 'react'
 import { FONT_SANS, FONT_SERIF } from '@/styles/fonts'
 import { AppShell } from '@/components/templates/app-shell'
-import { SITE_METADATA } from '@/constants/site-metadata.constants'
+import { APP_DOCUMENT_TITLE } from '@/constants/site-metadata.constants'
 import { THEME_CHROME } from '@/constants/theme-chrome.constants'
-
-const baseUrl = new URL(SITE_METADATA.siteUrl)
 
 /** Chỉ light mode — theme-color cố định; ThemeColorSync đồng bộ cùng giá trị. */
 export const viewport: Viewport = {
@@ -22,17 +20,13 @@ export const viewport: Viewport = {
   themeColor: THEME_CHROME.light,
 }
 
+/** Không khai báo description, Open Graph, Twitter Card, keywords, canonical — chỉ title tối thiểu. */
 export const metadata: Metadata = {
-  metadataBase: baseUrl,
-  title: {
-    default: SITE_METADATA.title,
-    template: `%s | ${SITE_METADATA.titleHeader}`,
-  },
-  formatDetection: { email: false, address: false, telephone: false },
-  appleWebApp: {
-    capable: true,
-    title: SITE_METADATA.titleHeader,
-    statusBarStyle: 'default',
+  title: APP_DOCUMENT_TITLE,
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
   },
 }
 

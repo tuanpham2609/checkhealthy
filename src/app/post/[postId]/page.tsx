@@ -3,7 +3,7 @@
  */
 
 import type { Metadata } from 'next'
-import { SITE_METADATA } from '@/constants/site-metadata.constants'
+import { APP_DOCUMENT_TITLE } from '@/constants/site-metadata.constants'
 import { createSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin'
 import { PostDetailClient } from './post-detail-client'
 
@@ -13,27 +13,27 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { postId } = await params
-  const fallbackTitle = `Bài viết | ${SITE_METADATA.titleHeader}`
 
   if (!postId || !/^[0-9a-f-]{36}$/i.test(postId)) {
-    return { title: fallbackTitle }
+    return { title: { absolute: `Bài viết | ${APP_DOCUMENT_TITLE}` } }
   }
 
   if (!isSupabaseConfigured()) {
-    return { title: fallbackTitle }
+    return { title: { absolute: `Bài viết | ${APP_DOCUMENT_TITLE}` } }
   }
 
   try {
     const supabase = createSupabaseAdmin()
-    const { data } = await supabase.from('confession_posts').select('author, content').eq('id', postId).maybeSingle()
+    const { data } = await supabase.from('confession_posts').select('author').eq('id', postId).maybeSingle()
 
     if (!data) {
-      return { title: `Không tìm thấy | ${SITE_METADATA.titleHeader}` }
+      return { title: { absolute: `Không tìm thấy | ${APP_DOCUMENT_TITLE}` } }
     }
 
-    return { title: `${data.author} — ${SITE_METADATA.titleHeader}` }
+    const author = data.author?.trim() || 'Ẩn danh'
+    return { title: { absolute: `${author} | ${APP_DOCUMENT_TITLE}` } }
   } catch {
-    return { title: fallbackTitle }
+    return { title: { absolute: `Bài viết | ${APP_DOCUMENT_TITLE}` } }
   }
 }
 

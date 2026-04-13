@@ -16,7 +16,10 @@ function publicSiteUrl(): string {
 
 const SITE_URL = publicSiteUrl()
 
-/** Nội dung hiển thị trên giao diện (header, chân trang, v.v.) */
+/** Tiêu đề tab trình duyệt — chỉ dùng trong `metadata`, không gắn với phần tâm sự trên UI */
+export const APP_DOCUMENT_TITLE = 'Phần mềm quản lý công việc'
+
+/** Nội dung hiển thị trên giao diện (header tâm sự, chân trang, v.v.) */
 export const SITE_METADATA = {
   titleHeader: 'Tâm sự',
   title: 'Tâm sự',
