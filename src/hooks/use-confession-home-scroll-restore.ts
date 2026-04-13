@@ -6,7 +6,7 @@
 
 import { useEffect } from 'react'
 
-const STORAGE_KEY = 'ivf-confession-home-scroll-y'
+const STORAGE_KEY = 'confession-home-scroll-y'
 
 export function persistConfessionHomeScrollNow() {
   if (typeof window === 'undefined') return

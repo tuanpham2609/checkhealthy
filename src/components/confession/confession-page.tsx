@@ -52,7 +52,7 @@ export function ConfessionPage() {
             </div>
             <div className='min-w-0'>
               <p className='text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>
-                Cộng đồng IVF
+                Viết ẩn danh
               </p>
               <h1 className='font-serif truncate text-lg font-semibold leading-tight tracking-tight text-slate-900 dark:text-zinc-50'>
                 {SITE_METADATA.titleHeader}
@@ -65,9 +65,9 @@ export function ConfessionPage() {
       </header>
 
       <main className='mx-auto max-w-[680px] px-3 py-4 sm:px-4 lg:max-w-2xl'>
-        <section className='ui-surface mb-4 px-4 py-3.5' aria-labelledby='ivf-intro-heading'>
-          <h2 id='ivf-intro-heading' className='font-serif text-sm font-semibold tracking-tight text-slate-800 dark:text-zinc-100'>
-            Gửi những điều bạn đang mang theo trong hành trình IVF
+        <section className='ui-surface mb-4 px-4 py-3.5' aria-labelledby='intro-heading'>
+          <h2 id='intro-heading' className='font-serif text-sm font-semibold tracking-tight text-slate-800 dark:text-zinc-100'>
+            Gửi điều bạn đang mang theo — không cần ký tên
           </h2>
           <p className='mt-2 text-sm leading-relaxed text-slate-600 dark:text-zinc-400'>{SITE_METADATA.introParagraph}</p>
         </section>
@@ -105,7 +105,7 @@ export function ConfessionPage() {
           <p className='rounded-2xl border border-dashed border-slate-300/90 bg-white/70 px-4 py-12 text-center text-sm leading-relaxed text-slate-600 shadow-sm ring-1 ring-slate-900/5 transition-colors duration-300 dark:border-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400 dark:ring-white/10'>
             {debouncedQ
               ? `Không có bài nào khớp “${debouncedQ}”. Thử từ khóa khác hoặc xóa ô tìm kiếm.`
-              : 'Chưa có tâm sự nào. Nếu hôm nay bạn cần một nơi để viết ra — về thuốc, về chờ đợi, về hy vọng hay mệt mỏi — hãy là người mở lời đầu tiên. Có thể bạn sẽ giúp một chị em khác cảm thấy bớt cô đơn.'}
+              : 'Chưa có tâm sự nào. Nếu hôm nay bạn cần một nơi để viết ra — về lo lắng, về chờ đợi, về hy vọng hay mệt mỏi — hãy là người mở lời đầu tiên. Có thể bạn sẽ giúp người khác cảm thấy bớt cô đơn.'}
           </p>
         ) : posts.length === 0 && error ? (
           <p className='rounded-2xl border border-dashed border-slate-300/90 bg-white/70 py-12 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-900/5 transition-colors duration-300 dark:border-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400 dark:ring-white/10'>

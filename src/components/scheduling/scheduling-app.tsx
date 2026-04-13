@@ -380,7 +380,7 @@ export function SchedulingApp() {
                       className={inputCls}
                       value={payload.name}
                       onChange={(e) => setPayload({ ...payload, name: e.target.value })}
-                      placeholder='Ví dụ: Lịch sáng — khoa IVF'
+                      placeholder='Ví dụ: Lịch sáng — phòng thủ thuật'
                       autoComplete='off'
                     />
                   </div>

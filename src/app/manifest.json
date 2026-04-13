@@ -1,10 +1,10 @@
 {
-  "name": "Tâm sự IVF — Cộng đồng hành trình thụ tinh trong ống nghiệm",
-  "short_name": "Tâm sự IVF",
-  "description": "Chia sẻ ẩn danh về IVF: tâm sự, hỏi đáp, động viên. Mong mỗi chị em đều được đồng hành trên đường về với em bé.",
+  "name": "Tâm sự",
+  "short_name": "Tâm sự",
+  "description": "Chia sẻ ẩn danh và công cụ nội bộ.",
   "icons": [
     {
-      "src": "/assets/ivf-heart-brand.png",
+      "src": "/assets/app-brand.png",
       "sizes": "895x901",
       "type": "image/png",
       "purpose": "any"
@@ -16,5 +16,5 @@
   "start_url": "/",
   "orientation": "portrait-primary",
   "lang": "vi",
-  "categories": ["health", "social", "lifestyle"]
+  "categories": ["social", "utilities"]
 }

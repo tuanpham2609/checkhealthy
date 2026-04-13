@@ -1,6 +1,6 @@
-# Supabase cho **Tâm sự IVF**
+# Supabase cho ứng dụng
 
-Backend cho ứng dụng cộng đồng chia sẻ hành trình thụ tinh trong ống nghiệm (IVF).
+Backend cho phần tâm sự ẩn danh, API confession và (nếu bật) sắp lịch thủ thuật.
 
 ## Bạn cần cung cấp / lấy ở đâu
 
@@ -19,7 +19,7 @@ Backend cho ứng dụng cộng đồng chia sẻ hành trình thụ tinh trong 
    - `supabase/migrations/20250320120000_confession.sql` — bảng bài + bình luận  
    - `supabase/migrations/20250320140000_confession_images_storage.sql` — cột `image_urls`, bucket Storage `confession-media`, policy đọc công khai  
    - `supabase/migrations/20250324120000_confession_likes.sql` — cột `like_count`, bảng `confession_post_likes` (tim ẩn danh theo cookie `confession_vid`)
-   - `supabase/migrations/20260413120000_scheduling.sql` — bảng `sched_contexts`, `sched_assignments` (trang **Sắp lịch thủ thuật** tại `/scheduling`)
+   - `supabase/migrations/20260413120000_scheduling.sql` — bảng `sched_contexts`, `sched_assignments` (sắp lịch thủ thuật trên **trang chủ** `/`)
 
 ## API trong repo
 

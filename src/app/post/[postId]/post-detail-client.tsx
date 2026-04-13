@@ -128,7 +128,7 @@ export function PostDetailClient({ postId }: PostDetailClientProps) {
             </div>
             <div className='min-w-0'>
               <p className='text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>
-                Cộng đồng IVF
+                Viết ẩn danh
               </p>
               <p className='font-serif truncate text-lg font-semibold leading-tight tracking-tight text-slate-900 dark:text-zinc-50'>
                 {SITE_METADATA.titleHeader}
