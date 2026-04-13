@@ -69,7 +69,7 @@ export function SchedulingApp() {
       setPayload(data)
       setContextId(id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi tải phiên')
+      setError(e instanceof Error ? e.message : 'Lỗi tải bản lịch')
     } finally {
       setBusy(false)
     }
@@ -89,7 +89,7 @@ export function SchedulingApp() {
         }
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Lỗi tải danh sách phiên')
+          setError(e instanceof Error ? e.message : 'Lỗi tải danh sách bản lịch')
         }
       } finally {
         if (!cancelled) setBootstrapping(false)
@@ -147,9 +147,9 @@ export function SchedulingApp() {
         const nextCtx = data.context
         setPayload(nextCtx)
         if (nextCtx.settings.autoSaveAfterSchedule) {
-          const ok = window.confirm('Chia giờ xong. Bạn có muốn lưu phiên mới (sao chép) không?')
+          const ok = window.confirm('Đã xếp lịch xong. Bạn có muốn lưu thêm một bản lịch mới (bản sao) không?')
           if (ok) {
-            const name = window.prompt('Tên phiên mới', `${nextCtx.name} — ${new Date().toLocaleString('vi-VN')}`)
+            const name = window.prompt('Đặt tên cho bản lịch mới', `${nextCtx.name} — ${new Date().toLocaleString('vi-VN')}`)
             if (name?.trim()) {
               const cloneRes = await fetch('/api/scheduling/contexts', {
                 method: 'POST',
@@ -164,7 +164,7 @@ export function SchedulingApp() {
         }
         setOutputTab(data.unscheduled.length ? 'unsorted' : 'results')
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Lỗi chia giờ')
+        setError(e instanceof Error ? e.message : 'Lỗi xếp lịch')
       } finally {
         setBusy(false)
       }
@@ -198,7 +198,7 @@ export function SchedulingApp() {
       await refreshList()
       await loadContext(data.id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi tạo phiên')
+      setError(e instanceof Error ? e.message : 'Lỗi tạo bản lịch mới')
     } finally {
       setBusy(false)
     }
@@ -206,7 +206,7 @@ export function SchedulingApp() {
 
   const deleteCurrentContext = useCallback(async () => {
     if (!contextId) return
-    const ok = window.confirm('Xóa hẳn phiên này trên Supabase? Hành động không hoàn tác.')
+    const ok = window.confirm('Xóa hẳn bản lịch này trên máy chủ? Không thể hoàn tác.')
     if (!ok) return
     setBusy(true)
     setError(null)
@@ -217,7 +217,7 @@ export function SchedulingApp() {
       setPayload(null)
       await refreshList()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi xóa phiên')
+      setError(e instanceof Error ? e.message : 'Lỗi xóa bản lịch')
     } finally {
       setBusy(false)
     }
@@ -225,7 +225,7 @@ export function SchedulingApp() {
 
   const deleteContextById = useCallback(
     async (id: string) => {
-      const ok = window.confirm('Xóa phiên này? Không hoàn tác.')
+      const ok = window.confirm('Xóa bản lịch này? Không thể hoàn tác.')
       if (!ok) return
       setBusy(true)
       setError(null)
@@ -238,7 +238,7 @@ export function SchedulingApp() {
         }
         await refreshList()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Lỗi xóa phiên')
+        setError(e instanceof Error ? e.message : 'Lỗi xóa bản lịch')
       } finally {
         setBusy(false)
       }
@@ -248,7 +248,7 @@ export function SchedulingApp() {
 
   const saveAsNew = useCallback(async () => {
     if (!payload) return
-    const name = window.prompt('Tên phiên mới', payload.name)
+    const name = window.prompt('Tên bản lịch mới', payload.name)
     if (!name?.trim()) return
     setBusy(true)
     setError(null)
@@ -267,7 +267,7 @@ export function SchedulingApp() {
       await refreshList()
       await loadContext(data.id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi lưu phiên mới')
+      setError(e instanceof Error ? e.message : 'Lỗi lưu bản lịch mới')
     } finally {
       setBusy(false)
     }
@@ -331,10 +331,10 @@ export function SchedulingApp() {
                 void refreshList().then(() => setSessionPickerOpen(true))
               }}
             >
-              Tải / quản lý phiên
+              Mở bản lịch đã lưu
             </button>
             <button type='button' className={btnPrimary} onClick={() => void createSession()}>
-              Phiên mới
+              Tạo bản lịch mới
             </button>
           </div>
         </header>
@@ -355,13 +355,15 @@ export function SchedulingApp() {
               'py-14 text-center shadow-[0_8px_32px_-14px_color-mix(in_oklch,var(--highlight-strong)_16%,transparent)]',
             )}
           >
-            <p className='text-sm font-medium text-muted-foreground'>Đang tải phiên gần nhất…</p>
+            <p className='text-sm font-medium text-muted-foreground'>Đang tải bản lịch gần nhất…</p>
           </div>
         ) : !contextId || !payload ? (
           <div className='rounded-2xl border-2 border-dashed border-[color-mix(in_oklch,var(--highlight)_36%,var(--border))] bg-card/80 p-10 text-center shadow-sm backdrop-blur-sm dark:border-[color-mix(in_oklch,var(--highlight)_28%,var(--border))] dark:bg-card/45'>
-            <p className='text-muted-foreground'>Chưa có phiên nào. Chọn &quot;Phiên mới&quot; hoặc tải danh sách đã lưu.</p>
+            <p className='text-muted-foreground'>
+              Chưa có bản lịch nào. Bấm &quot;Tạo bản lịch mới&quot; hoặc mở danh sách đã lưu.
+            </p>
             <button type='button' className={cn(btnPrimary, 'mt-5')} onClick={() => void createSession()}>
-              Tạo phiên đầu tiên
+              Tạo bản lịch đầu tiên
             </button>
           </div>
         ) : (
@@ -371,14 +373,14 @@ export function SchedulingApp() {
                 <div className='grid grid-cols-1 gap-7 lg:grid-cols-2 lg:gap-x-14 lg:gap-y-6'>
                   <div className='min-w-0 space-y-0'>
                     <label className={fieldLabelCls} htmlFor='sched-session-name'>
-                      Tên phiên
+                      Tên bản lịch
                     </label>
                     <input
                       id='sched-session-name'
                       className={inputCls}
                       value={payload.name}
                       onChange={(e) => setPayload({ ...payload, name: e.target.value })}
-                      placeholder='Ví dụ: Phiên sáng — khoa IVF'
+                      placeholder='Ví dụ: Lịch sáng — khoa IVF'
                       autoComplete='off'
                     />
                   </div>
@@ -393,29 +395,29 @@ export function SchedulingApp() {
                 </div>
                 <div className='border-t border-[color-mix(in_oklch,var(--highlight)_20%,var(--border))] pt-8 dark:border-zinc-700/80'>
                   <p className='mb-4 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>
-                    Thao tác phiên
+                    Lưu và chạy xếp lịch
                   </p>
                   <div className='flex flex-col gap-4'>
                     <div className='flex flex-wrap gap-3'>
                       <button type='button' className={btnSecondary} disabled={busy} onClick={() => void saveContext()}>
-                        Lưu phiên
+                        Lưu lên máy chủ
                       </button>
                       <button type='button' className={btnDanger} disabled={busy} onClick={() => void deleteCurrentContext()}>
-                        Xóa phiên
+                        Xóa bản lịch này
                       </button>
                       <button type='button' className={btnSecondary} disabled={busy} onClick={() => void saveAsNew()}>
-                        Lưu tên khác
+                        Lưu thành bản mới (đổi tên)
                       </button>
                       <button type='button' className={btnSecondary} disabled={busy} onClick={exportCsv}>
-                        Xuất Excel (CSV)
+                        Xuất file Excel (CSV)
                       </button>
                     </div>
                     <div className='flex flex-wrap gap-3'>
                       <button type='button' className={btnPrimary} disabled={busy} onClick={() => void run('full')}>
-                        Chạy: làm mới toàn bộ
+                        Xếp lịch lại từ đầu
                       </button>
                       <button type='button' className={btnPrimary} disabled={busy} onClick={() => void run('preserve')}>
-                        Chạy: bảo tồn ca cũ
+                        Xếp lịch, giữ các ca đã có
                       </button>
                     </div>
                   </div>
@@ -426,13 +428,13 @@ export function SchedulingApp() {
             <section className={cn(panelCls, 'mb-8')}>
               <h2 className='mb-6 flex items-center gap-3 text-sm font-bold uppercase tracking-wider text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>
                 <span className='h-1.5 w-5 rounded-full bg-[var(--highlight-strong)] dark:bg-[var(--highlight)]' aria-hidden />
-                Cài đặt
+                Tuỳ chọn xếp lịch
               </h2>
-              <div className='flex flex-col gap-5'>
-                <label className='flex cursor-pointer items-start gap-3 rounded-lg py-1 text-sm leading-snug sm:items-center'>
+              <div className='flex flex-col gap-6'>
+                <label className='flex cursor-pointer items-start gap-3 rounded-lg py-1 text-sm leading-snug'>
                   <input
                     type='checkbox'
-                    className='mt-0.5 size-[1.125rem] shrink-0 rounded border-zinc-300 text-[var(--highlight-strong)] accent-[var(--highlight-strong)] focus:ring-2 focus:ring-[color-mix(in_oklch,var(--highlight)_40%,transparent)] sm:mt-0 dark:border-zinc-600'
+                    className='mt-0.5 size-[1.125rem] shrink-0 rounded border-zinc-300 text-[var(--highlight-strong)] accent-[var(--highlight-strong)] focus:ring-2 focus:ring-[color-mix(in_oklch,var(--highlight)_40%,transparent)] dark:border-zinc-600'
                     checked={payload.settings.autoSaveAfterSchedule}
                     onChange={(e) =>
                       setPayload({
@@ -441,12 +443,17 @@ export function SchedulingApp() {
                       })
                     }
                   />
-                  Tự động hỏi lưu phiên sau khi chia giờ
+                  <span>
+                    <span className='font-medium text-foreground'>Hỏi có muốn lưu bản lịch mới sau khi xếp xong</span>
+                    <span className='mt-1 block text-xs leading-relaxed text-muted-foreground'>
+                      Khi bạn bấm xếp lịch và chạy xong, chương trình sẽ hỏi có muốn lưu thêm một bản sao (tên khác) hay không.
+                    </span>
+                  </span>
                 </label>
-                <label className='flex cursor-pointer items-start gap-3 rounded-lg py-1 text-sm leading-snug sm:items-center'>
+                <label className='flex cursor-pointer items-start gap-3 rounded-lg py-1 text-sm leading-snug'>
                   <input
                     type='checkbox'
-                    className='mt-0.5 size-[1.125rem] shrink-0 rounded border-zinc-300 text-[var(--highlight-strong)] accent-[var(--highlight-strong)] focus:ring-2 focus:ring-[color-mix(in_oklch,var(--highlight)_40%,transparent)] sm:mt-0 dark:border-zinc-600'
+                    className='mt-0.5 size-[1.125rem] shrink-0 rounded border-zinc-300 text-[var(--highlight-strong)] accent-[var(--highlight-strong)] focus:ring-2 focus:ring-[color-mix(in_oklch,var(--highlight)_40%,transparent)] dark:border-zinc-600'
                     checked={payload.settings.allowAdjacentPillow}
                     onChange={(e) =>
                       setPayload({
@@ -455,17 +462,25 @@ export function SchedulingApp() {
                       })
                     }
                   />
-                  Cho phép gối đầu sát nhau (bỏ nghỉ chuyển thủ thuật)
+                  <span>
+                    <span className='font-medium text-foreground'>Cho hai ca khác loại của cùng bác sĩ được nối liền nhau</span>
+                    <span className='mt-1 block text-xs leading-relaxed text-muted-foreground'>
+                      Thông thường, giữa hai ca khác loại trên cùng một bác sĩ phải có ít nhất vài phút nghỉ (ô số bên dưới). Bật mục này thì không bắt buộc phải nghỉ ở giữa.
+                    </span>
+                  </span>
                 </label>
-                <label className='flex flex-col gap-2.5 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4'>
-                  <span className='shrink-0 text-zinc-700 dark:text-zinc-300'>Nghỉ giữa gối khác loại (phút)</span>
+                <label className='flex flex-col gap-2 text-sm'>
+                  <span className='font-medium text-foreground'>Số phút nghỉ tối thiểu giữa hai ca khác loại (cùng bác sĩ)</span>
+                  <span className='text-xs leading-relaxed text-muted-foreground'>
+                    Chỉ áp dụng khi bạn không bật &quot;Cho hai ca… nối liền&quot; ở trên. Thường để 3 phút.
+                  </span>
                   <input
                     type='number'
                     min={0}
-                    className={cn(inputCls, 'w-28 sm:w-24')}
+                    className={cn(inputCls, 'w-full max-w-[10rem] sm:w-28')}
                     value={payload.settings.pillowGapMinutes}
                     placeholder='3'
-                    title='Mặc định thường dùng: 3 phút'
+                    title='Thường dùng 3 phút'
                     onChange={(e) =>
                       setPayload({
                         ...payload,
@@ -484,10 +499,10 @@ export function SchedulingApp() {
               {(
                 [
                   ['doctors', 'Bác sĩ'],
-                  ['machines', 'Máy móc'],
+                  ['machines', 'Máy'],
                   ['procedures', 'Thủ thuật'],
                   ['patients', 'Bệnh nhân'],
-                  ['output', 'Kết quả & thống kê'],
+                  ['output', 'Kết quả và báo cáo'],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -535,10 +550,10 @@ export function SchedulingApp() {
                       ['results', 'Kết quả'],
                       ['unsorted', 'Chưa xếp'],
                       ['stats', 'Thống kê'],
-                      ['docTime', 'Thời gian BS'],
-                      ['machTime', 'Thời gian máy'],
-                      ['gantt', 'Gantt bác sĩ'],
-                      ['estimate', 'Ước tính thêm ca'],
+                      ['docTime', 'Giờ bác sĩ tại ca'],
+                      ['machTime', 'Giờ máy chạy'],
+                      ['gantt', 'Biểu đồ theo bác sĩ'],
+                      ['estimate', 'Ước tính còn xếp thêm được'],
                     ] as const
                   ).map(([id, label]) => (
                     <button
@@ -563,7 +578,7 @@ export function SchedulingApp() {
                 {outputTab === 'stats' ? <StatsTable rows={stats} /> : null}
                 {outputTab === 'docTime' ? (
                   <SlicesTable
-                    title='Thời gian bác sĩ (gối)'
+                    title='Bác sĩ — thời gian phải có mặt tại ca'
                     rows={doctorSlices.map((s) => ({
                       label: s.doctorName,
                       patientName: s.patientName,
@@ -575,7 +590,7 @@ export function SchedulingApp() {
                 ) : null}
                 {outputTab === 'machTime' ? (
                   <SlicesTable
-                    title='Thời gian máy (cả ca)'
+                    title='Máy — từ lúc bắt đầu đến lúc xong ca'
                     rows={machineSlices.map((s) => ({
                       label: s.label,
                       patientName: s.patientName,
@@ -708,7 +723,7 @@ function SessionPickerModal({
     >
       <div className='max-h-[80vh] w-full max-w-lg overflow-hidden rounded-2xl border border-[color-mix(in_oklch,var(--border)_75%,var(--highlight)_25%)] bg-card shadow-2xl shadow-[0_24px_64px_-16px_color-mix(in_oklch,var(--highlight-strong)_25%,transparent)] ring-1 ring-white/60 dark:border-[color-mix(in_oklch,var(--border)_82%,var(--highlight)_18%)] dark:bg-card dark:ring-white/[0.08]'>
         <div className='flex flex-wrap items-center justify-between gap-3 border-b border-[color-mix(in_oklch,var(--highlight)_14%,var(--border))] bg-[color-mix(in_oklch,var(--highlight)_8%,var(--muted))] px-5 py-4 dark:border-[color-mix(in_oklch,var(--border)_88%,var(--highlight)_12%)] dark:bg-[color-mix(in_oklch,var(--highlight)_6%,var(--muted))]'>
-          <h3 className='font-semibold text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>Phiên đã lưu</h3>
+          <h3 className='font-semibold text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>Bản lịch đã lưu</h3>
           <button type='button' className={btnSecondary} onClick={onRefresh} disabled={busy}>
             Làm mới danh sách
           </button>
@@ -727,7 +742,7 @@ function SessionPickerModal({
                   className='min-w-0 flex-1 rounded-lg px-3 py-2.5 text-left text-sm text-foreground hover:bg-[color-mix(in_oklch,var(--highlight)_10%,var(--muted))] dark:hover:bg-[color-mix(in_oklch,var(--highlight)_8%,var(--muted))]'
                   onClick={() => onPick(c.id)}
                 >
-                  <div className='font-medium'>{c.name || '(Chưa đặt tên phiên)'}</div>
+                  <div className='font-medium'>{c.name || '(Chưa đặt tên)'}</div>
                   <div className='text-xs text-muted-foreground'>
                     {c.scheduling_date} · cập nhật {new Date(c.updated_at).toLocaleString('vi-VN')}
                   </div>
@@ -736,8 +751,8 @@ function SessionPickerModal({
                   type='button'
                   className='shrink-0 self-center rounded-lg border-2 border-red-200 bg-red-50/80 px-3 py-2 text-xs font-semibold text-red-800 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800/55 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-950/50'
                   disabled={busy}
-                  title='Xóa phiên'
-                  aria-label={`Xóa phiên ${c.name || c.id}`}
+                  title='Xóa bản lịch'
+                  aria-label={`Xóa bản lịch ${c.name || c.id}`}
                   onClick={(e) => {
                     e.stopPropagation()
                     onDelete(c.id)
@@ -748,7 +763,7 @@ function SessionPickerModal({
               </div>
             </li>
           ))}
-          {contexts.length === 0 ? <li className='px-4 py-10 text-center text-sm text-muted-foreground'>Chưa có phiên.</li> : null}
+          {contexts.length === 0 ? <li className='px-4 py-10 text-center text-sm text-muted-foreground'>Chưa có bản lịch nào.</li> : null}
         </ul>
         <div className='border-t border-[color-mix(in_oklch,var(--border)_90%,var(--highlight)_10%)] p-4 dark:border-[color-mix(in_oklch,var(--border)_88%,var(--highlight)_12%)]'>
           <button type='button' className={cn(btnSecondary, 'w-full')} onClick={onClose}>
@@ -788,13 +803,13 @@ function DoctorsEditor({
   return (
     <section className={cn(panelCls, 'space-y-6')}>
       <div className='flex flex-col gap-4 border-b border-[color-mix(in_oklch,var(--highlight)_15%,var(--border))] pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700/80'>
-        <h2 className='text-lg font-semibold text-foreground'>Tab bác sĩ</h2>
+        <h2 className='text-lg font-semibold text-foreground'>Danh sách bác sĩ</h2>
         <button type='button' className={btnSecondary} onClick={add}>
           Thêm bác sĩ
         </button>
       </div>
       <p className='text-sm leading-relaxed text-muted-foreground'>
-        Mã BS dùng trong tab thủ thuật (A, B…). Buổi không làm: nhập cùng giờ bắt đầu/kết thúc (vd 07:30–07:30).
+        Mã bác sĩ phải trùng với phần nhập ở mục Thủ thuật (ví dụ A, B). Ca nghỉ: nhập giờ bắt đầu và kết thúc giống nhau (ví dụ 07:30–07:30).
       </p>
       <div className='space-y-6'>
         {doctors.map((d, i) => (
@@ -804,7 +819,7 @@ function DoctorsEditor({
                 className={inputCls}
                 value={d.code}
                 onChange={(e) => update(i, { code: e.target.value })}
-                placeholder='Mã BS (vd A, B)'
+                placeholder='Mã bác sĩ (vd A, B)'
                 autoComplete='off'
               />
               <input
@@ -815,7 +830,7 @@ function DoctorsEditor({
                 autoComplete='name'
               />
               <div className='sm:col-span-2'>
-                <p className={subLabelCls}>Ca sáng — bắt đầu / kết thúc</p>
+                <p className={subLabelCls}>Buổi sáng — giờ vào / giờ ra</p>
                 <div className='flex flex-wrap gap-3'>
                   <SchedTimeField
                     ariaLabel={`Bác sĩ ${d.name || d.code || i + 1}: giờ bắt đầu ca sáng`}
@@ -830,7 +845,7 @@ function DoctorsEditor({
                 </div>
               </div>
               <div className='sm:col-span-2'>
-                <p className={subLabelCls}>Ca chiều — bắt đầu / kết thúc</p>
+                <p className={subLabelCls}>Buổi chiều — giờ vào / giờ ra</p>
                 <div className='flex flex-wrap gap-3'>
                   <SchedTimeField
                     ariaLabel={`Bác sĩ ${d.name || d.code || i + 1}: giờ bắt đầu ca chiều`}
@@ -846,7 +861,7 @@ function DoctorsEditor({
               </div>
             </div>
             <BusyEditor
-              label='Khung giờ bận'
+              label='Những lúc bác sĩ không xếp ca'
               busy={d.busy}
               onChange={(busy) => update(i, { busy })}
             />
@@ -878,12 +893,14 @@ function MachinesEditor({
   return (
     <section className={cn(panelCls, 'space-y-6')}>
       <div className='flex flex-col gap-4 border-b border-[color-mix(in_oklch,var(--highlight)_15%,var(--border))] pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700/80'>
-        <h2 className='text-lg font-semibold text-foreground'>Tab máy móc</h2>
+        <h2 className='text-lg font-semibold text-foreground'>Danh sách máy</h2>
         <button type='button' className={btnSecondary} onClick={add}>
           Thêm máy
         </button>
       </div>
-      <p className='text-sm leading-relaxed text-muted-foreground'>Cùng loại máy (vd điện xung) nhưng tên riêng khác nhau.</p>
+      <p className='text-sm leading-relaxed text-muted-foreground'>
+        Một loại máy có thể có nhiều máy riêng (ví dụ cùng loại &quot;Điện xung&quot; nhưng tên máy 1, máy 2).
+      </p>
       <div className='space-y-6'>
         {machines.map((m, i) => (
           <div key={m.id} className='rounded-xl border border-[color-mix(in_oklch,var(--highlight)_18%,var(--border))] bg-[color-mix(in_oklch,var(--highlight)_7%,var(--card))] p-4 sm:p-5 dark:border-[color-mix(in_oklch,var(--border)_82%,var(--highlight)_18%)] dark:bg-[color-mix(in_oklch,var(--card)_90%,var(--muted)_10%)]'>
@@ -903,7 +920,7 @@ function MachinesEditor({
                 autoComplete='off'
               />
             </div>
-            <BusyEditor label='Giờ bận máy' busy={m.busy} onChange={(busy) => update(i, { busy })} />
+            <BusyEditor label='Những lúc máy không dùng được' busy={m.busy} onChange={(busy) => update(i, { busy })} />
             <button type='button' className='mt-4 text-sm font-medium text-red-600 hover:underline dark:text-red-400' onClick={() => onChange(machines.filter((_, idx) => idx !== i))}>
               Xóa máy
             </button>
@@ -941,13 +958,14 @@ function ProceduresEditor({
   return (
     <section className={cn(panelCls, 'space-y-6')}>
       <div className='flex flex-col gap-4 border-b border-[color-mix(in_oklch,var(--highlight)_15%,var(--border))] pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700/80'>
-        <h2 className='text-lg font-semibold text-foreground'>Tab thủ thuật</h2>
+        <h2 className='text-lg font-semibold text-foreground'>Danh sách thủ thuật</h2>
         <button type='button' className={btnSecondary} onClick={add}>
           Thêm thủ thuật
         </button>
       </div>
       <p className='text-sm leading-relaxed text-muted-foreground'>
-        TG thủ thuật = thời lượng 1 BN; TG gối = lúc BS phải có mặt. BS chính A,B cách nhau dấu phẩy; thay thế B--C--D.
+        Thời lượng ca = thời gian làm cho một bệnh nhân. Thời gian bác sĩ tại chỗ = lúc bác sĩ phải có mặt trong ca. Bác sĩ
+        chính nhiều người thì ghi A, B (dấu phẩy). Bác sĩ thay thế ghi kiểu B--C--D.
       </p>
       <div className='space-y-6'>
         {procedures.map((p, i) => (
@@ -964,11 +982,11 @@ function ProceduresEditor({
                 className={inputCls}
                 value={p.machineType}
                 onChange={(e) => update(i, { machineType: e.target.value })}
-                placeholder='Loại máy yêu cầu (trùng tab Máy móc)'
+                placeholder='Loại máy (trùng tên ở mục Danh sách máy)'
                 autoComplete='off'
               />
               <label className='block'>
-                <span className={subLabelCls}>TG thủ thuật (phút) — 1 bệnh nhân</span>
+                <span className={subLabelCls}>Thời lượng một ca (phút)</span>
                 <input
                   type='text'
                   inputMode='numeric'
@@ -983,7 +1001,7 @@ function ProceduresEditor({
                 />
               </label>
               <label className='block'>
-                <span className={subLabelCls}>TG gối (phút) — BS có mặt</span>
+                <span className={subLabelCls}>Thời gian bác sĩ phải có mặt (phút)</span>
                 <input
                   type='text'
                   inputMode='numeric'
@@ -1001,14 +1019,14 @@ function ProceduresEditor({
                 className={inputCls}
                 value={p.mainCodes}
                 onChange={(e) => update(i, { mainCodes: e.target.value })}
-                placeholder='BS chính: A hoặc A,B'
+                placeholder='Bác sĩ chính: A hoặc A,B'
                 autoComplete='off'
               />
               <input
                 className={inputCls}
                 value={p.substituteCodes}
                 onChange={(e) => update(i, { substituteCodes: e.target.value })}
-                placeholder='BS thay thế: B--C--D'
+                placeholder='Bác sĩ thay thế: B--C--D'
                 autoComplete='off'
               />
               <label className='flex cursor-pointer items-start gap-3 text-sm sm:col-span-2 sm:items-center'>
@@ -1018,7 +1036,7 @@ function ProceduresEditor({
                   checked={p.priority}
                   onChange={(e) => update(i, { priority: e.target.checked })}
                 />
-                Ưu tiên chia trước
+                Ưu tiên xếp lịch trước
               </label>
             </div>
             <button type='button' className='mt-4 text-sm font-medium text-red-600 hover:underline dark:text-red-400' onClick={() => onChange(procedures.filter((_, idx) => idx !== i))}>
@@ -1058,7 +1076,7 @@ function PatientsEditor({
   return (
     <section className={cn(panelCls, 'space-y-6')}>
       <div className='flex flex-col gap-4 border-b border-[color-mix(in_oklch,var(--highlight)_15%,var(--border))] pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700/80'>
-        <h2 className='text-lg font-semibold text-foreground'>Tab bệnh nhân</h2>
+        <h2 className='text-lg font-semibold text-foreground'>Danh sách bệnh nhân</h2>
         <button type='button' className={btnSecondary} onClick={add}>
           Thêm bệnh nhân
         </button>
@@ -1076,7 +1094,7 @@ function PatientsEditor({
               />
               <div>
                 <SchedTimeField
-                  label='Giờ vào viện (sau chỉ định ~1 phút)'
+                  label='Giờ vào viện (thường cách lúc chỉ định khoảng 1 phút)'
                   ariaLabel={`Bệnh nhân ${p.name || i + 1}: giờ vào viện`}
                   value={p.admissionM}
                   onChange={(m) => update(i, { admissionM: m })}
@@ -1089,7 +1107,7 @@ function PatientsEditor({
                   checked={p.highPriority}
                   onChange={(e) => update(i, { highPriority: e.target.checked })}
                 />
-                Ưu tiên cao (kết quả)
+                Ưu tiên cao khi xếp lịch
               </label>
             </div>
             <div className='mt-5'>
@@ -1116,9 +1134,9 @@ function PatientsEditor({
                 })}
               </div>
             </div>
-            <BusyEditor label='Lịch bận BN' busy={p.busy} onChange={(busy) => update(i, { busy })} />
+            <BusyEditor label='Những lúc bệnh nhân không đến được' busy={p.busy} onChange={(busy) => update(i, { busy })} />
             <button type='button' className='mt-4 text-sm font-medium text-red-600 hover:underline dark:text-red-400' onClick={() => onChange(patients.filter((_, idx) => idx !== i))}>
-              Xóa BN
+              Xóa bệnh nhân này
             </button>
           </div>
         ))}
@@ -1143,7 +1161,7 @@ function BusyEditor({
         {busy.map((b, idx) => (
           <div key={`busy-${idx}`} className='flex flex-wrap items-center gap-3'>
             <SchedTimeField
-              ariaLabel={`${label}: bắt đầu khung ${idx + 1}`}
+              ariaLabel={`${label}: giờ bắt đầu đoạn ${idx + 1}`}
               value={b.startM}
               onChange={(m) => {
                 const next = busy.map((x, j) => (j === idx ? { ...x, startM: m } : x))
@@ -1152,7 +1170,7 @@ function BusyEditor({
             />
             <span className='text-sm text-zinc-400'>—</span>
             <SchedTimeField
-              ariaLabel={`${label}: kết thúc khung ${idx + 1}`}
+              ariaLabel={`${label}: giờ kết thúc đoạn ${idx + 1}`}
               value={b.endM}
               onChange={(m) => {
                 const next = busy.map((x, j) => (j === idx ? { ...x, endM: m } : x))
@@ -1173,7 +1191,7 @@ function BusyEditor({
           className='text-sm font-medium text-[var(--highlight-strong)] underline decoration-[color-mix(in_oklch,var(--highlight)_45%,transparent)] underline-offset-2 dark:text-[var(--highlight)]'
           onClick={() => onChange([...busy, { startM: null, endM: null }])}
         >
-          + Thêm khung bận
+          + Thêm một khoảng thời gian bận
         </button>
       </div>
     </div>
@@ -1198,14 +1216,14 @@ function ResultsTable({
       <table className='min-w-full text-left text-sm'>
         <thead className={theadCls}>
           <tr>
-            <th className='px-4 py-3'>BN</th>
+            <th className='px-4 py-3'>Bệnh nhân</th>
             <th className='px-4 py-3'>Thủ thuật</th>
-            <th className='px-4 py-3'>Bắt đầu</th>
-            <th className='px-4 py-3'>Hết gối</th>
-            <th className='px-4 py-3'>Kết thúc</th>
-            <th className='px-4 py-3'>BS</th>
+            <th className='px-4 py-3'>Bắt đầu ca</th>
+            <th className='px-4 py-3'>Hết giờ bác sĩ có mặt</th>
+            <th className='px-4 py-3'>Kết thúc ca</th>
+            <th className='px-4 py-3'>Bác sĩ</th>
             <th className='px-4 py-3'>Máy</th>
-            <th className='px-4 py-3'>Thao tác</th>
+            <th className='px-4 py-3'>Chỉnh nhanh</th>
           </tr>
         </thead>
         <tbody>
@@ -1217,7 +1235,7 @@ function ResultsTable({
                 <td className='px-4 py-3'>{procById.get(a.procedureId)?.name ?? a.procedureId}</td>
                 <td className='px-4 py-3'>
                   <SchedTimeField
-                    ariaLabel={`Ca bắt đầu — ${patientById.get(a.patientId)?.name ?? a.patientId}`}
+                    ariaLabel={`Giờ bắt đầu ca — ${patientById.get(a.patientId)?.name ?? a.patientId}`}
                     value={a.startM}
                     onChange={(m) => {
                       if (m === null) return
@@ -1263,7 +1281,7 @@ function ResultsTable({
                         }))
                       }
                     >
-                      Ưu tiên BN
+                      Ưu tiên bệnh nhân này
                     </button>
                     <button
                       type='button'
@@ -1303,7 +1321,7 @@ function ResultsTable({
                         }))
                       }
                     >
-                      + BN bận (9:00–9:15)
+                      + Thêm giờ bệnh nhân bận (mẫu 9:00–9:15)
                     </button>
                     <button
                       type='button'
@@ -1322,7 +1340,7 @@ function ResultsTable({
                         }))
                       }
                     >
-                      + BS bận (theo gối ca này)
+                      + Thêm giờ bác sĩ bận (theo ca này)
                     </button>
                   </div>
                 </td>
@@ -1331,7 +1349,7 @@ function ResultsTable({
           {payload.assignments.length === 0 ? (
             <tr>
               <td colSpan={8} className='px-4 py-10 text-center text-zinc-500'>
-                Chưa có ca. Hãy chạy chia giờ.
+                Chưa có ca nào. Hãy bấm xếp lịch ở phần trên.
               </td>
             </tr>
           ) : null}
@@ -1355,7 +1373,7 @@ function UnsortedTable({
       <table className='min-w-full text-left text-sm'>
         <thead className={theadCls}>
           <tr>
-            <th className='px-4 py-3'>BN</th>
+            <th className='px-4 py-3'>Bệnh nhân</th>
             <th className='px-4 py-3'>Thủ thuật</th>
             <th className='px-4 py-3'>Lý do</th>
           </tr>
@@ -1388,7 +1406,7 @@ function StatsTable({ rows }: { rows: ReturnType<typeof buildProcedureStats> }) 
         <thead className={theadCls}>
           <tr>
             <th className='px-4 py-3'>Thủ thuật</th>
-            <th className='px-4 py-3'>Tổng yêu cầu</th>
+            <th className='px-4 py-3'>Tổng số ca cần xếp</th>
             <th className='px-4 py-3'>Đã xếp</th>
             <th className='px-4 py-3'>Chưa xếp</th>
           </tr>
@@ -1431,7 +1449,7 @@ function SlicesTable({
           <thead className={theadCls}>
             <tr>
               <th className='px-4 py-3'>Đối tượng</th>
-              <th className='px-4 py-3'>BN</th>
+              <th className='px-4 py-3'>Bệnh nhân</th>
               <th className='px-4 py-3'>Thủ thuật</th>
               <th className='px-4 py-3'>Bắt đầu</th>
               <th className='px-4 py-3'>Kết thúc</th>
@@ -1485,7 +1503,9 @@ function GanttChart({
 
   return (
     <div className={cn(panelCls, 'space-y-7')}>
-      <h3 className='text-base font-semibold text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>Gantt bác sĩ (khung gối)</h3>
+      <h3 className='text-base font-semibold text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>
+        Biểu đồ thời gian bác sĩ phải có mặt
+      </h3>
       {[...byDoctor.entries()].map(([doc, segs]) => (
         <div key={doc}>
           <div className='mb-2 text-sm font-medium text-zinc-800 dark:text-zinc-200'>{doc}</div>
@@ -1521,7 +1541,7 @@ function EstimateTable({ rows }: { rows: { procedureId: string; name: string; es
         <thead className={theadCls}>
           <tr>
             <th className='px-4 py-3'>Thủ thuật</th>
-            <th className='px-4 py-3'>Ước tính thêm ca (heuristic)</th>
+            <th className='px-4 py-3'>Ước tính còn xếp thêm được bao nhiêu ca</th>
           </tr>
         </thead>
         <tbody>
@@ -1534,7 +1554,7 @@ function EstimateTable({ rows }: { rows: { procedureId: string; name: string; es
         </tbody>
       </table>
       <p className='px-4 py-3 text-xs text-zinc-500'>
-        Ước tính thô dựa trên thời gian trống máy + gối BS trong ngày; dùng tham khảo.
+        Con số tính sơ bộ theo chỗ trống của máy và thời gian bác sĩ còn lại trong ngày; chỉ để tham khảo.
       </p>
     </div>
   )
