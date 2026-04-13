@@ -3,50 +3,15 @@
  */
 
 import type { Metadata } from 'next'
-import { ConfessionPage } from '@/components/confession/confession-page'
-import { SITE_METADATA } from '@/constants/site-metadata.constants'
-
-const canonical = SITE_METADATA.siteUrl.replace(/\/$/, '')
+import { SchedulingApp } from '@/components/scheduling/scheduling-app'
 
 export const metadata: Metadata = {
-  title: SITE_METADATA.title,
-  description: SITE_METADATA.description,
-  keywords: [...SITE_METADATA.keywords],
-  alternates: { canonical: '/' },
-  openGraph: {
-    title: SITE_METADATA.title,
-    description: SITE_METADATA.description,
-    url: canonical,
-    type: 'website',
-    locale: SITE_METADATA.locale,
-    siteName: SITE_METADATA.titleHeader,
-    images: [
-      {
-        url: SITE_METADATA.siteOgImage,
-        secureUrl: SITE_METADATA.siteUrl.startsWith('https:') ? SITE_METADATA.siteOgImage : undefined,
-        width: SITE_METADATA.siteOgImageWidth,
-        height: SITE_METADATA.siteOgImageHeight,
-        alt: SITE_METADATA.siteOgImageAlt,
-        type: 'image/png',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: SITE_METADATA.title,
-    description: SITE_METADATA.description,
-    images: [
-      {
-        url: SITE_METADATA.siteOgImage,
-        width: SITE_METADATA.siteOgImageWidth,
-        height: SITE_METADATA.siteOgImageHeight,
-        alt: SITE_METADATA.siteOgImageAlt,
-      },
-    ],
-  },
-  robots: { index: true, follow: true },
+  title: 'Phần mềm quản lý công việc',
+  description:
+    'Phần mềm quản lý công việc: sắp lịch thủ thuật, bác sĩ, máy, bệnh nhân — lưu phiên, xuất CSV, Supabase.',
+  robots: { index: false, follow: false },
 }
 
 export default function Page() {
-  return <ConfessionPage />
+  return <SchedulingApp />
 }

@@ -38,8 +38,8 @@ export function ConfessionPage() {
   useConfessionHomeScrollRestore(ready)
 
   return (
-    <div className='min-h-dvh bg-[#f0f2f5] text-slate-900 transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100'>
-      <header className='sticky top-0 z-40 border-b border-slate-200/70 bg-white/90 shadow-[0_1px_0_rgba(15,23,42,0.06)] backdrop-blur-xl transition-colors duration-300 dark:border-zinc-800/80 dark:bg-zinc-950/85 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]'>
+    <div className='min-h-dvh bg-gradient-to-b from-[color-mix(in_oklch,var(--highlight)_6%,var(--background))] via-[var(--background)] to-[var(--muted)] text-foreground transition-colors duration-300 dark:from-[oklch(0.19_0.038_162)] dark:via-[var(--background)] dark:to-[oklch(0.15_0.036_168)]'>
+      <header className='sticky top-0 z-40 border-b border-[color-mix(in_oklch,var(--border)_88%,var(--highlight)_12%)] bg-card/90 shadow-[0_1px_0_color-mix(in_oklch,var(--foreground)_6%,transparent)] backdrop-blur-xl transition-colors duration-300 dark:border-[color-mix(in_oklch,var(--border)_85%,var(--highlight)_15%)] dark:bg-card/88 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)]'>
         <div className='mx-auto flex max-w-[680px] items-center justify-between gap-3 px-4 py-3 lg:max-w-2xl'>
           <button
             type='button'

@@ -19,6 +19,7 @@ Backend cho ứng dụng cộng đồng chia sẻ hành trình thụ tinh trong 
    - `supabase/migrations/20250320120000_confession.sql` — bảng bài + bình luận  
    - `supabase/migrations/20250320140000_confession_images_storage.sql` — cột `image_urls`, bucket Storage `confession-media`, policy đọc công khai  
    - `supabase/migrations/20250324120000_confession_likes.sql` — cột `like_count`, bảng `confession_post_likes` (tim ẩn danh theo cookie `confession_vid`)
+   - `supabase/migrations/20260413120000_scheduling.sql` — bảng `sched_contexts`, `sched_assignments` (trang **Sắp lịch thủ thuật** tại `/scheduling`)
 
 ## API trong repo
 
@@ -30,6 +31,11 @@ Backend cho ứng dụng cộng đồng chia sẻ hành trình thụ tinh trong 
 | `POST` | `/api/confession/posts/[postId]/like` | Bật/tắt tim (cookie ẩn danh), trả `{ likeCount, liked }` |
 | `POST` | `/api/confession/upload` | `multipart/form-data`, field `file` — JPEG/PNG/WebP/GIF, tối đa 5MB |
 | `POST` | `/api/confession/posts/[postId]/comments` | Body: `{ "content": "...", "author": "...", "parentId": null \| "<uuid>" }` — `parentId` có giá trị = trả lời bình luận gốc |
+| `GET` | `/api/scheduling/contexts` | Danh sách phiên sắp lịch |
+| `POST` | `/api/scheduling/contexts` | Tạo phiên; body tuỳ chọn `name`, `schedulingDate`, `masters`, `settings`, hoặc `cloneFromId` để sao chép |
+| `GET` / `PUT` / `DELETE` | `/api/scheduling/contexts/[id]` | Đọc / cập nhật / xoá phiên (PUT: `name`, `schedulingDate`, `settings`, `masters`) |
+| `POST` | `/api/scheduling/contexts/[id]/schedule` | Body `{ "mode": "full" \| "preserve" }` — chạy chia giờ |
+| `PUT` | `/api/scheduling/contexts/[id]/assignments` | Body `{ "assignments": [...] }` — ghi đè ca (sửa giờ thủ công) |
 
 Nếu thiếu env, API trả **503** và UI báo lỗi.
 
