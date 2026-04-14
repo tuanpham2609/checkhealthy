@@ -4,23 +4,20 @@
 
 import '@/styles/globals.css'
 import type { Metadata, Viewport } from 'next'
-import ProviderRegistry from '@/providers'
 import { cn } from '@/lib/styles'
 import { PropsWithChildren } from 'react'
 import { FONT_SANS, FONT_SERIF } from '@/styles/fonts'
-import { AppShell } from '@/components/templates/app-shell'
-import { APP_DOCUMENT_TITLE } from '@/constants/site-metadata.constants'
-import { THEME_CHROME } from '@/constants/theme-chrome.constants'
+import { APP_DOCUMENT_TITLE } from '@/constants/app-document.constants'
+import { QueryProvider } from '@/providers/query-provider'
+import { ThemeProvider } from '@/providers/theme-provider'
 
-/** Chỉ light mode — theme-color cố định; ThemeColorSync đồng bộ cùng giá trị. */
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: THEME_CHROME.light,
+  themeColor: '#00c292',
 }
 
-/** Không khai báo description, Open Graph, Twitter Card, keywords, canonical — chỉ title tối thiểu. */
 export const metadata: Metadata = {
   title: APP_DOCUMENT_TITLE,
   robots: {
@@ -38,10 +35,12 @@ export default function RootLayout({ children }: Readonly<PropsWithChildren>) {
       className={cn('w-full overflow-x-hidden antialiased', FONT_SANS.variable, FONT_SERIF.variable)}
       suppressHydrationWarning
     >
-      <body className='relative min-h-dvh bg-background font-sans text-[15px] leading-normal antialiased [font-feature-settings:"kern"_1,"liga"_1]'>
-        <ProviderRegistry>
-          <AppShell>{children}</AppShell>
-        </ProviderRegistry>
+      <body className='relative min-h-dvh min-w-0 overflow-x-hidden bg-background font-sans text-[15px] leading-normal antialiased [font-feature-settings:"kern"_1,"liga"_1]'>
+        <ThemeProvider>
+          <QueryProvider>
+            <div className='min-h-dvh min-w-0 max-w-full'>{children}</div>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

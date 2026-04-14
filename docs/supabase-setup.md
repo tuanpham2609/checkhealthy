@@ -1,50 +1,32 @@
-# Supabase cho ứng dụng
+# Supabase — sắp lịch thủ thuật
 
-Backend cho phần tâm sự ẩn danh, API confession và (nếu bật) sắp lịch thủ thuật.
+Backend cho API `/api/scheduling/*` (trang chủ `/`).
 
-## Bạn cần cung cấp / lấy ở đâu
+## Biến môi trường
 
-1. **Tạo project** tại [supabase.com](https://supabase.com) (miễn phí đủ dùng thử).
+1. Tạo project tại [supabase.com](https://supabase.com).
+2. **Project Settings → API**: copy URL và key vào `.env.local` (theo `.env.example`).
+3. **`SUPABASE_SERVICE_ROLE_KEY`** (server only, không `NEXT_PUBLIC_`) — **bắt buộc** để route scheduling ghi/đọc DB.
 
-2. Vào **Project Settings → API** và copy:
-   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-   - **Publishable / anon** (key công khai, có thể là `sb_publishable_...` hoặc JWT `eyJ...`) → đặt vào `NEXT_PUBLIC_SUPABASE_ANON_KEY` hoặc `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` (trong repo đã map cả hai cho tiện)
-   - **Secret — `service_role`** (JWT `eyJ...` hoặc secret mới trong mục Secret keys) → `SUPABASE_SERVICE_ROLE_KEY`  
-     - **Bắt buộc** để `/api/confession/*` chạy. Key publishable **không** thay thế được.  
-     - **Không** `NEXT_PUBLIC_`, không commit Git, chỉ server.
+## Migration
 
-3. Tạo file **`.env.local`** ở root project (cùng cấp `package.json`), dán các biến theo `.env.example`.
+Trong Supabase **SQL Editor**, chạy:
 
-4. Trong Supabase **SQL Editor**, chạy lần lượt (hoặc gộp một query):
-   - `supabase/migrations/20250320120000_confession.sql` — bảng bài + bình luận  
-   - `supabase/migrations/20250320140000_confession_images_storage.sql` — cột `image_urls`, bucket Storage `confession-media`, policy đọc công khai  
-   - `supabase/migrations/20250324120000_confession_likes.sql` — cột `like_count`, bảng `confession_post_likes` (tim ẩn danh theo cookie `confession_vid`)
-   - `supabase/migrations/20260413120000_scheduling.sql` — bảng `sched_contexts`, `sched_assignments` (sắp lịch thủ thuật trên **trang chủ** `/`)
+- `supabase/migrations/20260413120000_scheduling.sql` — bảng `sched_contexts`, `sched_assignments`
 
-## API trong repo
+## API
 
 | Phương thức | Đường dẫn | Mô tả |
 |-------------|-----------|--------|
-| `GET` | `/api/confession/posts` | Danh sách bài + comment + reply (lồng). Query: `page` (mặc định 1), `limit` (mặc định **25**, tối đa 50) |
-| `GET` | `/api/confession/posts/[postId]` | Một bài + comment; `likeCount` / `liked` (theo cookie) |
-| `POST` | `/api/confession/posts` | Body: `{ "content": "...", "author": "...", "imageUrls": ["https://.../confession-media/..."] }` — `content` có thể rỗng nếu có ảnh |
-| `POST` | `/api/confession/posts/[postId]/like` | Bật/tắt tim (cookie ẩn danh), trả `{ likeCount, liked }` |
-| `POST` | `/api/confession/upload` | `multipart/form-data`, field `file` — JPEG/PNG/WebP/GIF, tối đa 5MB |
-| `POST` | `/api/confession/posts/[postId]/comments` | Body: `{ "content": "...", "author": "...", "parentId": null \| "<uuid>" }` — `parentId` có giá trị = trả lời bình luận gốc |
-| `GET` | `/api/scheduling/contexts` | Danh sách phiên sắp lịch |
-| `POST` | `/api/scheduling/contexts` | Tạo phiên; body tuỳ chọn `name`, `schedulingDate`, `masters`, `settings`, hoặc `cloneFromId` để sao chép |
-| `GET` / `PUT` / `DELETE` | `/api/scheduling/contexts/[id]` | Đọc / cập nhật / xoá phiên (PUT: `name`, `schedulingDate`, `settings`, `masters`) |
-| `POST` | `/api/scheduling/contexts/[id]/schedule` | Body `{ "mode": "full" \| "preserve" }` — chạy chia giờ |
-| `PUT` | `/api/scheduling/contexts/[id]/assignments` | Body `{ "assignments": [...] }` — ghi đè ca (sửa giờ thủ công) |
+| `GET` | `/api/scheduling/contexts` | Danh sách bản lịch |
+| `POST` | `/api/scheduling/contexts` | Tạo bản lịch; body: `name`, `schedulingDate`, `masters`, `settings`, hoặc `cloneFromId` |
+| `GET` / `PUT` / `DELETE` | `/api/scheduling/contexts/[id]` | Đọc / cập nhật / xoá |
+| `POST` | `/api/scheduling/contexts/[id]/schedule` | Body `{ "mode": "full" \| "preserve" }` — chạy xếp lịch |
+| `PUT` | `/api/scheduling/contexts/[id]/assignments` | Body `{ "assignments": [...] }` |
 
-Nếu thiếu env, API trả **503** và UI báo lỗi.
+Thiếu env → API trả **503**.
 
-## Bảo mật (nên đọc)
+## Bảo mật
 
-- **Service role** có full quyền DB: giữ trong server, rotate nếu lộ.
-- RLS đang **bật** nhưng **không có policy** → chỉ service role (qua API) truy cập được; anon không đọc/ghi trực tiếp bảng.
-- Forum ẩn danh dễ bị spam: sau nên thêm **rate limit**, **CAPTCHA**, hoặc **đăng nhập** + RLS theo `auth.uid()`.
-
-## Tuỳ chọn: CLI Supabase
-
-Nếu cài [Supabase CLI](https://supabase.com/docs/guides/cli), có thể `supabase db push` thay vì dán SQL thủ công.
+- Giữ **service role** trên server; rotate nếu lộ.
+- RLS bật nhưng không policy → chỉ service role (qua API) truy cập được.

@@ -58,103 +58,128 @@
 }
 
 :root {
-  --radius: 0.875rem;
+  /* Notika-style admin (Colorlib) — xanh #00c292, sidebar #35404f, nền #eceff1 */
+  --radius: 1rem;
 
-  /* Điểm nhấn teal–emerald: đồng bộ CTA, focus, scheduling */
-  --pagination-accent: oklch(0.66 0.12 168);
-  --pagination-fill: oklch(0.38 0.09 168);
+  --notika-green: #00c292;
+  --notika-green-hover: #00a37d;
+  --notika-green-soft: #e8f8f4;
+  --notika-sidebar: #35404f;
+  --notika-sidebar-hover: #2d343d;
+  --notika-sidebar-border: #2b323a;
+  --notika-content: #eceff1;
+  --notika-header: #ffffff;
+  --notika-card: #ffffff;
+  --notika-border: #e4e7ea;
+  --notika-text: #333f50;
+  --notika-muted: #8d9ea7;
+  --notika-blue: #03a9f4;
+  --notika-coral: #fb9678;
+  --notika-purple: #ab8ce4;
+
+  --brand-core: var(--notika-green);
+  --brand-strong: #009f77;
+  --brand-soft: #33d4ae;
+
+  --pagination-accent: var(--brand-soft);
+  --pagination-fill: var(--notika-green);
   --highlight: var(--pagination-accent);
   --highlight-strong: var(--pagination-fill);
 
-  --background: oklch(0.988 0.009 155);
-  --foreground: oklch(0.22 0.035 155);
+  --background: var(--notika-content);
+  --foreground: var(--notika-text);
 
-  --card: oklch(0.998 0.005 155);
-  --card-foreground: oklch(0.22 0.035 155);
+  --card: var(--notika-card);
+  --card-foreground: var(--notika-text);
 
-  --popover: oklch(0.998 0.005 155);
-  --popover-foreground: oklch(0.22 0.035 155);
+  --popover: var(--notika-card);
+  --popover-foreground: var(--notika-text);
 
-  --primary: oklch(0.38 0.09 168);
-  --primary-transparent: oklch(0.38 0.09 168 / 0);
-  --primary-foreground: oklch(0.99 0.004 168);
+  --primary: var(--notika-green);
+  --primary-transparent: rgb(0 194 146 / 0);
+  --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.965 0.012 155);
-  --secondary-foreground: oklch(0.28 0.04 155);
+  --secondary: #f5f7f8;
+  --secondary-foreground: var(--notika-text);
 
-  --muted: oklch(0.955 0.014 155);
-  --muted-foreground: oklch(0.48 0.04 155);
+  --muted: #f0f2f4;
+  --muted-foreground: var(--notika-muted);
 
-  --accent: oklch(0.94 0.028 165);
-  --accent-foreground: oklch(0.28 0.06 168);
+  --accent: var(--notika-green-soft);
+  --accent-foreground: #0d5c47;
 
-  --destructive: oklch(0.55 0.22 25);
-  --border: oklch(0.9 0.02 160);
-  --input: oklch(0.91 0.018 158);
-  --ring: oklch(0.55 0.1 168);
+  --destructive: #e74c3c;
+  --border: var(--notika-border);
+  --input: var(--notika-border);
+  --ring: var(--notika-green);
 
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --chart-1: var(--notika-green);
+  --chart-2: var(--notika-blue);
+  --chart-3: var(--notika-coral);
+  --chart-4: var(--notika-purple);
+  --chart-5: #ffc107;
 
-  --sidebar: oklch(0.985 0.008 155);
-  --sidebar-foreground: oklch(0.22 0.035 155);
-  --sidebar-primary: oklch(0.38 0.09 168);
-  --sidebar-primary-foreground: oklch(0.99 0.004 168);
-  --sidebar-accent: oklch(0.94 0.028 165);
-  --sidebar-accent-foreground: oklch(0.28 0.06 168);
-  --sidebar-border: oklch(0.9 0.02 160);
-  --sidebar-ring: oklch(0.55 0.1 168);
+  --sidebar: var(--notika-sidebar);
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: var(--notika-green);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--notika-sidebar-hover);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: var(--notika-sidebar-border);
+  --sidebar-ring: var(--notika-green);
 }
 
 .dark {
-  --pagination-accent: oklch(0.72 0.11 168);
-  --pagination-fill: oklch(0.55 0.1 168);
+  --notika-content: #1a1d23;
+  --notika-header: #252a32;
+  --notika-card: #2d333c;
+  --notika-border: #3d4550;
+  --notika-text: #e8eaed;
+  --notika-muted: #9aa5b1;
+  --notika-green-soft: #1e3d34;
+
+  --brand-strong: #33d4ae;
+  --brand-soft: #5ae0c0;
+
+  --pagination-accent: var(--brand-soft);
+  --pagination-fill: var(--brand-strong);
   --highlight: var(--pagination-accent);
   --highlight-strong: var(--pagination-fill);
 
-  --background: oklch(0.17 0.035 160);
-  --foreground: oklch(0.97 0.012 155);
+  --background: var(--notika-content);
+  --foreground: var(--notika-text);
 
-  --card: oklch(0.22 0.032 158);
-  --card-foreground: oklch(0.97 0.012 155);
+  --card: var(--notika-card);
+  --card-foreground: var(--notika-text);
 
-  --popover: oklch(0.22 0.032 158);
-  --popover-foreground: oklch(0.97 0.012 155);
+  --popover: var(--notika-card);
+  --popover-foreground: var(--notika-text);
 
-  --primary: oklch(0.58 0.11 168);
-  --primary-foreground: oklch(0.15 0.04 168);
+  --primary: var(--notika-green);
+  --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.26 0.03 160);
-  --secondary-foreground: oklch(0.95 0.01 155);
+  --secondary: #323842;
+  --secondary-foreground: var(--notika-text);
 
-  --muted: oklch(0.28 0.035 160);
-  --muted-foreground: oklch(0.72 0.04 155);
+  --muted: #323842;
+  --muted-foreground: var(--notika-muted);
 
-  --accent: oklch(0.32 0.05 168);
-  --accent-foreground: oklch(0.95 0.02 155);
+  --accent: #1e3d35;
+  --accent-foreground: #b8f5e4;
 
-  --destructive: oklch(0.65 0.18 22);
-  --border: oklch(0.95 0.02 155 / 0.12);
-  --input: oklch(0.95 0.02 155 / 0.14);
-  --ring: oklch(0.62 0.1 168);
+  --destructive: #f87171;
+  --border: var(--notika-border);
+  --input: var(--notika-border);
+  --ring: var(--notika-green);
 
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.7397 0.2007 150.18);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-
-  --sidebar: oklch(0.2 0.032 158);
-  --sidebar-foreground: oklch(0.97 0.012 155);
-  --sidebar-primary: oklch(0.58 0.11 168);
-  --sidebar-primary-foreground: oklch(0.15 0.04 168);
-  --sidebar-accent: oklch(0.32 0.05 168);
-  --sidebar-accent-foreground: oklch(0.95 0.02 155);
-  --sidebar-border: oklch(0.95 0.02 155 / 0.12);
-  --sidebar-ring: oklch(0.62 0.1 168);
+  --sidebar: #252a32;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: var(--notika-green);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #323842;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: var(--notika-border);
+  --sidebar-ring: var(--notika-green);
 }
 
 @layer base {
@@ -173,9 +198,19 @@
   }
   body {
     @apply bg-background text-foreground;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
     transition:
       background-color 0.3s ease,
       color 0.3s ease;
+  }
+}
+
+/* Cuộn ngang mượt trên iOS cho thanh tab / bảng rộng */
+@layer utilities {
+  .touch-scroll-x {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
 }
 
@@ -244,76 +279,4 @@
     }
   }
 
-  /* Confession / shared UI — bề mặt, input, nút icon hiện đại */
-  .ui-surface {
-    @apply overflow-hidden rounded-2xl border border-[color-mix(in_oklch,var(--border)_88%,var(--highlight)_12%)] bg-card/95 shadow-[0_4px_24px_-8px_color-mix(in_oklch,var(--highlight-strong)_12%,transparent)] ring-1 ring-white/60 transition-colors duration-300;
-    @apply dark:border-[color-mix(in_oklch,var(--border)_100%,var(--highlight)_8%)] dark:bg-card dark:shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] dark:ring-white/[0.06];
-  }
-
-  .ui-surface-muted {
-    @apply rounded-xl border border-[color-mix(in_oklch,var(--border)_90%,var(--highlight)_10%)] bg-muted/80 p-3 ring-1 ring-white/50 transition-colors duration-300;
-    @apply dark:border-zinc-600/70 dark:bg-zinc-800/55 dark:ring-white/[0.05];
-  }
-
-  /* Tối thiểu 16px: tránh Safari iOS tự zoom khi focus (font < 16px) */
-  .ui-input {
-    @apply w-full rounded-xl border border-slate-200/80 bg-slate-50/90 px-3.5 py-2.5 text-base leading-snug text-slate-900 outline-none transition-all duration-200;
-    @apply lg:text-[15px];
-    @apply placeholder:text-slate-400 focus:border-[var(--highlight)] focus:bg-white focus:ring-2 focus:ring-[color-mix(in_oklch,var(--highlight)_22%,transparent)];
-    @apply dark:border-zinc-600 dark:bg-zinc-800/70 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:bg-zinc-900;
-  }
-
-  .ui-input-sm {
-    @apply w-full rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-base text-slate-800 outline-none transition-all duration-200;
-    @apply lg:text-sm;
-    @apply placeholder:text-slate-400 focus:border-[var(--highlight)] focus:ring-2 focus:ring-[color-mix(in_oklch,var(--highlight)_18%,transparent)];
-    @apply dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500;
-  }
-
-  .ui-input-xs {
-    @apply w-full rounded-lg border border-slate-200/80 bg-white px-2.5 py-1.5 text-base text-slate-800 outline-none transition-all duration-200;
-    @apply lg:text-xs;
-    @apply focus:border-[var(--highlight)] focus:ring-2 focus:ring-[color-mix(in_oklch,var(--highlight)_20%,transparent)];
-    @apply dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100;
-  }
-
-  .ui-icon-btn {
-    @apply inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/70 bg-white text-slate-600 shadow-sm shadow-slate-200/50 ring-1 ring-slate-900/5;
-    @apply transition-all duration-200 ease-out hover:border-slate-300/90 hover:bg-slate-50/90 hover:text-[var(--highlight-strong)] hover:shadow-md hover:ring-[color-mix(in_oklch,var(--highlight)_14%,transparent)];
-    @apply active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40;
-    @apply dark:border-zinc-600/80 dark:bg-zinc-800/90 dark:text-zinc-300 dark:shadow-none dark:ring-white/10;
-    @apply dark:hover:border-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-[var(--highlight)];
-  }
-
-  .ui-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--highlight-strong)] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200;
-    @apply hover:brightness-110 hover:shadow-lg active:scale-[0.98] active:brightness-95;
-    @apply disabled:pointer-events-none disabled:opacity-40;
-  }
-
-  .ui-btn-primary-sm {
-    @apply inline-flex items-center justify-center rounded-xl bg-[var(--highlight-strong)] px-3.5 py-1.5 text-sm font-semibold text-white shadow-md transition-all duration-200;
-    @apply hover:brightness-110 active:scale-[0.98] active:brightness-95 disabled:pointer-events-none disabled:opacity-40;
-  }
-
-  .ui-btn-ghost {
-    @apply inline-flex items-center justify-center rounded-xl border border-transparent px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors;
-    @apply hover:border-slate-200/80 hover:bg-slate-50 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800;
-  }
-
-  .ui-theme-toggle {
-    @apply relative inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200/70 bg-white text-[var(--highlight-strong)] shadow-md shadow-slate-200/40 ring-1 ring-slate-900/5;
-    @apply transition-[border-color,background-color,box-shadow,transform] duration-500 ease-out;
-    @apply hover:border-[color-mix(in_oklch,var(--highlight)_38%,transparent)] hover:bg-[color-mix(in_oklch,var(--highlight)_8%,transparent)] hover:shadow-lg;
-    @apply focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklch,var(--highlight)_40%,transparent)] focus-visible:outline-none active:scale-[0.97];
-    @apply dark:border-zinc-700 dark:bg-zinc-800 dark:text-[var(--highlight)] dark:hover:bg-zinc-700/80;
-  }
-
-  .ui-pagination-nav {
-    @apply inline-flex h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200/70 bg-white text-slate-600 shadow-sm ring-1 ring-slate-900/5 transition-all duration-200 ease-out;
-    @apply hover:border-[color-mix(in_oklch,var(--pagination-accent)_42%,transparent)] hover:bg-[color-mix(in_oklch,var(--pagination-accent)_9%,transparent)] hover:text-[var(--pagination-fill)] hover:shadow-md;
-    @apply disabled:pointer-events-none disabled:opacity-40;
-    @apply dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-white/10;
-    @apply dark:hover:border-[color-mix(in_oklch,var(--pagination-accent)_45%,transparent)] dark:hover:bg-[color-mix(in_oklch,var(--pagination-accent)_12%,transparent)] dark:hover:text-[var(--pagination-accent)];
-  }
 }

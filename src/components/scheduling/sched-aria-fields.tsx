@@ -15,26 +15,26 @@ import { cn } from '@/lib/styles'
 function segmentClassName(segment: { isPlaceholder?: boolean }): string {
   return cn(
     'rounded px-0.5 tabular-nums text-foreground outline-none',
-    'focus:bg-[color-mix(in_oklch,var(--highlight)_22%,transparent)] focus:text-foreground',
-    'dark:focus:bg-[color-mix(in_oklch,var(--highlight)_26%,transparent)]',
+    'focus:bg-[var(--notika-green-soft)] focus:text-foreground',
+    'dark:focus:bg-[var(--muted)]',
     segment.isPlaceholder && 'text-muted-foreground',
   )
 }
 
 const labelCls =
-  'mb-2.5 block text-xs font-semibold uppercase tracking-wide text-[var(--highlight-strong)] dark:text-[var(--highlight)]'
+  'mb-2.5 block text-xs font-semibold uppercase tracking-wide text-[var(--notika-green)]'
 
 const dateInputShell = cn(
-  'flex min-h-[2.75rem] w-full min-w-0 max-w-full items-center rounded-xl border border-[color-mix(in_oklch,var(--border)_68%,var(--highlight)_32%)] bg-card px-3 py-2.5 text-sm',
-  'focus-within:border-[var(--highlight-strong)] focus-within:ring-2 focus-within:ring-[color-mix(in_oklch,var(--highlight)_28%,transparent)] focus-within:ring-offset-2 focus-within:ring-offset-background',
-  'dark:border-[color-mix(in_oklch,var(--border)_78%,var(--highlight)_22%)] dark:bg-[color-mix(in_oklch,var(--card)_90%,var(--muted)_10%)] dark:focus-within:border-[var(--highlight)]',
+  'flex min-h-[2.75rem] w-full min-w-0 max-w-full items-center rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-2.5 text-sm',
+  'focus-within:border-[var(--notika-green)] focus-within:ring-2 focus-within:ring-[var(--notika-green)]/20 focus-within:ring-offset-1 focus-within:ring-offset-[var(--notika-content)]',
+  'dark:border-[var(--notika-border)] dark:bg-[var(--notika-card)]',
 )
 
 /** Giờ: đủ rộng cho HH:MM, không kéo ngang cả khung */
 const timeInputShell = cn(
-  'flex min-h-[2.75rem] w-full min-w-[7.25rem] max-w-[10.25rem] items-center rounded-xl border border-[color-mix(in_oklch,var(--border)_68%,var(--highlight)_32%)] bg-card px-3 py-2.5 text-sm',
-  'focus-within:border-[var(--highlight-strong)] focus-within:ring-2 focus-within:ring-[color-mix(in_oklch,var(--highlight)_28%,transparent)] focus-within:ring-offset-2 focus-within:ring-offset-background',
-  'dark:border-[color-mix(in_oklch,var(--border)_78%,var(--highlight)_22%)] dark:bg-[color-mix(in_oklch,var(--card)_90%,var(--muted)_10%)] dark:focus-within:border-[var(--highlight)]',
+  'flex min-h-[2.75rem] w-full min-w-[7.25rem] max-w-[10.25rem] items-center rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-2.5 text-sm',
+  'focus-within:border-[var(--notika-green)] focus-within:ring-2 focus-within:ring-[var(--notika-green)]/20 focus-within:ring-offset-1 focus-within:ring-offset-[var(--notika-content)]',
+  'dark:border-[var(--notika-border)] dark:bg-[var(--notika-card)]',
 )
 
 export function SchedTimeField({

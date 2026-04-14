@@ -4,7 +4,7 @@
 
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { SchedDateField, SchedTimeField } from '@/components/scheduling/sched-aria-fields'
 import { buildAssignmentsCsv } from '@/lib/scheduling/csv-export'
 import type {
@@ -26,150 +26,98 @@ import {
 import { inferDayBounds } from '@/lib/scheduling/engine'
 import { validateMastersForSchedule } from '@/lib/scheduling/validate-masters'
 import { cn } from '@/lib/styles'
+import { useScheduling } from '@/hooks/use-scheduling'
+import { useRouter } from 'next/navigation'
+import { APP_DOCUMENT_TITLE } from '@/constants/app-document.constants'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 type MainTab = 'doctors' | 'machines' | 'procedures' | 'patients' | 'output'
 
 type OutputTab = 'results' | 'unsorted' | 'stats' | 'docTime' | 'machTime' | 'gantt' | 'estimate'
 
+const MAIN_NAV: { id: MainTab; label: string }[] = [
+  { id: 'doctors', label: 'Bác sĩ' },
+  { id: 'machines', label: 'Máy' },
+  { id: 'procedures', label: 'Thủ thuật' },
+  { id: 'patients', label: 'Bệnh nhân' },
+  { id: 'output', label: 'Kết quả & báo cáo' },
+]
+
+/** Ô bảng: gọn trên mobile, rộng dần từ sm */
+const tableCell = 'px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3'
+
 function newId(): string {
   return crypto.randomUUID()
 }
 
-async function parseJson<T>(res: Response): Promise<T> {
-  const data = (await res.json()) as T & { error?: string }
-  if (!res.ok) {
-    throw new Error((data as { error?: string }).error ?? res.statusText)
-  }
-  return data
-}
-
 export function SchedulingApp() {
-  const [contextList, setContextList] = useState<{ id: string; name: string; scheduling_date: string; updated_at: string }[]>([])
-  const [contextId, setContextId] = useState<string | null>(null)
-  const [payload, setPayload] = useState<SchedContextPayload | null>(null)
+  const sched = useScheduling()
+  const {
+    contextList,
+    contextId,
+    payload,
+    setPayload,
+    busy,
+    error,
+    clearErrors,
+    bootstrapping,
+    loadContext,
+    refreshList,
+    persistAssignments,
+  } = sched
+
+  const router = useRouter()
   const [mainTab, setMainTab] = useState<MainTab>('doctors')
   const [outputTab, setOutputTab] = useState<OutputTab>('results')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [sessionPickerOpen, setSessionPickerOpen] = useState(false)
-  const [bootstrapping, setBootstrapping] = useState(true)
+  const [localError, setLocalError] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const refreshList = useCallback(async () => {
-    const res = await fetch('/api/scheduling/contexts')
-    const data = await parseJson<{ contexts: typeof contextList }>(res)
-    setContextList(data.contexts)
-  }, [])
+  const handleLogout = useCallback(async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.replace('/login')
+  }, [router])
 
-  const loadContext = useCallback(async (id: string) => {
-    setBusy(true)
-    setError(null)
+  const displayError = localError ?? error
+
+  const handleSave = useCallback(async () => {
+    clearErrors()
+    setLocalError(null)
     try {
-      const res = await fetch(`/api/scheduling/contexts/${id}`)
-      const data = await parseJson<SchedContextPayload>(res)
-      setPayload(data)
-      setContextId(id)
+      await sched.saveContext()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi tải bản lịch')
-    } finally {
-      setBusy(false)
+      setLocalError(e instanceof Error ? e.message : 'Lỗi lưu')
     }
-  }, [])
+  }, [sched, clearErrors])
 
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await fetch('/api/scheduling/contexts')
-        const data = await parseJson<{ contexts: typeof contextList }>(res)
-        if (cancelled) return
-        setContextList(data.contexts)
-        const latest = data.contexts[0]
-        if (latest?.id) {
-          await loadContext(latest.id)
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Lỗi tải danh sách bản lịch')
-        }
-      } finally {
-        if (!cancelled) setBootstrapping(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [loadContext])
-
-  const saveContext = useCallback(async () => {
-    if (!contextId || !payload) return
-    setBusy(true)
-    setError(null)
-    try {
-      const res = await fetch(`/api/scheduling/contexts/${contextId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: payload.name,
-          schedulingDate: payload.schedulingDate,
-          settings: payload.settings,
-          masters: payload.masters,
-        }),
-      })
-      await parseJson<{ ok: boolean }>(res)
-      await refreshList()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi lưu')
-    } finally {
-      setBusy(false)
-    }
-  }, [contextId, payload, refreshList])
-
-  const run = useCallback(
+  const handleRun = useCallback(
     async (mode: 'full' | 'preserve') => {
       if (!contextId || !payload) return
       const validationErrors = validateMastersForSchedule(payload.masters)
       if (validationErrors.length > 0) {
-        setError(validationErrors.join(' · '))
+        setLocalError(validationErrors.join(' · '))
         return
       }
-      setBusy(true)
-      setError(null)
+      clearErrors()
+      setLocalError(null)
       try {
-        await saveContext()
-        const res = await fetch(`/api/scheduling/contexts/${contextId}/schedule`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode }),
-        })
-        const data = await parseJson<{ context: SchedContextPayload; unscheduled: { patientId: string; procedureId: string; reason: string }[] }>(
-          res,
-        )
-        const nextCtx = data.context
-        setPayload(nextCtx)
-        if (nextCtx.settings.autoSaveAfterSchedule) {
+        await sched.saveContext()
+        const data = await sched.runSchedule(mode)
+        if (data.context.settings.autoSaveAfterSchedule) {
           const ok = window.confirm('Đã xếp lịch xong. Bạn có muốn lưu thêm một bản lịch mới (bản sao) không?')
           if (ok) {
-            const name = window.prompt('Đặt tên cho bản lịch mới', `${nextCtx.name} — ${new Date().toLocaleString('vi-VN')}`)
+            const name = window.prompt('Đặt tên cho bản lịch mới', `${data.context.name} — ${new Date().toLocaleString('vi-VN')}`)
             if (name?.trim()) {
-              const cloneRes = await fetch('/api/scheduling/contexts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name.trim(), cloneFromId: contextId }),
-              })
-              const clone = await parseJson<{ id: string }>(cloneRes)
-              await loadContext(clone.id)
-              await refreshList()
+              await sched.saveAsNew({ name: name.trim(), cloneFromId: contextId })
             }
           }
         }
         setOutputTab(data.unscheduled.length ? 'unsorted' : 'results')
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Lỗi xếp lịch')
-      } finally {
-        setBusy(false)
+        setLocalError(e instanceof Error ? e.message : 'Lỗi xếp lịch')
       }
     },
-    [contextId, loadContext, payload, refreshList, saveContext],
+    [contextId, payload, sched, clearErrors],
   )
 
   const exportCsv = useCallback(() => {
@@ -185,104 +133,61 @@ export function SchedulingApp() {
     URL.revokeObjectURL(url)
   }, [payload])
 
-  const createSession = useCallback(async () => {
-    setBusy(true)
-    setError(null)
+  const handleCreate = useCallback(async () => {
+    clearErrors()
+    setLocalError(null)
     try {
-      const res = await fetch('/api/scheduling/contexts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      const data = await parseJson<{ id: string }>(res)
-      await refreshList()
-      await loadContext(data.id)
+      await sched.createSession()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi tạo bản lịch mới')
-    } finally {
-      setBusy(false)
+      setLocalError(e instanceof Error ? e.message : 'Lỗi tạo bản lịch mới')
     }
-  }, [loadContext, refreshList])
+  }, [sched, clearErrors])
 
-  const deleteCurrentContext = useCallback(async () => {
+  const handleDeleteCurrent = useCallback(async () => {
     if (!contextId) return
     const ok = window.confirm('Xóa hẳn bản lịch này trên máy chủ? Không thể hoàn tác.')
     if (!ok) return
-    setBusy(true)
-    setError(null)
+    clearErrors()
+    setLocalError(null)
     try {
-      const res = await fetch(`/api/scheduling/contexts/${contextId}`, { method: 'DELETE' })
-      await parseJson<{ ok: boolean }>(res)
-      setContextId(null)
-      setPayload(null)
-      await refreshList()
+      await sched.deleteContext(contextId)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi xóa bản lịch')
-    } finally {
-      setBusy(false)
+      setLocalError(e instanceof Error ? e.message : 'Lỗi xóa bản lịch')
     }
-  }, [contextId, refreshList])
+  }, [contextId, sched, clearErrors])
 
-  const deleteContextById = useCallback(
+  const handleDeleteById = useCallback(
     async (id: string) => {
       const ok = window.confirm('Xóa bản lịch này? Không thể hoàn tác.')
       if (!ok) return
-      setBusy(true)
-      setError(null)
+      clearErrors()
+      setLocalError(null)
       try {
-        const res = await fetch(`/api/scheduling/contexts/${id}`, { method: 'DELETE' })
-        await parseJson<{ ok: boolean }>(res)
-        if (id === contextId) {
-          setContextId(null)
-          setPayload(null)
-        }
-        await refreshList()
+        await sched.deleteContext(id)
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Lỗi xóa bản lịch')
-      } finally {
-        setBusy(false)
+        setLocalError(e instanceof Error ? e.message : 'Lỗi xóa bản lịch')
       }
     },
-    [contextId, refreshList],
+    [sched, clearErrors],
   )
 
-  const saveAsNew = useCallback(async () => {
+  const handleSaveAsNew = useCallback(async () => {
     if (!payload) return
     const name = window.prompt('Tên bản lịch mới', payload.name)
     if (!name?.trim()) return
-    setBusy(true)
-    setError(null)
+    clearErrors()
+    setLocalError(null)
     try {
-      const res = await fetch('/api/scheduling/contexts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          schedulingDate: payload.schedulingDate,
-          settings: payload.settings,
-          masters: payload.masters,
-        }),
+      await sched.saveAsNew({
+        name: name.trim(),
+        schedulingDate: payload.schedulingDate,
+        settings: payload.settings,
+        masters: payload.masters,
       })
-      const data = await parseJson<{ id: string }>(res)
-      await refreshList()
-      await loadContext(data.id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi lưu bản lịch mới')
-    } finally {
-      setBusy(false)
+      setLocalError(e instanceof Error ? e.message : 'Lỗi lưu bản lịch mới')
     }
-  }, [loadContext, payload, refreshList])
-
-  const persistAssignments = useCallback(async (next: SchedAssignment[]) => {
-    if (!contextId) return
-    const res = await fetch(`/api/scheduling/contexts/${contextId}/assignments`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ assignments: next }),
-    })
-    await parseJson<{ ok: boolean }>(res)
-    setPayload((p) => (p ? { ...p, assignments: next } : p))
-  }, [contextId])
+  }, [payload, sched, clearErrors])
 
   const stats = useMemo(() => {
     if (!payload) return []
@@ -312,57 +217,142 @@ export function SchedulingApp() {
   }, [payload])
 
   return (
-    <div className={shellBg}>
-      <div className='mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10'>
-        <header className='mb-10 flex flex-col gap-6 border-b border-[color-mix(in_oklch,var(--highlight)_20%,var(--border))] pb-8 dark:border-[color-mix(in_oklch,var(--border)_88%,var(--highlight)_12%)] lg:flex-row lg:items-end lg:justify-between'>
-          <div className='min-w-0 max-w-3xl'>
-            <p className='mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>
-              Quản lý công việc
-            </p>
-            <h1 className='font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]'>
-              Phần mềm quản lý công việc
-            </h1>
-          </div>
-          <div className='flex shrink-0 flex-wrap gap-3'>
+    <div className='flex min-h-dvh w-full min-w-0 max-w-full overflow-x-hidden bg-[var(--notika-content)] text-[var(--notika-text)]'>
+      {sidebarOpen ? (
+        <button
+          type='button'
+          className='fixed inset-0 z-40 bg-black/45 md:hidden'
+          aria-label='Đóng menu'
+          onClick={() => setSidebarOpen(false)}
+        />
+      ) : null}
+
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-[min(14rem,calc(100dvw-1.5rem))] max-w-[85vw] flex-col border-r border-[var(--notika-sidebar-border)] bg-[var(--notika-sidebar)] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] text-white shadow-lg transition-transform duration-200 md:w-56 md:max-w-none md:translate-x-0 md:rounded-r-3xl md:pb-0 md:pt-0 md:shadow-2xl',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        )}
+        aria-label='Menu chính'
+      >
+        <div className='flex h-14 shrink-0 items-center border-b border-white/10 px-4'>
+          <span className='text-[15px] font-bold tracking-wide text-white'>QLCV</span>
+        </div>
+        <nav className='flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3'>
+          {MAIN_NAV.map(({ id, label }) => (
             <button
+              key={id}
               type='button'
-              className={btnSecondary}
               onClick={() => {
-                void refreshList().then(() => setSessionPickerOpen(true))
+                setMainTab(id)
+                setSidebarOpen(false)
               }}
+              className={cn(
+                'rounded-xl px-3 py-2.5 text-left text-sm transition-colors',
+                mainTab === id
+                  ? 'bg-[var(--notika-green)] font-semibold text-white shadow-sm'
+                  : 'text-white/85 hover:bg-[var(--notika-sidebar-hover)] hover:text-white',
+              )}
             >
-              Mở bản lịch đã lưu
+              {label}
             </button>
-            <button type='button' className={btnPrimary} onClick={() => void createSession()}>
-              Tạo bản lịch mới
-            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <div className='flex min-h-dvh min-w-0 max-w-full flex-1 flex-col md:pl-56'>
+        <header className='sticky top-0 z-30 min-w-0 max-w-full border-b border-[var(--notika-border)] bg-[var(--notika-header)] shadow-[0_1px_2px_rgba(0,0,0,0.06)]'>
+          <div className='flex min-w-0 max-w-full flex-col gap-3 px-3 py-3 pt-[max(0.5rem,env(safe-area-inset-top,0px))] sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:px-5 sm:py-3 sm:pt-3'>
+            <div className='flex min-w-0 items-center gap-2 sm:min-w-0 sm:flex-1'>
+              <button
+                type='button'
+                className='min-h-11 shrink-0 rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-2 text-xs font-semibold text-[var(--notika-text)] shadow-sm md:hidden'
+                onClick={() => setSidebarOpen((o) => !o)}
+              >
+                Menu
+              </button>
+              <div className='min-w-0 flex-1'>
+                <p className='text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--notika-muted)]'>Bảng điều khiển</p>
+                <h1 className='line-clamp-2 font-sans text-sm font-semibold leading-snug text-[var(--notika-text)] sm:line-clamp-1 sm:text-lg'>
+                  {APP_DOCUMENT_TITLE}
+                </h1>
+                {payload?.name ? (
+                  <p className='truncate text-xs text-[var(--notika-muted)]'>{payload.name}</p>
+                ) : null}
+              </div>
+              <ThemeToggle className='shrink-0 sm:order-last' />
+            </div>
+            <div className='grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-1 sm:justify-end sm:gap-2'>
+              <button
+                type='button'
+                className={cn(btnSecondary, 'min-h-11 w-full sm:w-auto')}
+                onClick={() => {
+                  void refreshList()
+                  setSessionPickerOpen(true)
+                }}
+              >
+                Mở bản lịch
+              </button>
+              <button type='button' className={cn(btnPrimary, 'min-h-11 w-full sm:w-auto')} onClick={() => void handleCreate()}>
+                Tạo mới
+              </button>
+              <button
+                type='button'
+                onClick={() => void handleLogout()}
+                className='col-span-2 min-h-11 rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-2 text-xs font-semibold text-[var(--notika-muted)] shadow-sm transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 sm:col-span-1 sm:w-auto'
+                title='Đăng xuất'
+              >
+                Đăng xuất
+              </button>
+            </div>
           </div>
         </header>
 
-        {error ? (
+        <main className='mx-auto w-full min-w-0 max-w-[1600px] flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:py-6'>
+        {payload && contextId ? (
+          <div className='mb-4 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2 sm:mb-6 sm:gap-3 lg:grid-cols-4'>
+            {(
+              [
+                { n: payload.masters.patients.length, l: 'Bệnh nhân', c: 'var(--notika-green)' },
+                { n: payload.assignments.length, l: 'Ca đã xếp', c: 'var(--notika-blue)' },
+                { n: payload.masters.doctors.length, l: 'Bác sĩ', c: 'var(--notika-coral)' },
+                { n: payload.masters.machines.length, l: 'Máy', c: 'var(--notika-purple)' },
+              ] as const
+            ).map((s) => (
+              <div
+                key={s.l}
+                className='relative overflow-hidden rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] pt-1 shadow-sm'
+              >
+                <div className='absolute inset-x-0 top-0 h-1' style={{ backgroundColor: s.c }} aria-hidden />
+                <div className='px-3 pb-3 pt-3.5 sm:px-4 sm:pt-4'>
+                  <p className='text-xl font-bold tabular-nums text-[var(--notika-text)] sm:text-2xl'>{s.n}</p>
+                  <p className='text-[10px] font-semibold uppercase tracking-wide text-[var(--notika-muted)] sm:text-[11px]'>{s.l}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {displayError ? (
           <div
             className='mb-5 rounded-2xl border border-rose-200/90 bg-gradient-to-br from-rose-50 to-white px-4 py-3 text-sm text-rose-950 shadow-sm dark:border-rose-900/45 dark:from-rose-950/40 dark:to-card/20 dark:text-rose-50'
             role='alert'
           >
-            {error}
+            {displayError}
           </div>
         ) : null}
 
         {bootstrapping ? (
           <div
-            className={cn(
-              panelCls,
-              'py-14 text-center shadow-[0_8px_32px_-14px_color-mix(in_oklch,var(--highlight-strong)_16%,transparent)]',
-            )}
+            className={cn(panelCls, 'py-14 text-center')}
           >
             <p className='text-sm font-medium text-muted-foreground'>Đang tải bản lịch gần nhất…</p>
           </div>
         ) : !contextId || !payload ? (
-          <div className='rounded-2xl border-2 border-dashed border-[color-mix(in_oklch,var(--highlight)_36%,var(--border))] bg-card/80 p-10 text-center shadow-sm backdrop-blur-sm dark:border-[color-mix(in_oklch,var(--highlight)_28%,var(--border))] dark:bg-card/45'>
+          <div className='rounded-2xl border-2 border-dashed border-[var(--notika-border)] bg-[var(--notika-card)] p-6 text-center shadow-sm sm:p-10'>
             <p className='text-muted-foreground'>
               Chưa có bản lịch nào. Bấm &quot;Tạo bản lịch mới&quot; hoặc mở danh sách đã lưu.
             </p>
-            <button type='button' className={cn(btnPrimary, 'mt-5')} onClick={() => void createSession()}>
+            <button type='button' className={cn(btnPrimary, 'mt-5')} onClick={() => void handleCreate()}>
               Tạo bản lịch đầu tiên
             </button>
           </div>
@@ -393,30 +383,30 @@ export function SchedulingApp() {
                     />
                   </div>
                 </div>
-                <div className='border-t border-[color-mix(in_oklch,var(--highlight)_20%,var(--border))] pt-8 dark:border-zinc-700/80'>
-                  <p className='mb-4 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>
+                <div className='border-t border-[var(--notika-border)] pt-8'>
+                  <p className='mb-4 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--notika-green)]'>
                     Lưu và chạy xếp lịch
                   </p>
-                  <div className='flex flex-col gap-4'>
-                    <div className='flex flex-wrap gap-3'>
-                      <button type='button' className={btnSecondary} disabled={busy} onClick={() => void saveContext()}>
+                  <div className='flex flex-col gap-3 sm:gap-4'>
+                    <div className='flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3'>
+                      <button type='button' className={cn(btnSecondary, 'min-h-11 w-full sm:w-auto')} disabled={busy} onClick={() => void handleSave()}>
                         Lưu lên máy chủ
                       </button>
-                      <button type='button' className={btnDanger} disabled={busy} onClick={() => void deleteCurrentContext()}>
+                      <button type='button' className={cn(btnDanger, 'min-h-11 w-full sm:w-auto')} disabled={busy} onClick={() => void handleDeleteCurrent()}>
                         Xóa bản lịch này
                       </button>
-                      <button type='button' className={btnSecondary} disabled={busy} onClick={() => void saveAsNew()}>
+                      <button type='button' className={cn(btnSecondary, 'min-h-11 w-full sm:w-auto')} disabled={busy} onClick={() => void handleSaveAsNew()}>
                         Lưu thành bản mới (đổi tên)
                       </button>
-                      <button type='button' className={btnSecondary} disabled={busy} onClick={exportCsv}>
+                      <button type='button' className={cn(btnSecondary, 'min-h-11 w-full sm:w-auto')} disabled={busy} onClick={exportCsv}>
                         Xuất file Excel (CSV)
                       </button>
                     </div>
-                    <div className='flex flex-wrap gap-3'>
-                      <button type='button' className={btnPrimary} disabled={busy} onClick={() => void run('full')}>
+                    <div className='flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3'>
+                      <button type='button' className={cn(btnPrimary, 'min-h-11 w-full sm:w-auto')} disabled={busy} onClick={() => void handleRun('full')}>
                         Xếp lịch lại từ đầu
                       </button>
-                      <button type='button' className={btnPrimary} disabled={busy} onClick={() => void run('preserve')}>
+                      <button type='button' className={cn(btnPrimary, 'min-h-11 w-full sm:w-auto')} disabled={busy} onClick={() => void handleRun('preserve')}>
                         Xếp lịch, giữ các ca đã có
                       </button>
                     </div>
@@ -426,15 +416,15 @@ export function SchedulingApp() {
             </section>
 
             <section className={cn(panelCls, 'mb-8')}>
-              <h2 className='mb-6 flex items-center gap-3 text-sm font-bold uppercase tracking-wider text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>
-                <span className='h-1.5 w-5 rounded-full bg-[var(--highlight-strong)] dark:bg-[var(--highlight)]' aria-hidden />
+              <h2 className='mb-6 flex items-center gap-3 text-sm font-bold uppercase tracking-wider text-[var(--notika-green)]'>
+                <span className='h-1 w-5 bg-[var(--notika-green)]' aria-hidden />
                 Tuỳ chọn xếp lịch
               </h2>
               <div className='flex flex-col gap-6'>
                 <label className='flex cursor-pointer items-start gap-3 rounded-lg py-1 text-sm leading-snug'>
                   <input
                     type='checkbox'
-                    className='mt-0.5 size-[1.125rem] shrink-0 rounded border-zinc-300 text-[var(--highlight-strong)] accent-[var(--highlight-strong)] focus:ring-2 focus:ring-[color-mix(in_oklch,var(--highlight)_40%,transparent)] dark:border-zinc-600'
+                    className='mt-0.5 size-[1.125rem] shrink-0 rounded border-[var(--notika-border)] text-[var(--notika-green)] accent-[var(--notika-green)] focus:ring-2 focus:ring-[var(--notika-green)]/25'
                     checked={payload.settings.autoSaveAfterSchedule}
                     onChange={(e) =>
                       setPayload({
@@ -453,7 +443,7 @@ export function SchedulingApp() {
                 <label className='flex cursor-pointer items-start gap-3 rounded-lg py-1 text-sm leading-snug'>
                   <input
                     type='checkbox'
-                    className='mt-0.5 size-[1.125rem] shrink-0 rounded border-zinc-300 text-[var(--highlight-strong)] accent-[var(--highlight-strong)] focus:ring-2 focus:ring-[color-mix(in_oklch,var(--highlight)_40%,transparent)] dark:border-zinc-600'
+                    className='mt-0.5 size-[1.125rem] shrink-0 rounded border-[var(--notika-border)] text-[var(--notika-green)] accent-[var(--notika-green)] focus:ring-2 focus:ring-[var(--notika-green)]/25'
                     checked={payload.settings.allowAdjacentPillow}
                     onChange={(e) =>
                       setPayload({
@@ -495,16 +485,13 @@ export function SchedulingApp() {
               </div>
             </section>
 
-            <div className={cn(tabBarCls, 'mb-8')}>
-              {(
-                [
-                  ['doctors', 'Bác sĩ'],
-                  ['machines', 'Máy'],
-                  ['procedures', 'Thủ thuật'],
-                  ['patients', 'Bệnh nhân'],
-                  ['output', 'Kết quả và báo cáo'],
-                ] as const
-              ).map(([id, label]) => (
+            <div
+              className={cn(
+                tabBarCls,
+                'touch-scroll-x mb-8 min-w-0 max-w-full flex-nowrap overflow-x-auto overflow-y-hidden md:hidden',
+              )}
+            >
+              {MAIN_NAV.map(({ id, label }) => (
                 <button
                   key={id}
                   type='button'
@@ -544,7 +531,9 @@ export function SchedulingApp() {
 
             {mainTab === 'output' ? (
               <section className='space-y-7'>
-                <div className={cn(tabBarCls, 'mb-6')}>
+                <div
+                  className={cn(tabBarCls, 'touch-scroll-x mb-6 min-w-0 max-w-full flex-nowrap overflow-x-auto overflow-y-hidden')}
+                >
                   {(
                     [
                       ['results', 'Kết quả'],
@@ -608,6 +597,7 @@ export function SchedulingApp() {
             ) : null}
           </>
         )}
+        </main>
       </div>
 
       {sessionPickerOpen ? (
@@ -621,81 +611,70 @@ export function SchedulingApp() {
             void loadContext(id)
           }}
           onRefresh={() => void refreshList()}
-          onDelete={(id) => void deleteContextById(id)}
+          onDelete={(id) => void handleDeleteById(id)}
         />
       ) : null}
     </div>
   )
 }
 
-const shellBg = cn(
-  'relative min-h-dvh text-foreground',
-  'bg-[radial-gradient(ellipse_120%_80%_at_50%_-12%,color-mix(in_oklch,var(--highlight)_20%,transparent),transparent_58%)]',
-  'bg-gradient-to-b from-[color-mix(in_oklch,var(--highlight)_10%,var(--background))] via-[var(--background)] to-[color-mix(in_oklch,var(--highlight)_7%,var(--muted))]',
-  'dark:bg-[radial-gradient(ellipse_90%_55%_at_50%_0%,color-mix(in_oklch,var(--highlight)_14%,transparent),transparent_52%)]',
-  'dark:bg-gradient-to-b dark:from-[oklch(0.2_0.042_162)] dark:via-[var(--background)] dark:to-[oklch(0.14_0.038_168)]',
-)
-
 const panelCls = cn(
-  'rounded-2xl border border-[color-mix(in_oklch,var(--border)_72%,var(--highlight)_28%)] bg-card/[0.93] p-6 shadow-[0_8px_36px_-14px_color-mix(in_oklch,var(--highlight-strong)_20%,transparent),0_1px_0_0_rgba(255,255,255,0.55)_inset] backdrop-blur-md ring-1 ring-white/65 sm:p-8',
-  'dark:border-[color-mix(in_oklch,var(--border)_82%,var(--highlight)_18%)] dark:bg-card/90 dark:shadow-[0_16px_48px_-24px_rgba(0,0,0,0.55)] dark:ring-white/[0.07]',
+  'min-w-0 max-w-full rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] p-5 shadow-sm sm:p-6',
+  'dark:border-[var(--notika-border)] dark:bg-[var(--notika-card)]',
 )
 
 const fieldLabelCls = cn(
-  'mb-2.5 block text-xs font-semibold uppercase tracking-wide text-[var(--highlight-strong)] dark:text-[var(--highlight)]',
+  'mb-2.5 block text-xs font-semibold uppercase tracking-wide text-[var(--notika-green)] dark:text-[var(--brand-soft)]',
 )
 
 const subLabelCls =
   'mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground'
 
 const tableWrapCls = cn(
-  'overflow-x-auto rounded-2xl border border-[color-mix(in_oklch,var(--border)_75%,var(--highlight)_25%)] bg-card/[0.97] shadow-[0_6px_28px_-12px_color-mix(in_oklch,var(--highlight-strong)_14%,transparent)] ring-1 ring-white/50 dark:border-[color-mix(in_oklch,var(--border)_88%,var(--highlight)_12%)] dark:bg-card/88 dark:ring-white/[0.06]',
+  'touch-scroll-x max-w-full overflow-x-auto rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] shadow-sm',
+  'dark:border-[var(--notika-border)] dark:bg-[var(--notika-card)]',
 )
 
 const theadCls = cn(
-  'border-b border-[color-mix(in_oklch,var(--highlight)_18%,var(--border))]',
-  'bg-[color-mix(in_oklch,var(--highlight)_7%,var(--muted))]',
-  'text-xs font-semibold uppercase tracking-wide text-[var(--highlight-strong)]',
-  'dark:border-[color-mix(in_oklch,var(--border)_90%,var(--highlight)_10%)] dark:bg-[color-mix(in_oklch,var(--highlight)_8%,var(--muted))] dark:text-[var(--highlight)]',
+  'border-b border-[var(--notika-border)] bg-[#f8fafb]',
+  'text-xs font-semibold uppercase tracking-wide text-[var(--notika-green)]',
+  'dark:border-[var(--notika-border)] dark:bg-[var(--muted)] dark:text-[var(--brand-soft)]',
 )
 
 const btnPrimary = cn(
-  'rounded-xl bg-gradient-to-br from-[var(--highlight-strong)] via-[color-mix(in_oklch,var(--highlight-strong)_65%,var(--highlight)_35%)] to-[var(--highlight)] px-5 py-3 text-sm font-semibold text-white shadow-md',
-  'shadow-[0_6px_22px_-8px_color-mix(in_oklch,var(--highlight-strong)_50%,transparent)] transition',
-  'hover:brightness-[1.06] hover:shadow-[0_8px_28px_-8px_color-mix(in_oklch,var(--highlight-strong)_45%,transparent)] active:scale-[0.99] disabled:opacity-50 disabled:active:scale-100',
+  'rounded-xl border border-transparent bg-[var(--notika-green)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition',
+  'hover:bg-[var(--notika-green-hover)] active:scale-[0.99] disabled:opacity-50 disabled:active:scale-100',
 )
 
 const btnSecondary = cn(
-  'rounded-xl border border-[color-mix(in_oklch,var(--highlight)_30%,var(--border))] bg-card px-5 py-3 text-sm font-medium text-foreground shadow-sm transition',
-  'hover:border-[color-mix(in_oklch,var(--highlight)_48%,var(--border))] hover:bg-[color-mix(in_oklch,var(--highlight)_9%,var(--card))]',
-  'disabled:opacity-50 dark:border-[color-mix(in_oklch,var(--border)_85%,var(--highlight)_15%)] dark:bg-card/80 dark:hover:bg-[color-mix(in_oklch,var(--highlight)_12%,var(--card))]',
+  'rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-4 py-2.5 text-sm font-medium text-[var(--notika-text)] shadow-sm transition',
+  'hover:bg-[#f8f9fa] disabled:opacity-50 dark:border-[var(--notika-border)] dark:bg-[var(--notika-card)] dark:hover:bg-[var(--muted)]',
 )
 
 const btnDanger = cn(
-  'rounded-xl border border-rose-200/95 bg-gradient-to-br from-rose-50 to-white px-5 py-3 text-sm font-semibold text-rose-900 shadow-sm transition',
-  'hover:border-rose-300 hover:from-rose-100 disabled:opacity-50 dark:border-rose-900/45 dark:from-rose-950/50 dark:to-card/30 dark:text-rose-100 dark:hover:from-rose-950/65',
+  'rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-900 shadow-sm transition',
+  'hover:border-rose-300 hover:bg-rose-100 disabled:opacity-50 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-100',
 )
 
 const inputCls = cn(
-  'min-h-[2.75rem] w-full rounded-xl border border-[color-mix(in_oklch,var(--border)_68%,var(--highlight)_32%)] bg-card px-4 py-3 text-sm text-foreground outline-none transition',
-  'placeholder:text-muted-foreground focus:border-[var(--highlight-strong)] focus:ring-2 focus:ring-[color-mix(in_oklch,var(--highlight)_28%,transparent)] focus:ring-offset-2 focus:ring-offset-background',
-  'dark:border-[color-mix(in_oklch,var(--border)_80%,var(--highlight)_20%)] dark:bg-[color-mix(in_oklch,var(--card)_92%,var(--muted)_8%)] dark:focus:border-[var(--highlight)] dark:focus:ring-offset-background',
+  'min-h-[2.75rem] w-full rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-4 py-3 text-sm text-[var(--notika-text)] outline-none transition',
+  'placeholder:text-[var(--notika-muted)] focus:border-[var(--notika-green)] focus:ring-2 focus:ring-[var(--notika-green)]/20 focus:ring-offset-1 focus:ring-offset-[var(--notika-content)]',
+  'dark:border-[var(--notika-border)] dark:bg-[var(--notika-card)] dark:focus:ring-offset-[var(--notika-content)]',
 )
 
 const tabBarCls = cn(
-  'flex flex-wrap gap-2 rounded-xl border border-[color-mix(in_oklch,var(--border)_78%,var(--highlight)_22%)]',
-  'bg-[color-mix(in_oklch,var(--highlight)_8%,var(--muted))] p-2 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45)] dark:border-[color-mix(in_oklch,var(--border)_85%,var(--highlight)_15%)] dark:bg-[color-mix(in_oklch,var(--highlight)_6%,var(--muted))] dark:shadow-none',
+  'flex flex-wrap gap-1 rounded-xl border border-[var(--notika-border)] bg-[#f8fafb] p-1.5',
+  'dark:border-[var(--notika-border)] dark:bg-[var(--muted)]',
 )
 
 const tabBtn = cn(
-  'rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition',
-  'hover:bg-[color-mix(in_oklch,var(--highlight)_12%,transparent)] hover:text-foreground',
-  'dark:hover:bg-[color-mix(in_oklch,var(--highlight)_10%,transparent)] dark:hover:text-foreground',
+  'shrink-0 whitespace-nowrap rounded-lg border border-transparent px-2.5 py-2 text-sm font-medium text-[var(--notika-muted)] transition sm:px-3',
+  'hover:bg-white hover:text-[var(--notika-text)] dark:hover:bg-[var(--notika-card)] dark:hover:text-[var(--notika-text)]',
 )
 
 const tabBtnActive = cn(
-  'border-[color-mix(in_oklch,var(--highlight)_42%,var(--border))] bg-card font-semibold text-[var(--highlight-strong)] shadow-sm ring-1 ring-[color-mix(in_oklch,var(--highlight)_22%,transparent)]',
-  'dark:border-[color-mix(in_oklch,var(--highlight)_35%,var(--border))] dark:bg-[color-mix(in_oklch,var(--card)_95%,var(--muted)_5%)] dark:text-[var(--highlight)] dark:ring-[color-mix(in_oklch,var(--highlight)_18%,transparent)]',
+  'rounded-lg border-[var(--notika-border)] bg-white font-semibold text-[var(--notika-green)] shadow-sm',
+  'dark:border-[var(--notika-border)] dark:bg-[var(--notika-card)] dark:text-[var(--brand-soft)]',
 )
 
 function SessionPickerModal({
@@ -717,29 +696,29 @@ function SessionPickerModal({
 }) {
   return (
     <div
-      className='fixed inset-0 z-50 flex items-center justify-center bg-foreground/25 p-5 backdrop-blur-md sm:p-6'
+      className='fixed inset-0 z-50 flex items-end justify-center bg-foreground/25 p-0 backdrop-blur-md sm:items-center sm:p-6'
       role='dialog'
       aria-modal='true'
     >
-      <div className='max-h-[80vh] w-full max-w-lg overflow-hidden rounded-2xl border border-[color-mix(in_oklch,var(--border)_75%,var(--highlight)_25%)] bg-card shadow-2xl shadow-[0_24px_64px_-16px_color-mix(in_oklch,var(--highlight-strong)_25%,transparent)] ring-1 ring-white/60 dark:border-[color-mix(in_oklch,var(--border)_82%,var(--highlight)_18%)] dark:bg-card dark:ring-white/[0.08]'>
-        <div className='flex flex-wrap items-center justify-between gap-3 border-b border-[color-mix(in_oklch,var(--highlight)_14%,var(--border))] bg-[color-mix(in_oklch,var(--highlight)_8%,var(--muted))] px-5 py-4 dark:border-[color-mix(in_oklch,var(--border)_88%,var(--highlight)_12%)] dark:bg-[color-mix(in_oklch,var(--highlight)_6%,var(--muted))]'>
-          <h3 className='font-semibold text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>Bản lịch đã lưu</h3>
-          <button type='button' className={btnSecondary} onClick={onRefresh} disabled={busy}>
+      <div className='flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] shadow-[0_12px_40px_rgba(0,0,0,0.15)] sm:max-h-[80vh] sm:rounded-2xl'>
+        <div className='flex flex-col gap-2 border-b border-[var(--notika-border)] bg-[#f8fafb] px-4 py-3 dark:bg-[var(--muted)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-5 sm:py-4'>
+          <h3 className='text-base font-semibold text-[var(--notika-green)]'>Bản lịch đã lưu</h3>
+          <button type='button' className={cn(btnSecondary, 'min-h-11 w-full sm:w-auto')} onClick={onRefresh} disabled={busy}>
             Làm mới danh sách
           </button>
         </div>
-        <ul className='max-h-[55vh] overflow-auto p-3 sm:p-4'>
+        <ul className='min-h-0 flex-1 touch-scroll-x overflow-auto p-3 sm:p-4'>
           {contexts.map((c) => (
             <li key={c.id}>
               <div
                 className={cn(
                   'flex items-stretch gap-3 rounded-xl px-2 py-2',
-                  currentId === c.id && 'bg-[color-mix(in_oklch,var(--highlight)_12%,transparent)] dark:bg-zinc-800/80',
+                  currentId === c.id && 'bg-[var(--notika-green-soft)] dark:bg-[var(--muted)]',
                 )}
               >
                 <button
                   type='button'
-                  className='min-w-0 flex-1 rounded-lg px-3 py-2.5 text-left text-sm text-foreground hover:bg-[color-mix(in_oklch,var(--highlight)_10%,var(--muted))] dark:hover:bg-[color-mix(in_oklch,var(--highlight)_8%,var(--muted))]'
+                  className='min-w-0 flex-1 rounded-xl px-3 py-2.5 text-left text-sm text-foreground hover:bg-[#f0f2f4] dark:hover:bg-[var(--muted)]'
                   onClick={() => onPick(c.id)}
                 >
                   <div className='font-medium'>{c.name || '(Chưa đặt tên)'}</div>
@@ -749,7 +728,7 @@ function SessionPickerModal({
                 </button>
                 <button
                   type='button'
-                  className='shrink-0 self-center rounded-lg border-2 border-red-200 bg-red-50/80 px-3 py-2 text-xs font-semibold text-red-800 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800/55 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-950/50'
+                  className='shrink-0 self-center rounded-xl border-2 border-red-200 bg-red-50/80 px-3 py-2 text-xs font-semibold text-red-800 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800/55 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-950/50'
                   disabled={busy}
                   title='Xóa bản lịch'
                   aria-label={`Xóa bản lịch ${c.name || c.id}`}
@@ -765,8 +744,8 @@ function SessionPickerModal({
           ))}
           {contexts.length === 0 ? <li className='px-4 py-10 text-center text-sm text-muted-foreground'>Chưa có bản lịch nào.</li> : null}
         </ul>
-        <div className='border-t border-[color-mix(in_oklch,var(--border)_90%,var(--highlight)_10%)] p-4 dark:border-[color-mix(in_oklch,var(--border)_88%,var(--highlight)_12%)]'>
-          <button type='button' className={cn(btnSecondary, 'w-full')} onClick={onClose}>
+        <div className='shrink-0 border-t border-[var(--notika-border)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 sm:pb-4'>
+          <button type='button' className={cn(btnSecondary, 'min-h-11 w-full')} onClick={onClose}>
             Đóng
           </button>
         </div>
@@ -802,7 +781,7 @@ function DoctorsEditor({
     ])
   return (
     <section className={cn(panelCls, 'space-y-6')}>
-      <div className='flex flex-col gap-4 border-b border-[color-mix(in_oklch,var(--highlight)_15%,var(--border))] pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700/80'>
+      <div className='flex flex-col gap-4 border-b border-[var(--notika-border)] pb-5 sm:flex-row sm:items-center sm:justify-between'>
         <h2 className='text-lg font-semibold text-foreground'>Danh sách bác sĩ</h2>
         <button type='button' className={btnSecondary} onClick={add}>
           Thêm bác sĩ
@@ -813,7 +792,7 @@ function DoctorsEditor({
       </p>
       <div className='space-y-6'>
         {doctors.map((d, i) => (
-          <div key={d.id} className='rounded-xl border border-[color-mix(in_oklch,var(--highlight)_18%,var(--border))] bg-[color-mix(in_oklch,var(--highlight)_7%,var(--card))] p-4 sm:p-5 dark:border-[color-mix(in_oklch,var(--border)_82%,var(--highlight)_18%)] dark:bg-[color-mix(in_oklch,var(--card)_90%,var(--muted)_10%)]'>
+          <div key={d.id} className='rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] p-4 sm:p-5'>
             <div className='mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
               <input
                 className={inputCls}
@@ -892,7 +871,7 @@ function MachinesEditor({
     ])
   return (
     <section className={cn(panelCls, 'space-y-6')}>
-      <div className='flex flex-col gap-4 border-b border-[color-mix(in_oklch,var(--highlight)_15%,var(--border))] pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700/80'>
+      <div className='flex flex-col gap-4 border-b border-[var(--notika-border)] pb-5 sm:flex-row sm:items-center sm:justify-between'>
         <h2 className='text-lg font-semibold text-foreground'>Danh sách máy</h2>
         <button type='button' className={btnSecondary} onClick={add}>
           Thêm máy
@@ -903,7 +882,7 @@ function MachinesEditor({
       </p>
       <div className='space-y-6'>
         {machines.map((m, i) => (
-          <div key={m.id} className='rounded-xl border border-[color-mix(in_oklch,var(--highlight)_18%,var(--border))] bg-[color-mix(in_oklch,var(--highlight)_7%,var(--card))] p-4 sm:p-5 dark:border-[color-mix(in_oklch,var(--border)_82%,var(--highlight)_18%)] dark:bg-[color-mix(in_oklch,var(--card)_90%,var(--muted)_10%)]'>
+          <div key={m.id} className='rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] p-4 sm:p-5'>
             <div className='grid gap-4 sm:grid-cols-2'>
               <input
                 className={inputCls}
@@ -957,7 +936,7 @@ function ProceduresEditor({
     ])
   return (
     <section className={cn(panelCls, 'space-y-6')}>
-      <div className='flex flex-col gap-4 border-b border-[color-mix(in_oklch,var(--highlight)_15%,var(--border))] pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700/80'>
+      <div className='flex flex-col gap-4 border-b border-[var(--notika-border)] pb-5 sm:flex-row sm:items-center sm:justify-between'>
         <h2 className='text-lg font-semibold text-foreground'>Danh sách thủ thuật</h2>
         <button type='button' className={btnSecondary} onClick={add}>
           Thêm thủ thuật
@@ -969,7 +948,7 @@ function ProceduresEditor({
       </p>
       <div className='space-y-6'>
         {procedures.map((p, i) => (
-          <div key={p.id} className='rounded-xl border border-[color-mix(in_oklch,var(--highlight)_18%,var(--border))] bg-[color-mix(in_oklch,var(--highlight)_7%,var(--card))] p-4 sm:p-5 dark:border-[color-mix(in_oklch,var(--border)_82%,var(--highlight)_18%)] dark:bg-[color-mix(in_oklch,var(--card)_90%,var(--muted)_10%)]'>
+          <div key={p.id} className='rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] p-4 sm:p-5'>
             <div className='grid gap-4 sm:grid-cols-2'>
               <input
                 className={inputCls}
@@ -1032,7 +1011,7 @@ function ProceduresEditor({
               <label className='flex cursor-pointer items-start gap-3 text-sm sm:col-span-2 sm:items-center'>
                 <input
                   type='checkbox'
-                  className='mt-0.5 size-[1.125rem] shrink-0 rounded border-zinc-300 accent-[var(--highlight-strong)] sm:mt-0 dark:border-zinc-600'
+                  className='mt-0.5 size-[1.125rem] shrink-0 rounded border-[var(--notika-border)] accent-[var(--notika-green)] sm:mt-0'
                   checked={p.priority}
                   onChange={(e) => update(i, { priority: e.target.checked })}
                 />
@@ -1075,7 +1054,7 @@ function PatientsEditor({
     ])
   return (
     <section className={cn(panelCls, 'space-y-6')}>
-      <div className='flex flex-col gap-4 border-b border-[color-mix(in_oklch,var(--highlight)_15%,var(--border))] pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700/80'>
+      <div className='flex flex-col gap-4 border-b border-[var(--notika-border)] pb-5 sm:flex-row sm:items-center sm:justify-between'>
         <h2 className='text-lg font-semibold text-foreground'>Danh sách bệnh nhân</h2>
         <button type='button' className={btnSecondary} onClick={add}>
           Thêm bệnh nhân
@@ -1083,7 +1062,7 @@ function PatientsEditor({
       </div>
       <div className='space-y-6'>
         {patients.map((p, i) => (
-          <div key={p.id} className='rounded-xl border border-[color-mix(in_oklch,var(--highlight)_18%,var(--border))] bg-[color-mix(in_oklch,var(--highlight)_7%,var(--card))] p-4 sm:p-5 dark:border-[color-mix(in_oklch,var(--border)_82%,var(--highlight)_18%)] dark:bg-[color-mix(in_oklch,var(--card)_90%,var(--muted)_10%)]'>
+          <div key={p.id} className='rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] p-4 sm:p-5'>
             <div className='grid gap-4 sm:grid-cols-2'>
               <input
                 className={inputCls}
@@ -1103,7 +1082,7 @@ function PatientsEditor({
               <label className='flex cursor-pointer items-start gap-3 text-sm sm:col-span-2 sm:items-center'>
                 <input
                   type='checkbox'
-                  className='mt-0.5 size-[1.125rem] shrink-0 rounded border-zinc-300 accent-[var(--highlight-strong)] sm:mt-0 dark:border-zinc-600'
+                  className='mt-0.5 size-[1.125rem] shrink-0 rounded border-[var(--notika-border)] accent-[var(--notika-green)] sm:mt-0'
                   checked={p.highPriority}
                   onChange={(e) => update(i, { highPriority: e.target.checked })}
                 />
@@ -1116,10 +1095,10 @@ function PatientsEditor({
                 {procedures.map((proc) => {
                   const on = p.procedureIds.includes(proc.id)
                   return (
-                    <label key={proc.id} className='flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700'>
+                    <label key={proc.id} className='flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700'>
                       <input
                         type='checkbox'
-                        className='size-4 shrink-0 rounded accent-[var(--highlight-strong)]'
+                        className='size-4 shrink-0 rounded accent-[var(--notika-green)]'
                         checked={on}
                         onChange={() => {
                           const set = new Set(p.procedureIds)
@@ -1155,7 +1134,7 @@ function BusyEditor({
   onChange: (b: TimeWindowM[]) => void
 }) {
   return (
-    <div className='mt-5 border-t border-[color-mix(in_oklch,var(--highlight)_12%,var(--border))] pt-5 dark:border-zinc-700/70'>
+    <div className='mt-5 border-t border-[var(--notika-border)] pt-5'>
       <p className={subLabelCls}>{label}</p>
       <div className='space-y-3'>
         {busy.map((b, idx) => (
@@ -1188,7 +1167,7 @@ function BusyEditor({
         ))}
         <button
           type='button'
-          className='text-sm font-medium text-[var(--highlight-strong)] underline decoration-[color-mix(in_oklch,var(--highlight)_45%,transparent)] underline-offset-2 dark:text-[var(--highlight)]'
+          className='text-sm font-medium text-[var(--notika-green)] underline decoration-[var(--notika-green)]/40 underline-offset-2'
           onClick={() => onChange([...busy, { startM: null, endM: null }])}
         >
           + Thêm một khoảng thời gian bận
@@ -1216,14 +1195,14 @@ function ResultsTable({
       <table className='min-w-full text-left text-sm'>
         <thead className={theadCls}>
           <tr>
-            <th className='px-4 py-3'>Bệnh nhân</th>
-            <th className='px-4 py-3'>Thủ thuật</th>
-            <th className='px-4 py-3'>Bắt đầu ca</th>
-            <th className='px-4 py-3'>Hết giờ bác sĩ có mặt</th>
-            <th className='px-4 py-3'>Kết thúc ca</th>
-            <th className='px-4 py-3'>Bác sĩ</th>
-            <th className='px-4 py-3'>Máy</th>
-            <th className='px-4 py-3'>Chỉnh nhanh</th>
+            <th className={tableCell}>Bệnh nhân</th>
+            <th className={tableCell}>Thủ thuật</th>
+            <th className={tableCell}>Bắt đầu ca</th>
+            <th className={tableCell}>Hết giờ bác sĩ có mặt</th>
+            <th className={tableCell}>Kết thúc ca</th>
+            <th className={tableCell}>Bác sĩ</th>
+            <th className={tableCell}>Máy</th>
+            <th className={tableCell}>Chỉnh nhanh</th>
           </tr>
         </thead>
         <tbody>
@@ -1231,9 +1210,9 @@ function ResultsTable({
             .sort((a, b) => a.startM - b.startM)
             .map((a) => (
               <tr key={a.id} className='border-b border-border/65 dark:border-border/35'>
-                <td className='px-4 py-3'>{patientById.get(a.patientId)?.name ?? a.patientId}</td>
-                <td className='px-4 py-3'>{procById.get(a.procedureId)?.name ?? a.procedureId}</td>
-                <td className='px-4 py-3'>
+                <td className={tableCell}>{patientById.get(a.patientId)?.name ?? a.patientId}</td>
+                <td className={tableCell}>{procById.get(a.procedureId)?.name ?? a.procedureId}</td>
+                <td className={tableCell}>
                   <SchedTimeField
                     ariaLabel={`Giờ bắt đầu ca — ${patientById.get(a.patientId)?.name ?? a.patientId}`}
                     value={a.startM}
@@ -1258,17 +1237,17 @@ function ResultsTable({
                     }}
                   />
                 </td>
-                <td className='px-4 py-3'>{minutesToLabel(a.pillowEndM)}</td>
-                <td className='px-4 py-3'>{minutesToLabel(a.endM)}</td>
-                <td className='px-4 py-3'>{a.doctorCodes.join(', ')}</td>
-                <td className='px-4 py-3'>
+                <td className={tableCell}>{minutesToLabel(a.pillowEndM)}</td>
+                <td className={tableCell}>{minutesToLabel(a.endM)}</td>
+                <td className={tableCell}>{a.doctorCodes.join(', ')}</td>
+                <td className={tableCell}>
                   {machineById.get(a.machineId)?.typeName} — {machineById.get(a.machineId)?.unitName}
                 </td>
-                <td className='px-4 py-3 align-top'>
+                <td className={cn(tableCell, 'align-top')}>
                   <div className='flex max-w-[200px] flex-col gap-2'>
                     <button
                       type='button'
-                      className='text-left text-xs font-semibold text-[var(--highlight-strong)] underline decoration-[color-mix(in_oklch,var(--highlight)_50%,transparent)] underline-offset-2 dark:text-[var(--highlight)]'
+                      className='text-left text-xs font-semibold text-[var(--notika-green)] underline decoration-[var(--notika-green)]/45 underline-offset-2'
                       onClick={() =>
                         onPatchPayload((p) => ({
                           ...p,
@@ -1348,7 +1327,7 @@ function ResultsTable({
             ))}
           {payload.assignments.length === 0 ? (
             <tr>
-              <td colSpan={8} className='px-4 py-10 text-center text-zinc-500'>
+              <td colSpan={8} className={cn(tableCell, 'py-8 text-center text-sm text-zinc-500 sm:py-10')}>
                 Chưa có ca nào. Hãy bấm xếp lịch ở phần trên.
               </td>
             </tr>
@@ -1373,22 +1352,22 @@ function UnsortedTable({
       <table className='min-w-full text-left text-sm'>
         <thead className={theadCls}>
           <tr>
-            <th className='px-4 py-3'>Bệnh nhân</th>
-            <th className='px-4 py-3'>Thủ thuật</th>
-            <th className='px-4 py-3'>Lý do</th>
+            <th className={tableCell}>Bệnh nhân</th>
+            <th className={tableCell}>Thủ thuật</th>
+            <th className={tableCell}>Lý do</th>
           </tr>
         </thead>
         <tbody>
           {unscheduled.map((u, i) => (
             <tr key={`${u.patientId}-${u.procedureId}-${i}`} className='border-b border-border/65 dark:border-border/35'>
-              <td className='px-4 py-3'>{patientById.get(u.patientId)?.name ?? u.patientId}</td>
-              <td className='px-4 py-3'>{procById.get(u.procedureId)?.name ?? u.procedureId}</td>
-              <td className='px-4 py-3 text-zinc-600 dark:text-zinc-400'>{u.reason}</td>
+              <td className={tableCell}>{patientById.get(u.patientId)?.name ?? u.patientId}</td>
+              <td className={tableCell}>{procById.get(u.procedureId)?.name ?? u.procedureId}</td>
+              <td className={cn(tableCell, 'text-zinc-600 dark:text-zinc-400')}>{u.reason}</td>
             </tr>
           ))}
           {unscheduled.length === 0 ? (
             <tr>
-              <td colSpan={3} className='px-4 py-10 text-center text-zinc-500'>
+              <td colSpan={3} className={cn(tableCell, 'py-8 text-center text-sm text-zinc-500 sm:py-10')}>
                 Không có ca chưa xếp.
               </td>
             </tr>
@@ -1405,19 +1384,19 @@ function StatsTable({ rows }: { rows: ReturnType<typeof buildProcedureStats> }) 
       <table className='min-w-full text-left text-sm'>
         <thead className={theadCls}>
           <tr>
-            <th className='px-4 py-3'>Thủ thuật</th>
-            <th className='px-4 py-3'>Tổng số ca cần xếp</th>
-            <th className='px-4 py-3'>Đã xếp</th>
-            <th className='px-4 py-3'>Chưa xếp</th>
+            <th className={tableCell}>Thủ thuật</th>
+            <th className={tableCell}>Tổng số ca cần xếp</th>
+            <th className={tableCell}>Đã xếp</th>
+            <th className={tableCell}>Chưa xếp</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.procedureId} className='border-b border-border/65 dark:border-border/35'>
-              <td className='px-4 py-3'>{r.name}</td>
-              <td className='px-4 py-3'>{r.requested}</td>
-              <td className='px-4 py-3'>{r.scheduled}</td>
-              <td className='px-4 py-3'>{r.unscheduled}</td>
+              <td className={tableCell}>{r.name}</td>
+              <td className={tableCell}>{r.requested}</td>
+              <td className={tableCell}>{r.scheduled}</td>
+              <td className={tableCell}>{r.unscheduled}</td>
             </tr>
           ))}
         </tbody>
@@ -1443,33 +1422,33 @@ function SlicesTable({
 }) {
   return (
     <div className={panelCls}>
-      <h3 className='mb-4 text-base font-semibold text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>{title}</h3>
-      <div className='overflow-x-auto rounded-xl border border-[color-mix(in_oklch,var(--highlight)_12%,var(--border))] dark:border-zinc-700/80'>
+      <h3 className='mb-4 text-base font-semibold text-[var(--notika-green)]'>{title}</h3>
+      <div className='touch-scroll-x max-w-full overflow-x-auto rounded-2xl border border-[var(--notika-border)]'>
         <table className='min-w-full text-left text-sm'>
           <thead className={theadCls}>
             <tr>
-              <th className='px-4 py-3'>Đối tượng</th>
-              <th className='px-4 py-3'>Bệnh nhân</th>
-              <th className='px-4 py-3'>Thủ thuật</th>
-              <th className='px-4 py-3'>Bắt đầu</th>
-              <th className='px-4 py-3'>Kết thúc</th>
+              <th className={tableCell}>Đối tượng</th>
+              <th className={tableCell}>Bệnh nhân</th>
+              <th className={tableCell}>Thủ thuật</th>
+              <th className={tableCell}>Bắt đầu</th>
+              <th className={tableCell}>Kết thúc</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={i} className='border-b border-border/65 dark:border-border/35'>
-                <td className='px-4 py-3'>{r.label}</td>
-                <td className='px-4 py-3'>{r.patientName}</td>
-                <td className='px-4 py-3'>{r.procedureName}</td>
-                <td className='px-4 py-3'>
+                <td className={tableCell}>{r.label}</td>
+                <td className={tableCell}>{r.patientName}</td>
+                <td className={tableCell}>{r.procedureName}</td>
+                <td className={tableCell}>
                   {minutesToLabel((r.startM ?? r.pillowStartM) as number)}
                 </td>
-                <td className='px-4 py-3'>{minutesToLabel((r.endM ?? r.pillowEndM) as number)}</td>
+                <td className={tableCell}>{minutesToLabel((r.endM ?? r.pillowEndM) as number)}</td>
               </tr>
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className='px-4 py-10 text-center text-zinc-500'>
+                <td colSpan={5} className={cn(tableCell, 'py-8 text-center text-sm text-zinc-500 sm:py-10')}>
                   Chưa có dữ liệu.
                 </td>
               </tr>
@@ -1503,13 +1482,13 @@ function GanttChart({
 
   return (
     <div className={cn(panelCls, 'space-y-7')}>
-      <h3 className='text-base font-semibold text-[var(--highlight-strong)] dark:text-[var(--highlight)]'>
+      <h3 className='text-base font-semibold text-[var(--notika-green)]'>
         Biểu đồ thời gian bác sĩ phải có mặt
       </h3>
       {[...byDoctor.entries()].map(([doc, segs]) => (
         <div key={doc}>
           <div className='mb-2 text-sm font-medium text-zinc-800 dark:text-zinc-200'>{doc}</div>
-          <div className='relative h-12 w-full rounded-xl border border-[color-mix(in_oklch,var(--highlight)_15%,var(--border))] bg-[color-mix(in_oklch,var(--highlight)_6%,var(--muted))] dark:border-zinc-600 dark:bg-zinc-800/80'>
+          <div className='relative h-12 w-full rounded-xl border border-[var(--notika-border)] bg-[#f0f2f4] dark:bg-[var(--muted)]'>
             {segs.map((s, i) => {
               const left = ((s.pillowStartM - dayBounds.dayStart) / span) * 100
               const width = ((s.pillowEndM - s.pillowStartM) / span) * 100
@@ -1517,7 +1496,7 @@ function GanttChart({
                 <div
                   key={i}
                   title={`${s.patientName} · ${s.procedureName}`}
-                  className='absolute top-2 h-8 rounded-lg bg-gradient-to-r from-[var(--highlight-strong)] to-[var(--highlight)] text-center text-[10px] font-medium leading-8 text-white shadow-sm ring-1 ring-white/20'
+                  className='absolute top-2 h-8 rounded-lg bg-[var(--notika-green)] text-center text-[10px] font-medium leading-8 text-white shadow-sm'
                   style={{ left: `${Math.max(0, left)}%`, width: `${Math.max(0.5, width)}%` }}
                 />
               )
@@ -1540,20 +1519,20 @@ function EstimateTable({ rows }: { rows: { procedureId: string; name: string; es
       <table className='min-w-full text-left text-sm'>
         <thead className={theadCls}>
           <tr>
-            <th className='px-4 py-3'>Thủ thuật</th>
-            <th className='px-4 py-3'>Ước tính còn xếp thêm được bao nhiêu ca</th>
+            <th className={tableCell}>Thủ thuật</th>
+            <th className={tableCell}>Ước tính còn xếp thêm được bao nhiêu ca</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.procedureId} className='border-b border-border/65 dark:border-border/35'>
-              <td className='px-4 py-3'>{r.name}</td>
-              <td className='px-4 py-3'>{r.estimate}</td>
+              <td className={tableCell}>{r.name}</td>
+              <td className={tableCell}>{r.estimate}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className='px-4 py-3 text-xs text-zinc-500'>
+      <p className={cn(tableCell, 'text-xs text-zinc-500')}>
         Con số tính sơ bộ theo chỗ trống của máy và thời gian bác sĩ còn lại trong ngày; chỉ để tham khảo.
       </p>
     </div>
