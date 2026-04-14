@@ -4,7 +4,7 @@
 
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SchedDateField, SchedTimeField } from '@/components/scheduling/sched-aria-fields'
 import { buildAssignmentsCsv } from '@/lib/scheduling/csv-export'
 import type {
@@ -25,6 +25,7 @@ import {
 } from '@/lib/scheduling/stats'
 import { inferDayBounds } from '@/lib/scheduling/engine'
 import { validateMastersForSchedule } from '@/lib/scheduling/validate-masters'
+import { appToast } from '@/lib/app-toast'
 import { cn } from '@/lib/styles'
 import { useScheduling } from '@/hooks/use-scheduling'
 import { useRouter } from 'next/navigation'
@@ -75,16 +76,26 @@ export function SchedulingApp() {
 
   const handleLogout = useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
+    appToast.success('Đã đăng xuất')
     router.replace('/login')
   }, [router])
 
-  const displayError = localError ?? error
+  const feedbackMsg = localError ?? error
+
+  useEffect(() => {
+    if (!feedbackMsg) {
+      appToast.dismiss('scheduling-error')
+      return
+    }
+    appToast.error(feedbackMsg, { id: 'scheduling-error' })
+  }, [feedbackMsg])
 
   const handleSave = useCallback(async () => {
     clearErrors()
     setLocalError(null)
     try {
       await sched.saveContext()
+      appToast.success('Đã lưu bản lịch lên máy chủ')
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Lỗi lưu')
     }
@@ -103,12 +114,18 @@ export function SchedulingApp() {
       try {
         await sched.saveContext()
         const data = await sched.runSchedule(mode)
+        appToast.success(
+          data.unscheduled.length > 0
+            ? `Đã xếp lịch — còn ${data.unscheduled.length} ca chưa xếp`
+            : 'Đã xếp lịch xong',
+        )
         if (data.context.settings.autoSaveAfterSchedule) {
           const ok = window.confirm('Đã xếp lịch xong. Bạn có muốn lưu thêm một bản lịch mới (bản sao) không?')
           if (ok) {
             const name = window.prompt('Đặt tên cho bản lịch mới', `${data.context.name} — ${new Date().toLocaleString('vi-VN')}`)
             if (name?.trim()) {
               await sched.saveAsNew({ name: name.trim(), cloneFromId: contextId })
+              appToast.success('Đã lưu bản sao bản lịch')
             }
           }
         }
@@ -131,6 +148,7 @@ export function SchedulingApp() {
     a.download = `sap-lich-${safeName}.csv`
     a.click()
     URL.revokeObjectURL(url)
+    appToast.success('Đã tải file CSV')
   }, [payload])
 
   const handleCreate = useCallback(async () => {
@@ -138,6 +156,7 @@ export function SchedulingApp() {
     setLocalError(null)
     try {
       await sched.createSession()
+      appToast.success('Đã tạo bản lịch mới')
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Lỗi tạo bản lịch mới')
     }
@@ -151,6 +170,7 @@ export function SchedulingApp() {
     setLocalError(null)
     try {
       await sched.deleteContext(contextId)
+      appToast.success('Đã xóa bản lịch')
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Lỗi xóa bản lịch')
     }
@@ -164,6 +184,7 @@ export function SchedulingApp() {
       setLocalError(null)
       try {
         await sched.deleteContext(id)
+        appToast.success('Đã xóa bản lịch')
       } catch (e) {
         setLocalError(e instanceof Error ? e.message : 'Lỗi xóa bản lịch')
       }
@@ -184,6 +205,7 @@ export function SchedulingApp() {
         settings: payload.settings,
         masters: payload.masters,
       })
+      appToast.success('Đã lưu bản lịch mới')
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Lỗi lưu bản lịch mới')
     }
@@ -279,9 +301,8 @@ export function SchedulingApp() {
                   <p className='truncate text-xs text-[var(--notika-muted)]'>{payload.name}</p>
                 ) : null}
               </div>
-              <ThemeToggle className='shrink-0 sm:order-last' />
             </div>
-            <div className='grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-1 sm:justify-end sm:gap-2'>
+            <div className='flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2'>
               <button
                 type='button'
                 className={cn(btnSecondary, 'min-h-11 w-full sm:w-auto')}
@@ -298,11 +319,12 @@ export function SchedulingApp() {
               <button
                 type='button'
                 onClick={() => void handleLogout()}
-                className='col-span-2 min-h-11 rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-2 text-xs font-semibold text-[var(--notika-muted)] shadow-sm transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 sm:col-span-1 sm:w-auto'
+                className='min-h-11 w-full rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-2 text-xs font-semibold text-[var(--notika-muted)] shadow-sm transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 sm:w-auto'
                 title='Đăng xuất'
               >
                 Đăng xuất
               </button>
+              <ThemeToggle className='shrink-0 self-end sm:self-center' />
             </div>
           </div>
         </header>
@@ -329,15 +351,6 @@ export function SchedulingApp() {
                 </div>
               </div>
             ))}
-          </div>
-        ) : null}
-
-        {displayError ? (
-          <div
-            className='mb-5 rounded-2xl border border-rose-200/90 bg-gradient-to-br from-rose-50 to-white px-4 py-3 text-sm text-rose-950 shadow-sm dark:border-rose-900/45 dark:from-rose-950/40 dark:to-card/20 dark:text-rose-50'
-            role='alert'
-          >
-            {displayError}
           </div>
         ) : null}
 
@@ -606,11 +619,19 @@ export function SchedulingApp() {
           currentId={contextId}
           busy={busy}
           onClose={() => setSessionPickerOpen(false)}
-          onPick={(id) => {
+          onPick={async (id) => {
             setSessionPickerOpen(false)
-            void loadContext(id)
+            try {
+              await loadContext(id)
+              appToast.success('Đã mở bản lịch')
+            } catch (e) {
+              appToast.error(e instanceof Error ? e.message : 'Không mở được bản lịch')
+            }
           }}
-          onRefresh={() => void refreshList()}
+          onRefresh={() => {
+            void refreshList()
+            appToast.info('Đã làm mới danh sách bản lịch')
+          }}
           onDelete={(id) => void handleDeleteById(id)}
         />
       ) : null}

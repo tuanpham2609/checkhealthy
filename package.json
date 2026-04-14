@@ -25,6 +25,7 @@
     "react-aria-components": "^1.16.0",
     "react-dom": "19.1.0",
     "sharp": "^0.34.5",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {

@@ -6,19 +6,18 @@
 
 import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { APP_DOCUMENT_TITLE } from '@/constants/app-document.constants'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { APP_DOCUMENT_TITLE } from '@/constants/app-document.constants'
+import { appToast } from '@/lib/app-toast'
 
 export default function LoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setError(null)
     setLoading(true)
 
     try {
@@ -31,13 +30,14 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error ?? 'Đăng nhập thất bại')
+        appToast.error(data.error ?? 'Đăng nhập thất bại')
         return
       }
 
+      appToast.success('Đăng nhập thành công')
       router.replace('/')
     } catch {
-      setError('Không thể kết nối máy chủ')
+      appToast.error('Không thể kết nối máy chủ')
     } finally {
       setLoading(false)
     }
@@ -110,12 +110,6 @@ export default function LoginPage() {
                   placeholder='••••••••'
                 />
               </div>
-
-              {error && (
-                <div className='rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700' role='alert'>
-                  {error}
-                </div>
-              )}
 
               <button
                 type='submit'
