@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server'
 import { assignmentClientToInsert, assignmentRowToClient, rowToPayload } from '@/lib/scheduling/db-map'
 import { createSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin'
+import { getSessionUser } from '@/lib/auth/session'
 
 const DEFAULT_SETTINGS = {
   autoSaveAfterSchedule: false,
@@ -58,6 +59,9 @@ export async function POST(request: Request) {
   const mastersBody = o.masters && typeof o.masters === 'object' ? o.masters : null
   const daysOff = Array.isArray(o.daysOff) ? o.daysOff.filter((x): x is string => typeof x === 'string') : []
 
+  const session = await getSessionUser()
+  const userId = session?.uid ?? null
+
   const supabase = createSupabaseAdmin()
 
   if (cloneFromId) {
@@ -70,6 +74,7 @@ export async function POST(request: Request) {
       .insert({
         name,
         scheduling_date: src.scheduling_date,
+        user_id: userId,
         settings: src.settings ?? DEFAULT_SETTINGS,
         masters: src.masters ?? DEFAULT_MASTERS,
         days_off: src.days_off ?? [],
@@ -111,6 +116,7 @@ export async function POST(request: Request) {
     .insert({
       name,
       scheduling_date: schedulingDate,
+      user_id: userId,
       settings: settingsBody ?? DEFAULT_SETTINGS,
       masters: mastersBody ?? DEFAULT_MASTERS,
       days_off: daysOff,

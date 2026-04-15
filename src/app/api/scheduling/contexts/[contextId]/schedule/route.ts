@@ -11,6 +11,7 @@ import {
   rowToPayload,
 } from '@/lib/scheduling/db-map'
 import { runSchedule, type ScheduleMode } from '@/lib/scheduling/engine'
+import { injectCrossUserBusy, type ExternalContext } from '@/lib/scheduling/cross-user'
 import { createSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin'
 
 function serviceUnavailable() {
@@ -54,10 +55,50 @@ export async function POST(request: Request, ctx: { params: Promise<{ contextId:
   }
 
   const settings = asSettings(row.settings)
-  const masters = asMasters(row.masters)
+  const baseMasters = asMasters(row.masters)
   const existing = (existingRows ?? []).map((r) => assignmentRowToClient(r as Parameters<typeof assignmentRowToClient>[0]))
 
-  const { assignments, unscheduled } = runSchedule(masters, settings, mode, existing)
+  const schedulingDate = row.scheduling_date as string
+  const { data: otherCtxs } = await supabase
+    .from('sched_contexts')
+    .select('id, name, user_id')
+    .eq('scheduling_date', schedulingDate)
+    .neq('id', contextId)
+  let crossMasters = baseMasters
+
+  if (otherCtxs?.length) {
+    const otherIds = otherCtxs.map((c) => c.id as string)
+    const { data: otherAssigns } = await supabase
+      .from('sched_assignments')
+      .select('context_id, doctor_codes, machine_id, start_m, pillow_end_m, end_m')
+      .in('context_id', otherIds)
+
+    const userIds = [...new Set(otherCtxs.map((c) => c.user_id as string).filter(Boolean))]
+    let userMap: Record<string, string> = {}
+    if (userIds.length > 0) {
+      const { data: users } = await supabase.from('app_users').select('id, display_name').in('id', userIds)
+      if (users) userMap = Object.fromEntries(users.map((u) => [u.id, u.display_name]))
+    }
+
+    const externals: ExternalContext[] = otherCtxs.map((c) => ({
+      contextName: c.name as string,
+      userName: userMap[c.user_id as string] ?? '',
+      assignments: (otherAssigns ?? [])
+        .filter((a) => a.context_id === c.id)
+        .map((a) => ({
+          doctorCodes: (a.doctor_codes as string[]) ?? [],
+          machineId: a.machine_id as string,
+          startM: a.start_m as number,
+          pillowEndM: a.pillow_end_m as number,
+          endM: a.end_m as number,
+        })),
+    }))
+
+    const result = injectCrossUserBusy(baseMasters, externals)
+    crossMasters = result.masters
+  }
+
+  const { assignments, unscheduled } = runSchedule(crossMasters, settings, mode, existing)
 
   const { error: delErr } = await supabase.from('sched_assignments').delete().eq('context_id', contextId)
   if (delErr) {

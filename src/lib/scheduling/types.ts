@@ -88,12 +88,54 @@ export interface SchedContextPayload {
   id: string
   name: string
   schedulingDate: string
+  /** UUID của user sở hữu context */
+  userId: string | null
   /** Ngày nghỉ riêng của bản lịch (ISO yyyy-mm-dd) */
   daysOff: string[]
   settings: SchedSettings
   masters: SchedMasters
   assignments: SchedAssignment[]
   lastUnscheduled: UnscheduledItem[] | null
+}
+
+/** Cross-user assignment dùng cho phát hiện trùng lịch */
+export interface CrossUserAssignment {
+  contextId: string
+  contextName: string
+  userName: string
+  doctorCodes: string[]
+  machineId: string
+  startM: number
+  pillowEndM: number
+  endM: number
+}
+
+/** Shared reference data (import Excel) */
+export interface SharedDoctor {
+  id: string
+  code: string
+  name: string
+  amStart: string
+  amEnd: string
+  pmStart: string
+  pmEnd: string
+}
+
+export interface SharedMachine {
+  id: string
+  typeName: string
+  unitName: string
+}
+
+export interface SharedProcedure {
+  id: string
+  name: string
+  durationM: number | null
+  pillowM: number | null
+  mainCodes: string
+  substituteCodes: string
+  machineType: string
+  priority: boolean
 }
 
 export interface GlobalHoliday {

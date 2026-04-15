@@ -16,6 +16,9 @@ import type {
   SchedMachine,
   SchedPatient,
   SchedProcedure,
+  SharedDoctor,
+  SharedMachine,
+  SharedProcedure,
   TimeWindowM,
 } from '@/lib/scheduling/types'
 import { minutesToLabel, parseTimeToMinutes } from '@/lib/scheduling/time'
@@ -31,15 +34,21 @@ import { appToast } from '@/lib/app-toast'
 import { cn } from '@/lib/styles'
 import { useScheduling } from '@/hooks/use-scheduling'
 import { useHolidays } from '@/hooks/use-holidays'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import { useRouter } from 'next/navigation'
 import { APP_DOCUMENT_TITLE } from '@/constants/app-document.constants'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { UserManager } from '@/components/scheduling/user-manager'
+import { ExcelImporter } from '@/components/scheduling/excel-importer'
+import { ConflictPanel } from '@/components/scheduling/conflict-panel'
+import { ProcedureTimer } from '@/components/scheduling/procedure-timer'
+import { NotikaSelect } from '@/components/scheduling/notika-select'
 
-type MainTab = 'calendar' | 'doctors' | 'machines' | 'procedures' | 'patients' | 'output'
+type MainTab = 'calendar' | 'doctors' | 'machines' | 'procedures' | 'patients' | 'output' | 'users'
 
-type OutputTab = 'results' | 'unsorted' | 'stats' | 'docTime' | 'machTime' | 'gantt' | 'estimate'
+type OutputTab = 'results' | 'unsorted' | 'stats' | 'docTime' | 'machTime' | 'gantt' | 'estimate' | 'timer'
 
-const MAIN_NAV: { id: MainTab; label: string }[] = [
+const BASE_NAV: { id: MainTab; label: string }[] = [
   { id: 'calendar', label: 'Lịch tháng' },
   { id: 'doctors', label: 'Bác sĩ' },
   { id: 'machines', label: 'Máy' },
@@ -74,6 +83,14 @@ export function SchedulingApp() {
 
   const router = useRouter()
   const hol = useHolidays()
+  const { isSuperAdmin } = useCurrentUser()
+
+  const MAIN_NAV = useMemo(() => {
+    const nav = [...BASE_NAV]
+    if (isSuperAdmin) nav.push({ id: 'users', label: 'Tài khoản' })
+    return nav
+  }, [isSuperAdmin])
+
   const [mainTab, setMainTab] = useState<MainTab>('calendar')
   const [outputTab, setOutputTab] = useState<OutputTab>('results')
   const [sessionPickerOpen, setSessionPickerOpen] = useState(false)
@@ -167,6 +184,72 @@ export function SchedulingApp() {
     URL.revokeObjectURL(url)
     appToast.success('Đã tải file CSV')
   }, [payload])
+
+  const loadSharedIntoContext = useCallback(async (type: 'doctors' | 'machines' | 'procedures') => {
+    if (!payload) return
+    try {
+      const res = await fetch(`/api/scheduling/shared/${type}`)
+      if (!res.ok) throw new Error('Lỗi tải danh sách chung')
+      const { items } = (await res.json()) as { items: Record<string, unknown>[] }
+      if (!items?.length) {
+        appToast.info('Danh sách chung trống')
+        return
+      }
+
+      const masters = { ...payload.masters }
+      if (type === 'doctors') {
+        const shared = items as unknown as SharedDoctor[]
+        const existingCodes = new Set(masters.doctors.map((d) => d.code))
+        const newDocs: SchedDoctor[] = shared
+          .filter((s) => !existingCodes.has(s.code))
+          .map((s) => ({
+            id: crypto.randomUUID(),
+            code: s.code,
+            name: s.name,
+            amStartM: parseTimeToMinutes(s.amStart),
+            amEndM: parseTimeToMinutes(s.amEnd),
+            pmStartM: parseTimeToMinutes(s.pmStart),
+            pmEndM: parseTimeToMinutes(s.pmEnd),
+            busy: [],
+          }))
+        masters.doctors = [...masters.doctors, ...newDocs]
+        appToast.success(`Đã thêm ${newDocs.length} bác sĩ từ danh sách chung`)
+      } else if (type === 'machines') {
+        const shared = items as unknown as SharedMachine[]
+        const existingKeys = new Set(masters.machines.map((m) => `${m.typeName}|${m.unitName}`))
+        const newMachines: SchedMachine[] = shared
+          .filter((s) => !existingKeys.has(`${s.typeName}|${s.unitName}`))
+          .map((s) => ({
+            id: crypto.randomUUID(),
+            typeName: s.typeName,
+            unitName: s.unitName,
+            busy: [],
+          }))
+        masters.machines = [...masters.machines, ...newMachines]
+        appToast.success(`Đã thêm ${newMachines.length} máy từ danh sách chung`)
+      } else {
+        const shared = items as unknown as SharedProcedure[]
+        const existingNames = new Set(masters.procedures.map((p) => p.name))
+        const newProcs: SchedProcedure[] = shared
+          .filter((s) => !existingNames.has(s.name))
+          .map((s) => ({
+            id: crypto.randomUUID(),
+            name: s.name,
+            durationM: s.durationM,
+            pillowM: s.pillowM,
+            mainCodes: s.mainCodes,
+            substituteCodes: s.substituteCodes,
+            machineType: s.machineType,
+            priority: s.priority,
+          }))
+        masters.procedures = [...masters.procedures, ...newProcs]
+        appToast.success(`Đã thêm ${newProcs.length} thủ thuật từ danh sách chung`)
+      }
+      setPayload({ ...payload, masters })
+    } catch (e) {
+      appToast.error(e instanceof Error ? e.message : 'Lỗi tải danh sách chung')
+    }
+  }, [payload, setPayload])
 
   const handleCreate = useCallback(async () => {
     clearErrors()
@@ -269,13 +352,13 @@ export function SchedulingApp() {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[min(14rem,calc(100dvw-1.5rem))] max-w-[85vw] flex-col border-r border-[var(--notika-sidebar-border)] bg-[var(--notika-sidebar)] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] text-white shadow-lg transition-transform duration-200 md:w-56 md:max-w-none md:translate-x-0 md:rounded-r-3xl md:pb-0 md:pt-0 md:shadow-2xl',
+          'fixed inset-y-0 left-0 z-50 flex w-[min(14rem,calc(100dvw-1.5rem))] max-w-[85vw] flex-col border-r border-[var(--notika-sidebar-border)] bg-[var(--notika-sidebar)] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] text-[var(--notika-text)] shadow-lg transition-transform duration-200 md:w-56 md:max-w-none md:translate-x-0 md:rounded-r-3xl md:pb-0 md:pt-0 md:shadow-md',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         )}
         aria-label='Menu chính'
       >
-        <div className='flex h-14 shrink-0 items-center border-b border-white/10 px-4'>
-          <span className='text-[15px] font-bold tracking-wide text-white'>QLCV</span>
+        <div className='flex h-14 shrink-0 items-center border-b border-[var(--notika-sidebar-border)] px-4'>
+          <span className='text-[15px] font-bold tracking-wide text-[var(--notika-green)]'>QLCV</span>
         </div>
         <nav className='flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3'>
           {MAIN_NAV.map(({ id, label }) => (
@@ -290,7 +373,7 @@ export function SchedulingApp() {
                 'rounded-xl px-3 py-2.5 text-left text-sm transition-colors',
                 mainTab === id
                   ? 'bg-[var(--notika-green)] font-semibold text-white shadow-sm'
-                  : 'text-white/85 hover:bg-[var(--notika-sidebar-hover)] hover:text-white',
+                  : 'text-[var(--notika-muted)] hover:bg-[var(--notika-sidebar-hover)] hover:text-[var(--notika-text)]',
               )}
             >
               {label}
@@ -576,22 +659,36 @@ export function SchedulingApp() {
               </section>
             ) : null}
             {mainTab === 'doctors' ? (
-              <DoctorsEditor
-                doctors={payload.masters.doctors}
-                onChange={(doctors) => setPayload({ ...payload, masters: { ...payload.masters, doctors } })}
-              />
+              <section className='space-y-6'>
+                <ExcelImporter type='doctors' onImported={() => void loadSharedIntoContext('doctors')} />
+                <LoadSharedButton type='doctors' onLoad={() => void loadSharedIntoContext('doctors')} busy={busy} />
+                <DoctorsEditor
+                  doctors={payload.masters.doctors}
+                  onChange={(doctors) => setPayload({ ...payload, masters: { ...payload.masters, doctors } })}
+                />
+              </section>
             ) : null}
             {mainTab === 'machines' ? (
-              <MachinesEditor
-                machines={payload.masters.machines}
-                onChange={(machines) => setPayload({ ...payload, masters: { ...payload.masters, machines } })}
-              />
+              <section className='space-y-6'>
+                <ExcelImporter type='machines' onImported={() => void loadSharedIntoContext('machines')} />
+                <LoadSharedButton type='machines' onLoad={() => void loadSharedIntoContext('machines')} busy={busy} />
+                <MachinesEditor
+                  machines={payload.masters.machines}
+                  onChange={(machines) => setPayload({ ...payload, masters: { ...payload.masters, machines } })}
+                />
+              </section>
             ) : null}
             {mainTab === 'procedures' ? (
-              <ProceduresEditor
-                procedures={payload.masters.procedures}
-                onChange={(procedures) => setPayload({ ...payload, masters: { ...payload.masters, procedures } })}
-              />
+              <section className='space-y-6'>
+                <ExcelImporter type='procedures' onImported={() => void loadSharedIntoContext('procedures')} />
+                <LoadSharedButton type='procedures' onLoad={() => void loadSharedIntoContext('procedures')} busy={busy} />
+                <ProceduresEditor
+                  procedures={payload.masters.procedures}
+                  doctors={payload.masters.doctors}
+                  machines={payload.masters.machines}
+                  onChange={(procedures) => setPayload({ ...payload, masters: { ...payload.masters, procedures } })}
+                />
+              </section>
             ) : null}
             {mainTab === 'patients' ? (
               <PatientsEditor
@@ -609,6 +706,7 @@ export function SchedulingApp() {
                   {(
                     [
                       ['results', 'Kết quả'],
+                      ['timer', 'Thực hiện ca'],
                       ['unsorted', 'Chưa xếp'],
                       ['stats', 'Thống kê'],
                       ['docTime', 'Giờ bác sĩ tại ca'],
@@ -628,11 +726,45 @@ export function SchedulingApp() {
                   ))}
                 </div>
 
+                {contextId && payload.assignments.length > 0 && (
+                  <ConflictPanel
+                    schedulingDate={payload.schedulingDate}
+                    contextId={contextId}
+                    assignments={payload.assignments}
+                    masters={payload.masters}
+                  />
+                )}
+
                 {outputTab === 'results' ? (
                   <ResultsTable
                     payload={payload}
                     onPatchPayload={(fn) => setPayload((p) => (p ? fn(p) : p))}
                     onUpdateAssignments={(next) => void persistAssignments(next)}
+                  />
+                ) : null}
+                {outputTab === 'timer' ? (
+                  <ProcedureTimer
+                    assignments={payload.assignments
+                      .slice()
+                      .sort((a, b) => a.startM - b.startM)
+                      .map((a) => {
+                        const proc = payload.masters.procedures.find((p) => p.id === a.procedureId)
+                        const pat = payload.masters.patients.find((p) => p.id === a.patientId)
+                        const machine = payload.masters.machines.find((m) => m.id === a.machineId)
+                        const docNames = a.doctorCodes
+                          .map((c) => payload.masters.doctors.find((d) => d.code.toLowerCase() === c.toLowerCase())?.name ?? c)
+                          .join(', ')
+                        return {
+                          id: a.id,
+                          patientName: pat?.name ?? a.patientId,
+                          procedureName: proc?.name ?? a.procedureId,
+                          durationM: proc?.durationM ?? (a.endM - a.startM),
+                          startM: a.startM,
+                          endM: a.endM,
+                          doctorNames: docNames,
+                          machineLabel: machine ? `${machine.typeName} - ${machine.unitName}` : a.machineId,
+                        }
+                      })}
                   />
                 ) : null}
                 {outputTab === 'unsorted' ? <UnsortedTable payload={payload} unscheduled={unscheduled} /> : null}
@@ -665,6 +797,12 @@ export function SchedulingApp() {
                   <GanttChart dayBounds={dayBounds} slices={doctorSlices} />
                 ) : null}
                 {outputTab === 'estimate' ? <EstimateTable rows={estimates} /> : null}
+              </section>
+            ) : null}
+
+            {mainTab === 'users' && isSuperAdmin ? (
+              <section className={panelCls}>
+                <UserManager />
               </section>
             ) : null}
           </>
@@ -992,11 +1130,20 @@ function MachinesEditor({
 
 function ProceduresEditor({
   procedures,
+  doctors,
+  machines,
   onChange,
 }: {
   procedures: SchedProcedure[]
+  doctors: SchedDoctor[]
+  machines: SchedMachine[]
   onChange: (p: SchedProcedure[]) => void
 }) {
+  const machineTypes = useMemo(() => {
+    const set = new Set<string>()
+    machines.forEach((m) => { if (m.typeName.trim()) set.add(m.typeName.trim()) })
+    return [...set].sort((a, b) => a.localeCompare(b, 'vi'))
+  }, [machines])
   const update = (i: number, patch: Partial<SchedProcedure>) => {
     onChange(procedures.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))
   }
@@ -1023,8 +1170,8 @@ function ProceduresEditor({
         </button>
       </div>
       <p className='text-sm leading-relaxed text-muted-foreground'>
-        Thời lượng ca = thời gian làm cho một bệnh nhân. Thời gian bác sĩ tại chỗ = lúc bác sĩ phải có mặt trong ca. Bác sĩ
-        chính nhiều người thì ghi A, B (dấu phẩy). Bác sĩ thay thế ghi kiểu B--C--D.
+        Thời lượng ca = thời gian làm cho một bệnh nhân. Thời gian bác sĩ tại chỗ = lúc bác sĩ phải có mặt trong ca.
+        Chọn bác sĩ chính và thay thế từ danh sách, chọn loại máy từ dropdown.
       </p>
       <div className='space-y-6'>
         {procedures.map((p, i) => (
@@ -1037,57 +1184,172 @@ function ProceduresEditor({
                 placeholder='Tên thủ thuật'
                 autoComplete='off'
               />
-              <input
-                className={inputCls}
-                value={p.machineType}
-                onChange={(e) => update(i, { machineType: e.target.value })}
-                placeholder='Loại máy (trùng tên ở mục Danh sách máy)'
-                autoComplete='off'
-              />
               <label className='block'>
+                <span className={subLabelCls}>Loại máy</span>
+                <div className='mt-1'>
+                  <NotikaSelect
+                    placeholder='— Chọn loại máy —'
+                    value={p.machineType}
+                    onChange={(v) => update(i, { machineType: v })}
+                    options={machineTypes.map((t) => ({ id: t, label: t }))}
+                    disabled={machineTypes.length === 0}
+                    aria-label='Loại máy cho thủ thuật'
+                  />
+                </div>
+                {machineTypes.length === 0 && (
+                  <p className='mt-1 text-[11px] text-amber-600'>Chưa có máy nào. Thêm ở tab &quot;Máy&quot; trước.</p>
+                )}
+              </label>
+              <div className='sm:col-span-2'>
                 <span className={subLabelCls}>Thời lượng một ca (phút)</span>
-                <input
-                  type='text'
-                  inputMode='numeric'
-                  className={inputCls}
-                  value={p.durationM == null ? '' : String(p.durationM)}
-                  placeholder='Ví dụ: 20'
-                  onChange={(e) => {
-                    const v = e.target.value.trim()
-                    if (v === '') update(i, { durationM: null })
-                    else if (/^\d+$/.test(v)) update(i, { durationM: Number(v) })
-                  }}
-                />
-              </label>
-              <label className='block'>
+                <div className='mt-1 flex flex-wrap items-center gap-2'>
+                  <input
+                    type='text'
+                    inputMode='numeric'
+                    className={cn(inputCls, 'w-24')}
+                    value={p.durationM == null ? '' : String(p.durationM)}
+                    placeholder='phút'
+                    onChange={(e) => {
+                      const v = e.target.value.trim()
+                      if (v === '') update(i, { durationM: null })
+                      else if (/^\d+$/.test(v)) update(i, { durationM: Number(v) })
+                    }}
+                  />
+                  {[10, 15, 20, 30, 45, 60].map((m) => (
+                    <button
+                      key={m}
+                      type='button'
+                      className={cn(
+                        'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                        p.durationM === m
+                          ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white'
+                          : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
+                      )}
+                      onClick={() => update(i, { durationM: m })}
+                    >
+                      {m}&apos;
+                    </button>
+                  ))}
+                  {p.durationM != null && (
+                    <span className='text-xs text-[var(--notika-muted)]'>
+                      = {Math.floor(p.durationM / 60) > 0 ? `${Math.floor(p.durationM / 60)}h` : ''}{p.durationM % 60 > 0 ? `${p.durationM % 60}p` : p.durationM >= 60 ? '' : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className='sm:col-span-2'>
                 <span className={subLabelCls}>Thời gian bác sĩ phải có mặt (phút)</span>
-                <input
-                  type='text'
-                  inputMode='numeric'
-                  className={inputCls}
-                  value={p.pillowM == null ? '' : String(p.pillowM)}
-                  placeholder='Ví dụ: 5'
-                  onChange={(e) => {
-                    const v = e.target.value.trim()
-                    if (v === '') update(i, { pillowM: null })
-                    else if (/^\d+$/.test(v)) update(i, { pillowM: Number(v) })
-                  }}
-                />
-              </label>
-              <input
-                className={inputCls}
-                value={p.mainCodes}
-                onChange={(e) => update(i, { mainCodes: e.target.value })}
-                placeholder='Bác sĩ chính: A hoặc A,B'
-                autoComplete='off'
-              />
-              <input
-                className={inputCls}
-                value={p.substituteCodes}
-                onChange={(e) => update(i, { substituteCodes: e.target.value })}
-                placeholder='Bác sĩ thay thế: B--C--D'
-                autoComplete='off'
-              />
+                <div className='mt-1 flex flex-wrap items-center gap-2'>
+                  <input
+                    type='text'
+                    inputMode='numeric'
+                    className={cn(inputCls, 'w-24')}
+                    value={p.pillowM == null ? '' : String(p.pillowM)}
+                    placeholder='phút'
+                    onChange={(e) => {
+                      const v = e.target.value.trim()
+                      if (v === '') update(i, { pillowM: null })
+                      else if (/^\d+$/.test(v)) update(i, { pillowM: Number(v) })
+                    }}
+                  />
+                  {[3, 5, 10, 15, 20].map((m) => (
+                    <button
+                      key={m}
+                      type='button'
+                      className={cn(
+                        'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                        p.pillowM === m
+                          ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white'
+                          : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
+                      )}
+                      onClick={() => update(i, { pillowM: m })}
+                    >
+                      {m}&apos;
+                    </button>
+                  ))}
+                  {p.durationM != null && p.pillowM != null && p.pillowM > 0 && (
+                    <span className={cn('text-xs', p.pillowM > p.durationM ? 'font-semibold text-rose-600' : 'text-[var(--notika-muted)]')}>
+                      {p.pillowM > p.durationM ? 'Lỗi: > thời lượng ca' : `BS ${Math.round(p.pillowM / p.durationM * 100)}% ca`}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <span className={subLabelCls}>Bác sĩ chính</span>
+                {doctors.length > 0 ? (
+                  <div className='mt-1 flex flex-wrap gap-2'>
+                    {doctors.map((d) => {
+                      const selected = p.mainCodes.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+                      const isChecked = selected.includes(d.code.toLowerCase())
+                      return (
+                        <label key={d.id} className={cn(
+                          'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                          isChecked
+                            ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white'
+                            : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
+                        )}>
+                          <input
+                            type='checkbox'
+                            className='sr-only'
+                            checked={isChecked}
+                            onChange={() => {
+                              const codes = p.mainCodes.split(',').map((s) => s.trim()).filter(Boolean)
+                              const next = isChecked
+                                ? codes.filter((c) => c.toLowerCase() !== d.code.toLowerCase())
+                                : [...codes, d.code]
+                              update(i, { mainCodes: next.join(',') })
+                            }}
+                          />
+                          <span className='font-bold'>{d.code}</span>
+                          <span className='opacity-70'>({d.name})</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className='mt-1 text-[11px] text-amber-600'>Chưa có bác sĩ nào. Thêm ở tab &quot;Bác sĩ&quot; trước.</p>
+                )}
+              </div>
+              <div>
+                <span className={subLabelCls}>Bác sĩ thay thế</span>
+                {doctors.length > 0 ? (
+                  <div className='mt-1 flex flex-wrap gap-2'>
+                    {doctors.map((d) => {
+                      const selected = p.substituteCodes.split('--').map((s) => s.trim().toLowerCase()).filter(Boolean)
+                      const isChecked = selected.includes(d.code.toLowerCase())
+                      const mainSelected = p.mainCodes.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+                      const isMainDoc = mainSelected.includes(d.code.toLowerCase())
+                      return (
+                        <label key={d.id} className={cn(
+                          'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                          isMainDoc && 'opacity-30',
+                          isChecked
+                            ? 'border-blue-500 bg-blue-500 text-white'
+                            : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-blue-50 dark:hover:bg-blue-950/20',
+                        )}>
+                          <input
+                            type='checkbox'
+                            className='sr-only'
+                            checked={isChecked}
+                            disabled={isMainDoc}
+                            onChange={() => {
+                              const codes = p.substituteCodes.split('--').map((s) => s.trim()).filter(Boolean)
+                              const next = isChecked
+                                ? codes.filter((c) => c.toLowerCase() !== d.code.toLowerCase())
+                                : [...codes, d.code]
+                              update(i, { substituteCodes: next.join('--') })
+                            }}
+                          />
+                          <span className='font-bold'>{d.code}</span>
+                          <span className='opacity-70'>({d.name})</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className='mt-1 text-[11px] text-amber-600'>Chưa có bác sĩ nào.</p>
+                )}
+              </div>
               <label className='flex cursor-pointer items-start gap-3 text-sm sm:col-span-2 sm:items-center'>
                 <input
                   type='checkbox'
@@ -1616,5 +1878,22 @@ function EstimateTable({ rows }: { rows: { procedureId: string; name: string; es
         Con số tính sơ bộ theo chỗ trống của máy và thời gian bác sĩ còn lại trong ngày; chỉ để tham khảo.
       </p>
     </div>
+  )
+}
+
+function LoadSharedButton({ type, onLoad, busy }: { type: string; onLoad: () => void; busy: boolean }) {
+  const labels: Record<string, string> = { doctors: 'bác sĩ', machines: 'máy', procedures: 'thủ thuật' }
+  return (
+    <button
+      type='button'
+      className={cn(
+        'w-full rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-4 py-3 text-sm font-medium text-[var(--notika-green)] shadow-sm transition',
+        'hover:bg-[var(--notika-green-soft)] disabled:opacity-50',
+      )}
+      disabled={busy}
+      onClick={onLoad}
+    >
+      Tải danh sách {labels[type] ?? type} chung vào bản lịch này
+    </button>
   )
 }

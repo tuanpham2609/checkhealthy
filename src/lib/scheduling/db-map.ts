@@ -19,6 +19,7 @@ interface SchedContextRow {
   id: string
   name: string
   scheduling_date: string
+  user_id: string | null
   settings: unknown
   masters: unknown
   days_off: unknown
@@ -136,6 +137,7 @@ export function rowToPayload(row: SchedContextRow, assignments: SchedAssignmentR
     id: row.id,
     name: row.name,
     schedulingDate: row.scheduling_date,
+    userId: row.user_id ?? null,
     daysOff: asDaysOff(row.days_off),
     settings: asSettings(row.settings),
     masters: asMasters(row.masters),

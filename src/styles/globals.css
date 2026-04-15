@@ -58,19 +58,19 @@
 }
 
 :root {
-  /* Notika-style admin (Colorlib) — xanh #00c292, sidebar #35404f, nền #eceff1 */
+  /* Notika-style admin — sidebar trắng đồng bộ header */
   --radius: 1rem;
 
   --notika-green: #00c292;
   --notika-green-hover: #00a37d;
   --notika-green-soft: #e8f8f4;
-  --notika-sidebar: #35404f;
-  --notika-sidebar-hover: #2d343d;
-  --notika-sidebar-border: #2b323a;
-  --notika-content: #eceff1;
+  --notika-sidebar: #ffffff;
+  --notika-sidebar-hover: #f4f7f8;
+  --notika-sidebar-border: #e8ebed;
+  --notika-content: #ffffff;
   --notika-header: #ffffff;
-  --notika-card: #ffffff;
-  --notika-border: #e4e7ea;
+  --notika-card: #f9fafb;
+  --notika-border: #e8ebed;
   --notika-text: #333f50;
   --notika-muted: #8d9ea7;
   --notika-blue: #03a9f4;
@@ -120,11 +120,11 @@
   --chart-5: #ffc107;
 
   --sidebar: var(--notika-sidebar);
-  --sidebar-foreground: #ffffff;
+  --sidebar-foreground: var(--notika-text);
   --sidebar-primary: var(--notika-green);
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: var(--notika-sidebar-hover);
-  --sidebar-accent-foreground: #ffffff;
+  --sidebar-accent-foreground: var(--notika-text);
   --sidebar-border: var(--notika-sidebar-border);
   --sidebar-ring: var(--notika-green);
 }
@@ -133,6 +133,9 @@
   --notika-content: #1a1d23;
   --notika-header: #252a32;
   --notika-card: #2d333c;
+  --notika-sidebar: #252a32;
+  --notika-sidebar-hover: #323842;
+  --notika-sidebar-border: #3d4550;
   --notika-border: #3d4550;
   --notika-text: #e8eaed;
   --notika-muted: #9aa5b1;
@@ -172,13 +175,13 @@
   --input: var(--notika-border);
   --ring: var(--notika-green);
 
-  --sidebar: #252a32;
-  --sidebar-foreground: #ffffff;
+  --sidebar: var(--notika-sidebar);
+  --sidebar-foreground: var(--notika-text);
   --sidebar-primary: var(--notika-green);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #323842;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: var(--notika-border);
+  --sidebar-accent: var(--notika-sidebar-hover);
+  --sidebar-accent-foreground: var(--notika-text);
+  --sidebar-border: var(--notika-sidebar-border);
   --sidebar-ring: var(--notika-green);
 }
 

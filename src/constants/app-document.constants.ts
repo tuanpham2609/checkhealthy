@@ -3,4 +3,4 @@
  */
 
 /** Tiêu đề tab trình duyệt (<title>) */
-export const APP_DOCUMENT_TITLE = 'Phần mềm quản lý công việc'
+export const APP_DOCUMENT_TITLE = 'Phần mềm xếp lịch Y học Cổ Truyền & Phục Hồi Chức Năng'
