@@ -131,12 +131,12 @@
 
 .dark {
   --notika-content: #1a1d23;
-  --notika-header: #252a32;
-  --notika-card: #2d333c;
-  --notika-sidebar: #252a32;
-  --notika-sidebar-hover: #323842;
-  --notika-sidebar-border: #3d4550;
-  --notika-border: #3d4550;
+  --notika-header: #1a1d23;
+  --notika-card: #22262d;
+  --notika-sidebar: #1a1d23;
+  --notika-sidebar-hover: #262b33;
+  --notika-sidebar-border: #2e343d;
+  --notika-border: #2e343d;
   --notika-text: #e8eaed;
   --notika-muted: #9aa5b1;
   --notika-green-soft: #1e3d34;
@@ -161,10 +161,10 @@
   --primary: var(--notika-green);
   --primary-foreground: #ffffff;
 
-  --secondary: #323842;
+  --secondary: #262b33;
   --secondary-foreground: var(--notika-text);
 
-  --muted: #323842;
+  --muted: #262b33;
   --muted-foreground: var(--notika-muted);
 
   --accent: #1e3d35;

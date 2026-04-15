@@ -32,6 +32,7 @@ import { inferDayBounds } from '@/lib/scheduling/engine'
 import { validateMastersForSchedule } from '@/lib/scheduling/validate-masters'
 import { appToast } from '@/lib/app-toast'
 import { cn } from '@/lib/styles'
+import { useQueryClient } from '@tanstack/react-query'
 import { useScheduling } from '@/hooks/use-scheduling'
 import { useHolidays } from '@/hooks/use-holidays'
 import { useCurrentUser } from '@/hooks/use-current-user'
@@ -82,6 +83,7 @@ export function SchedulingApp() {
   } = sched
 
   const router = useRouter()
+  const queryClient = useQueryClient()
   const hol = useHolidays()
   const { isSuperAdmin } = useCurrentUser()
 
@@ -110,9 +112,11 @@ export function SchedulingApp() {
 
   const handleLogout = useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
+    queryClient.clear()
+    try { localStorage.removeItem('sched-timer-state') } catch { /* noop */ }
     appToast.success('Đã đăng xuất')
     router.replace('/login')
-  }, [router])
+  }, [router, queryClient])
 
   const feedbackMsg = localError ?? error
 

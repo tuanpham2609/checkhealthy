@@ -6,7 +6,9 @@ import { NextResponse } from 'next/server'
 import { AUTH_COOKIE } from '@/lib/auth/session'
 
 export async function POST() {
-  const res = NextResponse.json({ ok: true })
+  const res = NextResponse.json({ ok: true }, {
+    headers: { 'Cache-Control': 'no-store, max-age=0' },
+  })
   res.cookies.set(AUTH_COOKIE, '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
