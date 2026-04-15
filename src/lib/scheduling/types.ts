@@ -88,8 +88,19 @@ export interface SchedContextPayload {
   id: string
   name: string
   schedulingDate: string
+  /** Ngày nghỉ riêng của bản lịch (ISO yyyy-mm-dd) */
+  daysOff: string[]
   settings: SchedSettings
   masters: SchedMasters
   assignments: SchedAssignment[]
   lastUnscheduled: UnscheduledItem[] | null
+}
+
+export interface GlobalHoliday {
+  id: string
+  /** ISO yyyy-mm-dd */
+  date: string
+  label: string
+  /** Nếu true, lặp hàng năm (so sánh month+day) */
+  recurring: boolean
 }

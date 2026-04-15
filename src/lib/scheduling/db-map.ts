@@ -21,6 +21,7 @@ interface SchedContextRow {
   scheduling_date: string
   settings: unknown
   masters: unknown
+  days_off: unknown
   last_unscheduled: unknown
 }
 
@@ -120,6 +121,11 @@ export function asMasters(raw: unknown): SchedMasters {
   return { doctors, machines, procedures, patients }
 }
 
+function asDaysOff(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  return raw.filter((x): x is string => typeof x === 'string')
+}
+
 function asUnscheduled(raw: unknown): UnscheduledItem[] | null {
   if (!Array.isArray(raw)) return null
   return raw as UnscheduledItem[]
@@ -130,6 +136,7 @@ export function rowToPayload(row: SchedContextRow, assignments: SchedAssignmentR
     id: row.id,
     name: row.name,
     schedulingDate: row.scheduling_date,
+    daysOff: asDaysOff(row.days_off),
     settings: asSettings(row.settings),
     masters: asMasters(row.masters),
     assignments: assignments.map(assignmentRowToClient),

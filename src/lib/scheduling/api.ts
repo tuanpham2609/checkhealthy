@@ -2,7 +2,7 @@
  * Copyright (c) 2025 Mythuatcmc. All rights reserved.
  */
 
-import type { SchedAssignment, SchedContextPayload } from '@/lib/scheduling/types'
+import type { GlobalHoliday, SchedAssignment, SchedContextPayload } from '@/lib/scheduling/types'
 
 async function parseJson<T>(res: Response): Promise<T> {
   const data = (await res.json()) as T & { error?: string }
@@ -37,6 +37,7 @@ export async function saveContext(id: string, payload: SchedContextPayload): Pro
     body: JSON.stringify({
       name: payload.name,
       schedulingDate: payload.schedulingDate,
+      daysOff: payload.daysOff,
       settings: payload.settings,
       masters: payload.masters,
     }),
@@ -70,6 +71,36 @@ export async function createContext(body: Record<string, unknown> = {}): Promise
 
 export async function deleteContext(id: string): Promise<void> {
   const res = await fetch(`/api/scheduling/contexts/${id}`, { method: 'DELETE' })
+  await parseJson<{ ok: boolean }>(res)
+}
+
+export async function fetchHolidays(): Promise<GlobalHoliday[]> {
+  const res = await fetch('/api/scheduling/holidays')
+  const data = await parseJson<{ holidays: GlobalHoliday[] }>(res)
+  return data.holidays
+}
+
+export async function createHoliday(body: { date: string; label: string; recurring: boolean }): Promise<GlobalHoliday> {
+  const res = await fetch('/api/scheduling/holidays', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await parseJson<{ holiday: GlobalHoliday }>(res)
+  return data.holiday
+}
+
+export async function deleteHoliday(id: string): Promise<void> {
+  const res = await fetch(`/api/scheduling/holidays?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+  await parseJson<{ ok: boolean }>(res)
+}
+
+export async function patchDaysOff(contextId: string, daysOff: string[]): Promise<void> {
+  const res = await fetch(`/api/scheduling/contexts/${contextId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ daysOff }),
+  })
   await parseJson<{ ok: boolean }>(res)
 }
 

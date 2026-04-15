@@ -47,9 +47,10 @@ export async function PUT(request: Request, ctx: { params: Promise<{ contextId: 
       : undefined
   const settings = o.settings as SchedSettings | undefined
   const masters = o.masters as SchedMasters | undefined
+  const daysOff = Array.isArray(o.daysOff) ? o.daysOff.filter((x): x is string => typeof x === 'string') : undefined
 
-  if (!name && !schedulingDate && !settings && !masters) {
-    return NextResponse.json({ error: 'Thiếu trường cập nhật (name, schedulingDate, settings, masters).' }, { status: 400 })
+  if (!name && !schedulingDate && !settings && !masters && !daysOff) {
+    return NextResponse.json({ error: 'Thiếu trường cập nhật (name, schedulingDate, settings, masters, daysOff).' }, { status: 400 })
   }
 
   const patch: Record<string, unknown> = {}
@@ -57,6 +58,7 @@ export async function PUT(request: Request, ctx: { params: Promise<{ contextId: 
   if (schedulingDate) patch.scheduling_date = schedulingDate
   if (settings) patch.settings = settings
   if (masters) patch.masters = masters
+  if (daysOff) patch.days_off = daysOff
 
   const supabase = createSupabaseAdmin()
   const { error } = await supabase.from('sched_contexts').update(patch).eq('id', contextId)

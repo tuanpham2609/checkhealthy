@@ -14,6 +14,7 @@ import {
   createContext as apiCreateContext,
   deleteContext as apiDeleteContext,
   putAssignments,
+  patchDaysOff as apiPatchDaysOff,
 } from '@/lib/scheduling/api'
 import type { SchedAssignment, SchedContextPayload } from '@/lib/scheduling/types'
 import { schedKeys } from '@/lib/scheduling/query-keys'
@@ -114,6 +115,17 @@ export function useScheduling() {
     },
   })
 
+  const daysOffMutation = useMutation({
+    mutationFn: async (next: string[]) => {
+      if (!contextId) throw new Error('Không có bản lịch')
+      await apiPatchDaysOff(contextId, next)
+      return next
+    },
+    onSuccess: (next) => {
+      setPayload((p) => (p ? { ...p, daysOff: next } : p))
+    },
+  })
+
   const assignmentsMutation = useMutation({
     mutationFn: async (next: SchedAssignment[]) => {
       if (!contextId) throw new Error('Không có bản lịch')
@@ -132,6 +144,7 @@ export function useScheduling() {
       createMutation.isPending ||
       deleteMutation.isPending ||
       saveAsNewMutation.isPending ||
+      daysOffMutation.isPending ||
       assignmentsMutation.isPending ||
       contextQuery.isFetching,
     [
@@ -140,6 +153,7 @@ export function useScheduling() {
       createMutation.isPending,
       deleteMutation.isPending,
       saveAsNewMutation.isPending,
+      daysOffMutation.isPending,
       assignmentsMutation.isPending,
       contextQuery.isFetching,
     ],
@@ -154,6 +168,7 @@ export function useScheduling() {
       createMutation.error ??
       deleteMutation.error ??
       saveAsNewMutation.error ??
+      daysOffMutation.error ??
       assignmentsMutation.error
     return e instanceof Error ? e.message : e ? String(e) : null
   }, [
@@ -164,6 +179,7 @@ export function useScheduling() {
     createMutation.error,
     deleteMutation.error,
     saveAsNewMutation.error,
+    daysOffMutation.error,
     assignmentsMutation.error,
   ])
 
@@ -173,8 +189,9 @@ export function useScheduling() {
     createMutation.reset()
     deleteMutation.reset()
     saveAsNewMutation.reset()
+    daysOffMutation.reset()
     assignmentsMutation.reset()
-  }, [saveMutation, scheduleMutation, createMutation, deleteMutation, saveAsNewMutation, assignmentsMutation])
+  }, [saveMutation, scheduleMutation, createMutation, deleteMutation, saveAsNewMutation, daysOffMutation, assignmentsMutation])
 
   return {
     contextList: listQuery.data ?? [],
@@ -195,6 +212,7 @@ export function useScheduling() {
     createSession: () => createMutation.mutateAsync({}),
     deleteContext: (id: string) => deleteMutation.mutateAsync(id),
     saveAsNew: (body: Record<string, unknown>) => saveAsNewMutation.mutateAsync(body),
+    persistDaysOff: (next: string[]) => daysOffMutation.mutateAsync(next),
     persistAssignments: (next: SchedAssignment[]) => assignmentsMutation.mutateAsync(next),
   }
 }

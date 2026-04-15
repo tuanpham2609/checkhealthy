@@ -6,6 +6,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SchedDateField, SchedTimeField } from '@/components/scheduling/sched-aria-fields'
+import { MonthCalendar } from '@/components/scheduling/month-calendar'
+import { DaysOffManager } from '@/components/scheduling/days-off-manager'
 import { buildAssignmentsCsv } from '@/lib/scheduling/csv-export'
 import type {
   SchedAssignment,
@@ -28,15 +30,17 @@ import { validateMastersForSchedule } from '@/lib/scheduling/validate-masters'
 import { appToast } from '@/lib/app-toast'
 import { cn } from '@/lib/styles'
 import { useScheduling } from '@/hooks/use-scheduling'
+import { useHolidays } from '@/hooks/use-holidays'
 import { useRouter } from 'next/navigation'
 import { APP_DOCUMENT_TITLE } from '@/constants/app-document.constants'
 import { ThemeToggle } from '@/components/theme-toggle'
 
-type MainTab = 'doctors' | 'machines' | 'procedures' | 'patients' | 'output'
+type MainTab = 'calendar' | 'doctors' | 'machines' | 'procedures' | 'patients' | 'output'
 
 type OutputTab = 'results' | 'unsorted' | 'stats' | 'docTime' | 'machTime' | 'gantt' | 'estimate'
 
 const MAIN_NAV: { id: MainTab; label: string }[] = [
+  { id: 'calendar', label: 'Lịch tháng' },
   { id: 'doctors', label: 'Bác sĩ' },
   { id: 'machines', label: 'Máy' },
   { id: 'procedures', label: 'Thủ thuật' },
@@ -64,15 +68,28 @@ export function SchedulingApp() {
     bootstrapping,
     loadContext,
     refreshList,
+    persistDaysOff,
     persistAssignments,
   } = sched
 
   const router = useRouter()
-  const [mainTab, setMainTab] = useState<MainTab>('doctors')
+  const hol = useHolidays()
+  const [mainTab, setMainTab] = useState<MainTab>('calendar')
   const [outputTab, setOutputTab] = useState<OutputTab>('results')
   const [sessionPickerOpen, setSessionPickerOpen] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const viewMonthFromDate = payload?.schedulingDate
+    ? payload.schedulingDate.slice(0, 7)
+    : new Date().toISOString().slice(0, 7)
+  const [viewMonth, setViewMonth] = useState(viewMonthFromDate)
+
+  useEffect(() => {
+    if (payload?.schedulingDate) {
+      setViewMonth(payload.schedulingDate.slice(0, 7))
+    }
+  }, [payload?.schedulingDate])
 
   const handleLogout = useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -202,6 +219,7 @@ export function SchedulingApp() {
       await sched.saveAsNew({
         name: name.trim(),
         schedulingDate: payload.schedulingDate,
+        daysOff: payload.daysOff,
         settings: payload.settings,
         masters: payload.masters,
       })
@@ -516,6 +534,47 @@ export function SchedulingApp() {
               ))}
             </div>
 
+            {mainTab === 'calendar' ? (
+              <section className={cn(panelCls, 'space-y-8')}>
+                <div className='grid grid-cols-1 gap-8 lg:grid-cols-2'>
+                  <MonthCalendar
+                    selectedDate={payload.schedulingDate}
+                    viewMonth={viewMonth}
+                    holidays={hol.holidays}
+                    daysOff={payload.daysOff}
+                    onSelectDate={(iso) => {
+                      const isOff =
+                        payload.daysOff.includes(iso) ||
+                        hol.holidays.some((h) => {
+                          if (h.date === iso) return true
+                          if (h.recurring) {
+                            const [, hm, hd] = h.date.split('-')
+                            const [, dm, dd] = iso.split('-')
+                            return hm === dm && hd === dd
+                          }
+                          return false
+                        })
+                      if (isOff) {
+                        appToast.warning('Đây là ngày nghỉ — bạn vẫn có thể xếp lịch nếu cần')
+                      }
+                      setPayload({ ...payload, schedulingDate: iso })
+                    }}
+                    onChangeMonth={setViewMonth}
+                  />
+                  <DaysOffManager
+                    holidays={hol.holidays}
+                    daysOff={payload.daysOff}
+                    holidayBusy={hol.busy}
+                    onAddHoliday={hol.addHoliday}
+                    onRemoveHoliday={hol.removeHoliday}
+                    onDaysOffChange={(next) => {
+                      setPayload({ ...payload, daysOff: next })
+                      void persistDaysOff(next)
+                    }}
+                  />
+                </div>
+              </section>
+            ) : null}
             {mainTab === 'doctors' ? (
               <DoctorsEditor
                 doctors={payload.masters.doctors}

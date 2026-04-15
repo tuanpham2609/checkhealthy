@@ -56,6 +56,7 @@ export async function POST(request: Request) {
   const cloneFromId = typeof o.cloneFromId === 'string' ? o.cloneFromId : null
   const settingsBody = o.settings && typeof o.settings === 'object' ? o.settings : null
   const mastersBody = o.masters && typeof o.masters === 'object' ? o.masters : null
+  const daysOff = Array.isArray(o.daysOff) ? o.daysOff.filter((x): x is string => typeof x === 'string') : []
 
   const supabase = createSupabaseAdmin()
 
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
         scheduling_date: src.scheduling_date,
         settings: src.settings ?? DEFAULT_SETTINGS,
         masters: src.masters ?? DEFAULT_MASTERS,
+        days_off: src.days_off ?? [],
         last_unscheduled: src.last_unscheduled,
       })
       .select('id')
@@ -111,6 +113,7 @@ export async function POST(request: Request) {
       scheduling_date: schedulingDate,
       settings: settingsBody ?? DEFAULT_SETTINGS,
       masters: mastersBody ?? DEFAULT_MASTERS,
+      days_off: daysOff,
     })
     .select('id')
     .single()

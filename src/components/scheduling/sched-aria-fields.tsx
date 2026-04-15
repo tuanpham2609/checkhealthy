@@ -10,6 +10,7 @@
 import { parseDate, Time, today, getLocalTimeZone } from '@internationalized/date'
 import type { CalendarDate } from '@internationalized/date'
 import { DateField, DateInput, DateSegment, Label, TimeField } from 'react-aria-components'
+import { I18nProvider } from '@react-aria/i18n'
 import { cn } from '@/lib/styles'
 
 function segmentClassName(segment: { isPlaceholder?: boolean }): string {
@@ -97,20 +98,22 @@ export function SchedDateField({
 }) {
   const cal = calendarFromIso(value)
   return (
-    <div className='w-full min-w-0 max-w-full'>
-      <DateField
-        value={cal}
-        onChange={(d) => {
-          if (!d) return
-          onChange(d.toString())
-        }}
-        aria-label={label ? undefined : ariaLabel}
-      >
-        {label ? <Label className={labelCls}>{label}</Label> : null}
-        <DateInput className={dateInputShell}>
-          {(segment) => <DateSegment segment={segment} className={segmentClassName(segment)} />}
-        </DateInput>
-      </DateField>
-    </div>
+    <I18nProvider locale='vi-VN'>
+      <div className='w-full min-w-0 max-w-full'>
+        <DateField
+          value={cal}
+          onChange={(d) => {
+            if (!d) return
+            onChange(d.toString())
+          }}
+          aria-label={label ? undefined : ariaLabel}
+        >
+          {label ? <Label className={labelCls}>{label}</Label> : null}
+          <DateInput className={dateInputShell}>
+            {(segment) => <DateSegment segment={segment} className={segmentClassName(segment)} />}
+          </DateInput>
+        </DateField>
+      </div>
+    </I18nProvider>
   )
 }
