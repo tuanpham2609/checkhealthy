@@ -707,6 +707,8 @@ export function SchedulingApp() {
                   onChange={(technicians) => setPayload({ ...payload, masters: { ...payload.masters, technicians } })}
                   schedulingDate={payload.schedulingDate}
                   onLoadShared={() => void loadSharedIntoContext('technicians')}
+                  onSaveContext={handleSave}
+                  saving={busy}
                 />
               </section>
             ) : null}

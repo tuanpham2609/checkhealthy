@@ -21,6 +21,14 @@ export interface SchedDoctor {
 /** Ca lam viec theo ngay cua KTV */
 export type TechShift = 'off' | 'am' | 'pm' | 'full'
 
+/** Gio lam rieng cho mot ngay cu the (ghi de gio mac dinh) */
+export interface TechDayHours {
+  amStartM?: number | null
+  amEndM?: number | null
+  pmStartM?: number | null
+  pmEndM?: number | null
+}
+
 export interface SchedTechnician {
   id: string
   code: string
@@ -32,6 +40,8 @@ export interface SchedTechnician {
   pmEndM: number | null
   /** Ban do: 'yyyy-mm-dd' -> ca lam viec ngay do (ghi de gio mac dinh) */
   monthlyShifts: Record<string, TechShift>
+  /** Ban do: 'yyyy-mm-dd' -> gio lam rieng cho ngay do (ghi de gio mac dinh) */
+  dayHours?: Record<string, TechDayHours>
   busy: TimeWindowM[]
 }
 

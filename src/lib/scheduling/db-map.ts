@@ -12,6 +12,7 @@ import type {
   SchedProcedure,
   SchedSettings,
   SchedTechnician,
+  TechDayHours,
   TechShift,
   TimeWindowM,
   UnscheduledItem,
@@ -81,9 +82,29 @@ function normalizeMonthlyShifts(raw: unknown): Record<string, TechShift> {
   return out
 }
 
+function normalizeDayHoursMap(raw: unknown): Record<string, TechDayHours> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const out: Record<string, TechDayHours> = {}
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof k !== 'string' || !v || typeof v !== 'object') continue
+    const o = v as Record<string, unknown>
+    const entry: TechDayHours = {
+      amStartM: numOrNull(o.amStartM),
+      amEndM: numOrNull(o.amEndM),
+      pmStartM: numOrNull(o.pmStartM),
+      pmEndM: numOrNull(o.pmEndM),
+    }
+    const hasAny =
+      entry.amStartM != null || entry.amEndM != null || entry.pmStartM != null || entry.pmEndM != null
+    if (hasAny) out[k] = entry
+  }
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
 function normalizeTechnician(raw: unknown): SchedTechnician {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
-  return {
+  const dayHours = normalizeDayHoursMap(o.dayHours)
+  const tech: SchedTechnician = {
     id: String(o.id ?? ''),
     code: typeof o.code === 'string' ? o.code : '',
     name: typeof o.name === 'string' ? o.name : '',
@@ -94,6 +115,8 @@ function normalizeTechnician(raw: unknown): SchedTechnician {
     monthlyShifts: normalizeMonthlyShifts(o.monthlyShifts),
     busy: normalizeBusy(o.busy),
   }
+  if (dayHours) tech.dayHours = dayHours
+  return tech
 }
 
 function normalizeMachine(raw: unknown): SchedMachine {

@@ -5,7 +5,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { SchedTechnician, TechShift } from '@/lib/scheduling/types'
+import type { SchedTechnician, TechDayHours, TechShift } from '@/lib/scheduling/types'
 import { minutesToLabel, parseTimeToMinutes } from '@/lib/scheduling/time'
 import { appToast } from '@/lib/app-toast'
 import { cn } from '@/lib/styles'
@@ -25,7 +25,7 @@ const SHIFT_LABEL: Record<TechShift, string> = {
 
 const SHIFT_ORDER: TechShift[] = ['full', 'am', 'pm', 'off']
 
-type ClickMode = 'cycle' | 'range'
+type ClickMode = 'cycle' | 'range' | 'edit-hours'
 
 function pad2(n: number) {
   return String(n).padStart(2, '0')
@@ -69,6 +69,8 @@ interface TechniciansEditorProps {
   onChange: (next: SchedTechnician[]) => void
   schedulingDate: string
   onLoadShared?: () => void
+  onSaveContext?: () => void | Promise<void>
+  saving?: boolean
 }
 
 const inputCls = cn(
@@ -91,7 +93,14 @@ const btnGhost = cn(
   'hover:border-rose-300 hover:text-rose-600',
 )
 
-export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoadShared }: TechniciansEditorProps) {
+export function TechniciansEditor({
+  technicians,
+  onChange,
+  schedulingDate,
+  onLoadShared,
+  onSaveContext,
+  saving = false,
+}: TechniciansEditorProps) {
   const initialMonth = schedulingDate ? schedulingDate.slice(0, 7) : goToday()
   const [viewMonth, setViewMonth] = useState(initialMonth)
   const [selectedId, setSelectedId] = useState<string | null>(technicians[0]?.id ?? null)
@@ -99,6 +108,7 @@ export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoa
   const [rangeShift, setRangeShift] = useState<TechShift>('off')
   const [rangeStart, setRangeStart] = useState<string | null>(null)
   const [hoverDate, setHoverDate] = useState<string | null>(null)
+  const [editDate, setEditDate] = useState<string | null>(null)
 
   const selected = useMemo(
     () => technicians.find((t) => t.id === selectedId) ?? technicians[0] ?? null,
@@ -242,6 +252,10 @@ export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoa
       toggleDayShift(iso)
       return
     }
+    if (clickMode === 'edit-hours') {
+      setEditDate(iso)
+      return
+    }
     if (!rangeStart) {
       setRangeStart(iso)
       return
@@ -249,6 +263,50 @@ export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoa
     applyShiftToRange(rangeStart, iso, rangeShift)
     setRangeStart(null)
     setHoverDate(null)
+  }
+
+  const saveDayHours = (iso: string, shift: TechShift, hours: TechDayHours | null) => {
+    if (!selected) return
+    const nextShifts = { ...selected.monthlyShifts }
+    if (shift === 'full') delete nextShifts[iso]
+    else nextShifts[iso] = shift
+
+    const prevDayHours = selected.dayHours ?? {}
+    const nextDayHours: Record<string, TechDayHours> = { ...prevDayHours }
+    if (shift === 'off' || !hours) {
+      delete nextDayHours[iso]
+    } else {
+      const entry: TechDayHours = {}
+      if (hours.amStartM != null) entry.amStartM = hours.amStartM
+      if (hours.amEndM != null) entry.amEndM = hours.amEndM
+      if (hours.pmStartM != null) entry.pmStartM = hours.pmStartM
+      if (hours.pmEndM != null) entry.pmEndM = hours.pmEndM
+      const differentFromDefault =
+        entry.amStartM !== selected.amStartM ||
+        entry.amEndM !== selected.amEndM ||
+        entry.pmStartM !== selected.pmStartM ||
+        entry.pmEndM !== selected.pmEndM
+      if (differentFromDefault && (entry.amStartM != null || entry.amEndM != null || entry.pmStartM != null || entry.pmEndM != null)) {
+        nextDayHours[iso] = entry
+      } else {
+        delete nextDayHours[iso]
+      }
+    }
+    const cleaned = Object.keys(nextDayHours).length > 0 ? nextDayHours : undefined
+    updateTech(selected.id, { monthlyShifts: nextShifts, dayHours: cleaned })
+    appToast.success(`Đã cập nhật ${iso}`)
+  }
+
+  const clearDayOverride = (iso: string) => {
+    if (!selected) return
+    const nextShifts = { ...selected.monthlyShifts }
+    delete nextShifts[iso]
+    const prevDayHours = selected.dayHours ?? {}
+    const nextDayHours = { ...prevDayHours }
+    delete nextDayHours[iso]
+    const cleaned = Object.keys(nextDayHours).length > 0 ? nextDayHours : undefined
+    updateTech(selected.id, { monthlyShifts: nextShifts, dayHours: cleaned })
+    appToast.info('Đã đặt lại về mặc định')
   }
 
   const cancelRange = () => {
@@ -259,6 +317,7 @@ export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoa
   const switchClickMode = (m: ClickMode) => {
     setClickMode(m)
     cancelRange()
+    setEditDate(null)
   }
 
   const shiftPickBtn = (active: boolean, color: string) => cn(
@@ -456,6 +515,18 @@ export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoa
                   >
                     Chọn từ → đến
                   </button>
+                  <button
+                    type='button'
+                    onClick={() => switchClickMode('edit-hours')}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition',
+                      clickMode === 'edit-hours'
+                        ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white shadow-sm'
+                        : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--muted)]',
+                    )}
+                  >
+                    Giờ riêng
+                  </button>
 
                   {clickMode === 'range' && (
                     <>
@@ -494,10 +565,13 @@ export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoa
                   <LegendDot color='bg-amber-400' label='Sáng' />
                   <LegendDot color='bg-sky-400' label='Chiều' />
                   <LegendDot color='bg-rose-400' label='Nghỉ' />
+                  <LegendDot color='bg-indigo-500' label='Giờ riêng' />
                   <span className='ml-auto text-[11px]'>
                     {clickMode === 'cycle'
                       ? 'Click = đổi ca · double-click = xoá'
-                      : 'Click ngày bắt đầu → click ngày kết thúc'}
+                      : clickMode === 'range'
+                        ? 'Click ngày bắt đầu → click ngày kết thúc'
+                        : 'Click ngày để mở khung chỉnh giờ chi tiết'}
                   </span>
                 </div>
 
@@ -510,11 +584,35 @@ export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoa
                   {weeks.flat().map((cell, idx) => {
                     const iso = toYYYYMMDD(cell.date)
                     const shift = selected.monthlyShifts[iso]
+                    const customHours = selected.dayHours?.[iso]
+                    const hasCustomHours = Boolean(customHours)
+                    const isEditing = clickMode === 'edit-hours' && editDate === iso
                     const isToday = iso === toYYYYMMDD(new Date())
                     const dow = cell.date.getDay()
                     const isWeekend = dow === 0 || dow === 6
                     const isRangeAnchor = clickMode === 'range' && rangeStart === iso
                     const isInPreview = rangePreviewSet.has(iso)
+
+                    const effAmStart = customHours?.amStartM ?? selected.amStartM
+                    const effAmEnd = customHours?.amEndM ?? selected.amEndM
+                    const effPmStart = customHours?.pmStartM ?? selected.pmStartM
+                    const effPmEnd = customHours?.pmEndM ?? selected.pmEndM
+                    const showAMRow =
+                      hasCustomHours &&
+                      shift !== 'off' &&
+                      (shift === 'am' || shift === 'full' || !shift) &&
+                      effAmStart != null && effAmEnd != null
+                    const showPMRow =
+                      hasCustomHours &&
+                      shift !== 'off' &&
+                      (shift === 'pm' || shift === 'full' || !shift) &&
+                      effPmStart != null && effPmEnd != null
+
+                    const detailParts: string[] = []
+                    if (shift === 'off') detailParts.push('Nghỉ cả ngày')
+                    if (showAMRow) detailParts.push(`Sáng ${minutesToLabel(effAmStart!)}–${minutesToLabel(effAmEnd!)}`)
+                    if (showPMRow) detailParts.push(`Chiều ${minutesToLabel(effPmStart!)}–${minutesToLabel(effPmEnd!)}`)
+                    const titleText = detailParts.length ? detailParts.join(' · ') : undefined
                     const previewColor =
                       rangeShift === 'off' ? 'border-rose-400 bg-rose-100 text-rose-800 dark:bg-rose-950/50'
                       : rangeShift === 'am' ? 'border-amber-400 bg-amber-100 text-amber-800 dark:bg-amber-950/50'
@@ -529,8 +627,10 @@ export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoa
                         onDoubleClick={() => cell.inMonth && clickMode === 'cycle' && setDayShift(iso, 'full')}
                         onMouseEnter={() => cell.inMonth && clickMode === 'range' && rangeStart && setHoverDate(iso)}
                         onFocus={() => cell.inMonth && clickMode === 'range' && rangeStart && setHoverDate(iso)}
+                        title={titleText}
                         className={cn(
-                          'relative flex h-14 flex-col items-center justify-center rounded-lg border text-xs transition',
+                          'relative flex flex-col items-center justify-center rounded-lg border text-xs transition',
+                          hasCustomHours ? 'h-16' : 'h-14',
                           cell.inMonth
                             ? 'cursor-pointer border-[var(--notika-border)] bg-[var(--notika-card)] hover:border-[var(--notika-green)]'
                             : 'cursor-default border-transparent opacity-30',
@@ -538,27 +638,78 @@ export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoa
                           !isRangeAnchor && !isInPreview && shift === 'off' && 'border-rose-300 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:border-rose-800/50',
                           !isRangeAnchor && !isInPreview && shift === 'am' && 'border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:border-amber-800/50',
                           !isRangeAnchor && !isInPreview && shift === 'pm' && 'border-sky-300 bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:border-sky-800/50',
+                          !isRangeAnchor && !isInPreview && hasCustomHours && shift !== 'off' && 'border-indigo-300 dark:border-indigo-800/50',
                           isInPreview && !isRangeAnchor && previewColor,
                           isRangeAnchor && 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white ring-2 ring-[var(--notika-green)]/40',
+                          isEditing && 'ring-2 ring-[var(--notika-green)]',
                         )}
                       >
-                        <span className={cn('text-[13px] font-semibold', isWeekend && cell.inMonth && !shift && !isRangeAnchor && !isInPreview && 'text-rose-500')}>
+                        <span className={cn('text-[13px] font-semibold leading-none', isWeekend && cell.inMonth && !shift && !isRangeAnchor && !isInPreview && 'text-rose-500')}>
                           {cell.date.getDate()}
                         </span>
-                        {shift && !isRangeAnchor && !isInPreview && (
+
+                        {/* Hien khung gio chi tiet neu co custom hours */}
+                        {hasCustomHours && !isRangeAnchor && !isInPreview && shift !== 'off' && (
+                          <div className='mt-0.5 flex flex-col items-center gap-0 text-[9px] font-semibold leading-[1.1] tabular-nums text-indigo-700 dark:text-indigo-300'>
+                            {showAMRow && (
+                              <span>
+                                {minutesToLabel(effAmStart!)}-{minutesToLabel(effAmEnd!)}
+                              </span>
+                            )}
+                            {showPMRow && (
+                              <span>
+                                {minutesToLabel(effPmStart!)}-{minutesToLabel(effPmEnd!)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Neu khong co custom hours -> hien SHIFT_LABEL nhu cu */}
+                        {!hasCustomHours && shift && !isRangeAnchor && !isInPreview && (
                           <span className='mt-0.5 text-[9px] font-bold uppercase'>
                             {SHIFT_LABEL[shift]}
                           </span>
                         )}
+
+                        {/* Neu nghi ca ngay ma co custom hours cu -> hien NGHI */}
+                        {hasCustomHours && shift === 'off' && !isRangeAnchor && !isInPreview && (
+                          <span className='mt-0.5 text-[9px] font-bold uppercase'>
+                            {SHIFT_LABEL.off}
+                          </span>
+                        )}
+
                         {isInPreview && !isRangeAnchor && (
                           <span className='mt-0.5 text-[9px] font-bold uppercase'>
                             {SHIFT_LABEL[rangeShift]}
                           </span>
                         )}
+
+                        {hasCustomHours && !isRangeAnchor && !isInPreview && cell.inMonth && (
+                          <span
+                            title='Có giờ riêng'
+                            className='absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-sm'
+                          />
+                        )}
                       </button>
                     )
                   })}
                 </div>
+
+                {clickMode === 'edit-hours' && editDate && (
+                  <DayHoursEditor
+                    iso={editDate}
+                    tech={selected}
+                    onClose={() => setEditDate(null)}
+                    onSave={(shift, hours) => {
+                      saveDayHours(editDate, shift, hours)
+                      setEditDate(null)
+                    }}
+                    onReset={() => {
+                      clearDayOverride(editDate)
+                      setEditDate(null)
+                    }}
+                  />
+                )}
 
                 <div className='mt-3 flex flex-wrap items-center justify-between gap-2 text-xs'>
                   <div className='flex items-center gap-2'>
@@ -580,6 +731,38 @@ export function TechniciansEditor({ technicians, onChange, schedulingDate, onLoa
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {onSaveContext && technicians.length > 0 && (
+        <div className='sticky bottom-2 z-10 flex justify-end'>
+          <button
+            type='button'
+            disabled={saving}
+            onClick={() => void onSaveContext()}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-xl border border-[var(--notika-green)] bg-[var(--notika-green)] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition',
+              'hover:bg-[var(--notika-green)]/90 hover:shadow-lg active:scale-[0.98]',
+              'disabled:cursor-not-allowed disabled:opacity-60',
+            )}
+          >
+            {saving ? (
+              <>
+                <svg className='h-4 w-4 animate-spin' viewBox='0 0 24 24' fill='none'>
+                  <circle cx='12' cy='12' r='9' stroke='currentColor' strokeWidth='3' strokeOpacity='0.25' />
+                  <path d='M21 12a9 9 0 0 0-9-9' stroke='currentColor' strokeWidth='3' strokeLinecap='round' />
+                </svg>
+                Đang lưu…
+              </>
+            ) : (
+              <>
+                <svg width='16' height='16' viewBox='0 0 16 16' fill='none'>
+                  <path d='M12.5 2h-9A1.5 1.5 0 0 0 2 3.5v9A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5L11 2zM5 2v4h5V2M5 10h6' stroke='currentColor' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round' />
+                </svg>
+                Lưu lên hệ thống
+              </>
+            )}
+          </button>
         </div>
       )}
     </div>
@@ -624,6 +807,154 @@ function TimeInput({
           onChange(parsed)
         }}
       />
+    </div>
+  )
+}
+
+function formatIsoVi(iso: string): string {
+  try {
+    const d = new Date(iso + 'T00:00:00')
+    return d.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
+  } catch {
+    return iso
+  }
+}
+
+function DayHoursEditor({
+  iso,
+  tech,
+  onClose,
+  onSave,
+  onReset,
+}: {
+  iso: string
+  tech: SchedTechnician
+  onClose: () => void
+  onSave: (shift: TechShift, hours: TechDayHours | null) => void
+  onReset: () => void
+}) {
+  const existingShift = tech.monthlyShifts[iso] ?? 'full'
+  const existingHours = tech.dayHours?.[iso]
+
+  const [shift, setShift] = useState<TechShift>(existingShift)
+  const [amStart, setAmStart] = useState<number | null>(existingHours?.amStartM ?? tech.amStartM)
+  const [amEnd, setAmEnd] = useState<number | null>(existingHours?.amEndM ?? tech.amEndM)
+  const [pmStart, setPmStart] = useState<number | null>(existingHours?.pmStartM ?? tech.pmStartM)
+  const [pmEnd, setPmEnd] = useState<number | null>(existingHours?.pmEndM ?? tech.pmEndM)
+
+  const showAM = shift === 'am' || shift === 'full'
+  const showPM = shift === 'pm' || shift === 'full'
+
+  const handleSave = () => {
+    if (shift === 'off') {
+      onSave('off', null)
+      return
+    }
+    if (showAM && amStart != null && amEnd != null && amEnd <= amStart) {
+      appToast.warning('Giờ kết thúc ca sáng phải sau giờ bắt đầu')
+      return
+    }
+    if (showPM && pmStart != null && pmEnd != null && pmEnd <= pmStart) {
+      appToast.warning('Giờ kết thúc ca chiều phải sau giờ bắt đầu')
+      return
+    }
+    onSave(shift, {
+      amStartM: showAM ? amStart : null,
+      amEndM: showAM ? amEnd : null,
+      pmStartM: showPM ? pmStart : null,
+      pmEndM: showPM ? pmEnd : null,
+    })
+  }
+
+  const shiftBtn = (s: TechShift, label: string, color: string) => (
+    <button
+      type='button'
+      onClick={() => setShift(s)}
+      className={cn(
+        'inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition',
+        shift === s
+          ? `${color} text-white shadow-sm`
+          : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--muted)]',
+      )}
+    >
+      {label}
+    </button>
+  )
+
+  return (
+    <div className='mt-3 rounded-2xl border-2 border-[var(--notika-green)]/40 bg-[var(--notika-card)] p-4 shadow-md'>
+      <div className='mb-3 flex items-center justify-between gap-2'>
+        <div>
+          <p className='text-[11px] font-bold uppercase tracking-wide text-[var(--notika-muted)]'>
+            Chỉnh giờ cho ngày
+          </p>
+          <p className='text-sm font-bold text-[var(--notika-text)]'>{formatIsoVi(iso)}</p>
+        </div>
+        <button
+          type='button'
+          onClick={onClose}
+          className='rounded-full border border-[var(--notika-border)] bg-[var(--notika-card)] p-1.5 text-[var(--notika-muted)] hover:text-rose-500'
+          aria-label='Đóng'
+        >
+          <svg width='14' height='14' viewBox='0 0 14 14' fill='none'>
+            <path d='M3 3l8 8M11 3l-8 8' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' />
+          </svg>
+        </button>
+      </div>
+
+      <div className='mb-3 flex flex-wrap gap-1.5'>
+        {shiftBtn('full', 'Cả ngày', 'border-emerald-500 bg-emerald-500')}
+        {shiftBtn('am', 'Sáng', 'border-amber-500 bg-amber-500')}
+        {shiftBtn('pm', 'Chiều', 'border-sky-500 bg-sky-500')}
+        {shiftBtn('off', 'Nghỉ', 'border-rose-500 bg-rose-500')}
+      </div>
+
+      {shift !== 'off' && (
+        <div className='grid gap-3 sm:grid-cols-2 md:grid-cols-4'>
+          {showAM && (
+            <>
+              <TimeInput label='Sáng BĐ' value={amStart} onChange={setAmStart} />
+              <TimeInput label='Sáng KT' value={amEnd} onChange={setAmEnd} />
+            </>
+          )}
+          {showPM && (
+            <>
+              <TimeInput label='Chiều BĐ' value={pmStart} onChange={setPmStart} />
+              <TimeInput label='Chiều KT' value={pmEnd} onChange={setPmEnd} />
+            </>
+          )}
+        </div>
+      )}
+
+      {shift !== 'off' && (
+        <p className='mt-2 text-[11px] text-[var(--notika-muted)]'>
+          Mặc định: Sáng {tech.amStartM != null ? minutesToLabel(tech.amStartM) : '--'}–{tech.amEndM != null ? minutesToLabel(tech.amEndM) : '--'} · Chiều {tech.pmStartM != null ? minutesToLabel(tech.pmStartM) : '--'}–{tech.pmEndM != null ? minutesToLabel(tech.pmEndM) : '--'}
+        </p>
+      )}
+
+      <div className='mt-4 flex flex-wrap items-center justify-end gap-2'>
+        <button
+          type='button'
+          onClick={onReset}
+          className='rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-1.5 text-xs font-semibold text-[var(--notika-muted)] transition hover:border-rose-300 hover:text-rose-600'
+        >
+          Đặt lại mặc định
+        </button>
+        <button
+          type='button'
+          onClick={onClose}
+          className='rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-1.5 text-xs font-semibold text-[var(--notika-text)] transition hover:bg-[var(--muted)]'
+        >
+          Huỷ
+        </button>
+        <button
+          type='button'
+          onClick={handleSave}
+          className='rounded-xl border border-[var(--notika-green)] bg-[var(--notika-green)] px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--notika-green)]/90'
+        >
+          Lưu
+        </button>
+      </div>
     </div>
   )
 }

@@ -66,7 +66,7 @@ function technicianByCode(techs: SchedTechnician[], code: string): SchedTechnici
   return techs.find((t) => t.code.toLowerCase() === code.toLowerCase())
 }
 
-/** Tra ve gio lam hieu luc cua KTV cho mot ngay (dua vao monthlyShifts neu co) */
+/** Tra ve gio lam hieu luc cua KTV cho mot ngay (dua vao monthlyShifts + dayHours neu co) */
 export function getTechnicianEffectiveHours(
   tech: SchedTechnician,
   schedulingDate: string | null,
@@ -75,18 +75,22 @@ export function getTechnicianEffectiveHours(
   if (shift === 'off') {
     return { amStartM: null, amEndM: null, pmStartM: null, pmEndM: null, isOff: true }
   }
+  const override = schedulingDate && tech.dayHours ? tech.dayHours[schedulingDate] : undefined
+  const amStart = override?.amStartM ?? tech.amStartM
+  const amEnd = override?.amEndM ?? tech.amEndM
+  const pmStart = override?.pmStartM ?? tech.pmStartM
+  const pmEnd = override?.pmEndM ?? tech.pmEndM
   if (shift === 'am') {
-    return { amStartM: tech.amStartM, amEndM: tech.amEndM, pmStartM: null, pmEndM: null, isOff: false }
+    return { amStartM: amStart, amEndM: amEnd, pmStartM: null, pmEndM: null, isOff: false }
   }
   if (shift === 'pm') {
-    return { amStartM: null, amEndM: null, pmStartM: tech.pmStartM, pmEndM: tech.pmEndM, isOff: false }
+    return { amStartM: null, amEndM: null, pmStartM: pmStart, pmEndM: pmEnd, isOff: false }
   }
-  // 'full' hoac khong co entry -> dung gio mac dinh
   return {
-    amStartM: tech.amStartM,
-    amEndM: tech.amEndM,
-    pmStartM: tech.pmStartM,
-    pmEndM: tech.pmEndM,
+    amStartM: amStart,
+    amEndM: amEnd,
+    pmStartM: pmStart,
+    pmEndM: pmEnd,
     isOff: false,
   }
 }
