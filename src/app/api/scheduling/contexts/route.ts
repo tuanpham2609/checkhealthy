@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS = {
 
 const DEFAULT_MASTERS = {
   doctors: [],
+  technicians: [],
   machines: [],
   procedures: [],
   patients: [],

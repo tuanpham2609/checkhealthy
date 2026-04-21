@@ -70,7 +70,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ contextId:
     const otherIds = otherCtxs.map((c) => c.id as string)
     const { data: otherAssigns } = await supabase
       .from('sched_assignments')
-      .select('context_id, doctor_codes, machine_id, start_m, pillow_end_m, end_m')
+      .select('context_id, doctor_codes, technician_codes, machine_id, start_m, pillow_end_m, end_m')
       .in('context_id', otherIds)
 
     const userIds = [...new Set(otherCtxs.map((c) => c.user_id as string).filter(Boolean))]
@@ -87,6 +87,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ contextId:
         .filter((a) => a.context_id === c.id)
         .map((a) => ({
           doctorCodes: (a.doctor_codes as string[]) ?? [],
+          technicianCodes: (a.technician_codes as string[]) ?? [],
           machineId: a.machine_id as string,
           startM: a.start_m as number,
           pillowEndM: a.pillow_end_m as number,
@@ -98,7 +99,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ contextId:
     crossMasters = result.masters
   }
 
-  const { assignments, unscheduled } = runSchedule(crossMasters, settings, mode, existing)
+  const { assignments, unscheduled } = runSchedule(crossMasters, settings, mode, existing, schedulingDate)
 
   const { error: delErr } = await supabase.from('sched_assignments').delete().eq('context_id', contextId)
   if (delErr) {

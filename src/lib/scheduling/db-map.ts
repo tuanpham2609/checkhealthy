@@ -11,6 +11,8 @@ import type {
   SchedPatient,
   SchedProcedure,
   SchedSettings,
+  SchedTechnician,
+  TechShift,
   TimeWindowM,
   UnscheduledItem,
 } from '@/lib/scheduling/types'
@@ -33,6 +35,7 @@ interface SchedAssignmentRow {
   procedure_id: string
   machine_id: string
   doctor_codes: string[] | null
+  technician_codes: string[] | null
   start_m: number
   pillow_end_m: number
   end_m: number
@@ -65,6 +68,34 @@ function normalizeDoctor(raw: unknown): SchedDoctor {
   }
 }
 
+function isTechShift(v: unknown): v is TechShift {
+  return v === 'off' || v === 'am' || v === 'pm' || v === 'full'
+}
+
+function normalizeMonthlyShifts(raw: unknown): Record<string, TechShift> {
+  if (!raw || typeof raw !== 'object') return {}
+  const out: Record<string, TechShift> = {}
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof k === 'string' && isTechShift(v)) out[k] = v
+  }
+  return out
+}
+
+function normalizeTechnician(raw: unknown): SchedTechnician {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  return {
+    id: String(o.id ?? ''),
+    code: typeof o.code === 'string' ? o.code : '',
+    name: typeof o.name === 'string' ? o.name : '',
+    amStartM: numOrNull(o.amStartM),
+    amEndM: numOrNull(o.amEndM),
+    pmStartM: numOrNull(o.pmStartM),
+    pmEndM: numOrNull(o.pmEndM),
+    monthlyShifts: normalizeMonthlyShifts(o.monthlyShifts),
+    busy: normalizeBusy(o.busy),
+  }
+}
+
 function normalizeMachine(raw: unknown): SchedMachine {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
   return {
@@ -86,6 +117,7 @@ function normalizeProcedure(raw: unknown): SchedProcedure {
     substituteCodes: typeof o.substituteCodes === 'string' ? o.substituteCodes : '',
     machineType: typeof o.machineType === 'string' ? o.machineType : '',
     priority: Boolean(o.priority),
+    technicianCodes: typeof o.technicianCodes === 'string' ? o.technicianCodes : '',
   }
 }
 
@@ -116,10 +148,11 @@ export function asSettings(raw: unknown): SchedSettings {
 export function asMasters(raw: unknown): SchedMasters {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
   const doctors = Array.isArray(o.doctors) ? o.doctors.map(normalizeDoctor) : []
+  const technicians = Array.isArray(o.technicians) ? o.technicians.map(normalizeTechnician) : []
   const machines = Array.isArray(o.machines) ? o.machines.map(normalizeMachine) : []
   const procedures = Array.isArray(o.procedures) ? o.procedures.map(normalizeProcedure) : []
   const patients = Array.isArray(o.patients) ? o.patients.map(normalizePatient) : []
-  return { doctors, machines, procedures, patients }
+  return { doctors, technicians, machines, procedures, patients }
 }
 
 function asDaysOff(raw: unknown): string[] {
@@ -153,6 +186,7 @@ export function assignmentRowToClient(row: SchedAssignmentRow): SchedAssignment 
     procedureId: row.procedure_id,
     machineId: row.machine_id,
     doctorCodes: row.doctor_codes ?? [],
+    technicianCodes: row.technician_codes ?? [],
     startM: row.start_m,
     pillowEndM: row.pillow_end_m,
     endM: row.end_m,
@@ -171,6 +205,7 @@ export function assignmentClientToInsert(
     procedure_id: a.procedureId,
     machine_id: a.machineId,
     doctor_codes: a.doctorCodes,
+    technician_codes: a.technicianCodes ?? [],
     start_m: a.startM,
     pillow_end_m: a.pillowEndM,
     end_m: a.endM,

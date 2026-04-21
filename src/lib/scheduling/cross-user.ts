@@ -6,6 +6,7 @@ import type { SchedMasters, TimeWindowM } from '@/lib/scheduling/types'
 
 export interface ExternalAssignment {
   doctorCodes: string[]
+  technicianCodes?: string[]
   machineId: string
   startM: number
   pillowEndM: number
@@ -19,7 +20,7 @@ export interface ExternalContext {
 }
 
 export interface ConflictInfo {
-  type: 'doctor' | 'machine'
+  type: 'doctor' | 'technician' | 'machine'
   resourceCode: string
   externalUser: string
   externalContext: string
@@ -36,6 +37,7 @@ export function injectCrossUserBusy(
   externals: ExternalContext[],
 ): { masters: SchedMasters; conflicts: ConflictInfo[] } {
   const doctorBusyMap = new Map<string, TimeWindowM[]>()
+  const techBusyMap = new Map<string, TimeWindowM[]>()
   const machineBusyMap = new Map<string, TimeWindowM[]>()
   const conflicts: ConflictInfo[] = []
 
@@ -46,6 +48,12 @@ export function injectCrossUserBusy(
         const list = doctorBusyMap.get(key) ?? []
         list.push({ startM: a.startM, endM: a.pillowEndM })
         doctorBusyMap.set(key, list)
+      }
+      for (const code of a.technicianCodes ?? []) {
+        const key = code.toLowerCase()
+        const list = techBusyMap.get(key) ?? []
+        list.push({ startM: a.startM, endM: a.endM })
+        techBusyMap.set(key, list)
       }
       const mList = machineBusyMap.get(a.machineId) ?? []
       mList.push({ startM: a.startM, endM: a.endM })
@@ -59,6 +67,12 @@ export function injectCrossUserBusy(
     return { ...d, busy: [...d.busy, ...extra] }
   })
 
+  const newTechnicians = (masters.technicians ?? []).map((t) => {
+    const extra = techBusyMap.get(t.code.toLowerCase())
+    if (!extra?.length) return t
+    return { ...t, busy: [...t.busy, ...extra] }
+  })
+
   const newMachines = masters.machines.map((m) => {
     const extra = machineBusyMap.get(m.id)
     if (!extra?.length) return m
@@ -66,7 +80,7 @@ export function injectCrossUserBusy(
   })
 
   return {
-    masters: { ...masters, doctors: newDoctors, machines: newMachines },
+    masters: { ...masters, doctors: newDoctors, technicians: newTechnicians, machines: newMachines },
     conflicts,
   }
 }

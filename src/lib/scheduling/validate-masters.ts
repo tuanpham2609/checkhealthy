@@ -19,6 +19,10 @@ export function validateMastersForSchedule(masters: SchedMasters): string[] {
       errors.push(`Bác sĩ "${d.name || d.code}" cần ít nhất một khung sáng hoặc chiều.`)
     }
   }
+  for (const t of masters.technicians ?? []) {
+    if (!t.code.trim()) errors.push('Mỗi KTV cần mã (vd K1, K2).')
+    if (!t.name.trim()) errors.push(`KTV mã "${t.code || '?'}" cần họ tên.`)
+  }
   if (masters.machines.length === 0) {
     errors.push('Cần ít nhất một máy.')
   }

@@ -9,7 +9,7 @@ import { read, utils, type WorkBook } from 'xlsx'
 import { appToast } from '@/lib/app-toast'
 import { cn } from '@/lib/styles'
 
-type ImportType = 'doctors' | 'machines' | 'procedures'
+type ImportType = 'doctors' | 'technicians' | 'machines' | 'procedures'
 
 interface ExcelImporterProps {
   type: ImportType
@@ -20,6 +20,14 @@ const COLUMN_MAPS: Record<ImportType, { key: string; label: string; aliases: str
   doctors: [
     { key: 'code', label: 'Mã BS', aliases: ['mã bs', 'ma bs', 'code', 'mã', 'ma'] },
     { key: 'name', label: 'Tên BS', aliases: ['tên bs', 'ten bs', 'name', 'tên', 'ten', 'họ tên', 'ho ten'] },
+    { key: 'amStart', label: 'Ca sáng BĐ', aliases: ['ca sáng bắt đầu', 'ca sang bat dau', 'am start', 'amstart', 'sáng bđ', 'sang bd'] },
+    { key: 'amEnd', label: 'Ca sáng KT', aliases: ['ca sáng kết thúc', 'ca sang ket thuc', 'am end', 'amend', 'sáng kt', 'sang kt'] },
+    { key: 'pmStart', label: 'Ca chiều BĐ', aliases: ['ca chiều bắt đầu', 'ca chieu bat dau', 'pm start', 'pmstart', 'chiều bđ', 'chieu bd'] },
+    { key: 'pmEnd', label: 'Ca chiều KT', aliases: ['ca chiều kết thúc', 'ca chieu ket thuc', 'pm end', 'pmend', 'chiều kt', 'chieu kt'] },
+  ],
+  technicians: [
+    { key: 'code', label: 'Mã KTV', aliases: ['mã ktv', 'ma ktv', 'code', 'mã', 'ma'] },
+    { key: 'name', label: 'Tên KTV', aliases: ['tên ktv', 'ten ktv', 'name', 'tên', 'ten', 'họ tên', 'ho ten'] },
     { key: 'amStart', label: 'Ca sáng BĐ', aliases: ['ca sáng bắt đầu', 'ca sang bat dau', 'am start', 'amstart', 'sáng bđ', 'sang bd'] },
     { key: 'amEnd', label: 'Ca sáng KT', aliases: ['ca sáng kết thúc', 'ca sang ket thuc', 'am end', 'amend', 'sáng kt', 'sang kt'] },
     { key: 'pmStart', label: 'Ca chiều BĐ', aliases: ['ca chiều bắt đầu', 'ca chieu bat dau', 'pm start', 'pmstart', 'chiều bđ', 'chieu bd'] },
@@ -41,7 +49,8 @@ const COLUMN_MAPS: Record<ImportType, { key: string; label: string; aliases: str
 }
 
 const TYPE_LABELS: Record<ImportType, string> = {
-  doctors: 'Bác sĩ / KTV',
+  doctors: 'Bác sĩ',
+  technicians: 'Kỹ thuật viên',
   machines: 'Máy',
   procedures: 'Dịch vụ kỹ thuật',
 }
@@ -81,7 +90,7 @@ function parseRows(wb: WorkBook, type: ImportType): Record<string, unknown>[] {
     }
     return out
   }).filter((r) => {
-    if (type === 'doctors') return r.code && r.name
+    if (type === 'doctors' || type === 'technicians') return r.code && r.name
     if (type === 'machines') return r.typeName && r.unitName
     return r.name
   })

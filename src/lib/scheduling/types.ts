@@ -18,6 +18,23 @@ export interface SchedDoctor {
   busy: TimeWindowM[]
 }
 
+/** Ca lam viec theo ngay cua KTV */
+export type TechShift = 'off' | 'am' | 'pm' | 'full'
+
+export interface SchedTechnician {
+  id: string
+  code: string
+  name: string
+  /** Gio lam mac dinh (ap dung khi monthlyShifts khong co entry cho ngay do) */
+  amStartM: number | null
+  amEndM: number | null
+  pmStartM: number | null
+  pmEndM: number | null
+  /** Ban do: 'yyyy-mm-dd' -> ca lam viec ngay do (ghi de gio mac dinh) */
+  monthlyShifts: Record<string, TechShift>
+  busy: TimeWindowM[]
+}
+
 export interface SchedMachine {
   id: string
   typeName: string
@@ -36,6 +53,8 @@ export interface SchedProcedure {
   substituteCodes: string
   machineType: string
   priority: boolean
+  /** Ma KTV duoc phep thuc hien (ngan cach bang dau phay). Neu rong -> khong yeu cau KTV */
+  technicianCodes?: string
 }
 
 export interface SchedPatient {
@@ -56,6 +75,7 @@ export interface SchedSettings {
 
 export interface SchedMasters {
   doctors: SchedDoctor[]
+  technicians: SchedTechnician[]
   machines: SchedMachine[]
   procedures: SchedProcedure[]
   patients: SchedPatient[]
@@ -67,6 +87,8 @@ export interface SchedAssignment {
   procedureId: string
   machineId: string
   doctorCodes: string[]
+  /** KTV duoc gan (neu procedure yeu cau) */
+  technicianCodes?: string[]
   startM: number
   pillowEndM: number
   endM: number
@@ -104,6 +126,7 @@ export interface CrossUserAssignment {
   contextName: string
   userName: string
   doctorCodes: string[]
+  technicianCodes?: string[]
   machineId: string
   startM: number
   pillowEndM: number
@@ -112,6 +135,16 @@ export interface CrossUserAssignment {
 
 /** Shared reference data (import Excel) */
 export interface SharedDoctor {
+  id: string
+  code: string
+  name: string
+  amStart: string
+  amEnd: string
+  pmStart: string
+  pmEnd: string
+}
+
+export interface SharedTechnician {
   id: string
   code: string
   name: string
@@ -136,6 +169,7 @@ export interface SharedProcedure {
   substituteCodes: string
   machineType: string
   priority: boolean
+  technicianCodes?: string
 }
 
 export interface GlobalHoliday {

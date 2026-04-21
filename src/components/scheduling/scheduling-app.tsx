@@ -16,9 +16,11 @@ import type {
   SchedMachine,
   SchedPatient,
   SchedProcedure,
+  SchedTechnician,
   SharedDoctor,
   SharedMachine,
   SharedProcedure,
+  SharedTechnician,
   TimeWindowM,
 } from '@/lib/scheduling/types'
 import { minutesToLabel, parseTimeToMinutes } from '@/lib/scheduling/time'
@@ -44,14 +46,16 @@ import { ExcelImporter } from '@/components/scheduling/excel-importer'
 import { ConflictPanel } from '@/components/scheduling/conflict-panel'
 import { ProcedureTimer } from '@/components/scheduling/procedure-timer'
 import { NotikaSelect } from '@/components/scheduling/notika-select'
+import { TechniciansEditor } from '@/components/scheduling/technicians-editor'
 
-type MainTab = 'calendar' | 'doctors' | 'machines' | 'procedures' | 'patients' | 'output' | 'users'
+type MainTab = 'calendar' | 'doctors' | 'technicians' | 'machines' | 'procedures' | 'patients' | 'output' | 'users'
 
 type OutputTab = 'results' | 'unsorted' | 'stats' | 'docTime' | 'machTime' | 'gantt' | 'estimate' | 'timer'
 
 const BASE_NAV: { id: MainTab; label: string }[] = [
   { id: 'calendar', label: 'Lịch tháng' },
   { id: 'doctors', label: 'Bác sĩ' },
+  { id: 'technicians', label: 'Kỹ thuật viên' },
   { id: 'machines', label: 'Máy' },
   { id: 'procedures', label: 'Thủ thuật' },
   { id: 'patients', label: 'Bệnh nhân' },
@@ -189,7 +193,7 @@ export function SchedulingApp() {
     appToast.success('Đã tải file CSV')
   }, [payload])
 
-  const loadSharedIntoContext = useCallback(async (type: 'doctors' | 'machines' | 'procedures') => {
+  const loadSharedIntoContext = useCallback(async (type: 'doctors' | 'technicians' | 'machines' | 'procedures') => {
     if (!payload) return
     try {
       const res = await fetch(`/api/scheduling/shared/${type}`)
@@ -218,6 +222,24 @@ export function SchedulingApp() {
           }))
         masters.doctors = [...masters.doctors, ...newDocs]
         appToast.success(`Đã thêm ${newDocs.length} bác sĩ từ danh sách chung`)
+      } else if (type === 'technicians') {
+        const shared = items as unknown as SharedTechnician[]
+        const existingCodes = new Set((masters.technicians ?? []).map((d) => d.code))
+        const newTechs: SchedTechnician[] = shared
+          .filter((s) => !existingCodes.has(s.code))
+          .map((s) => ({
+            id: crypto.randomUUID(),
+            code: s.code,
+            name: s.name,
+            amStartM: parseTimeToMinutes(s.amStart),
+            amEndM: parseTimeToMinutes(s.amEnd),
+            pmStartM: parseTimeToMinutes(s.pmStart),
+            pmEndM: parseTimeToMinutes(s.pmEnd),
+            monthlyShifts: {},
+            busy: [],
+          }))
+        masters.technicians = [...(masters.technicians ?? []), ...newTechs]
+        appToast.success(`Đã thêm ${newTechs.length} KTV từ danh sách chung`)
       } else if (type === 'machines') {
         const shared = items as unknown as SharedMachine[]
         const existingKeys = new Set(masters.machines.map((m) => `${m.typeName}|${m.unitName}`))
@@ -245,6 +267,7 @@ export function SchedulingApp() {
             substituteCodes: s.substituteCodes,
             machineType: s.machineType,
             priority: s.priority,
+            technicianCodes: s.technicianCodes ?? '',
           }))
         masters.procedures = [...masters.procedures, ...newProcs]
         appToast.success(`Đã thêm ${newProcs.length} thủ thuật từ danh sách chung`)
@@ -647,6 +670,10 @@ export function SchedulingApp() {
                       setPayload({ ...payload, schedulingDate: iso })
                     }}
                     onChangeMonth={setViewMonth}
+                    onDaysOffChange={(next) => {
+                      setPayload({ ...payload, daysOff: next })
+                      void persistDaysOff(next)
+                    }}
                   />
                   <DaysOffManager
                     holidays={hol.holidays}
@@ -672,6 +699,17 @@ export function SchedulingApp() {
                 />
               </section>
             ) : null}
+            {mainTab === 'technicians' ? (
+              <section className='space-y-6'>
+                <ExcelImporter type='technicians' onImported={() => void loadSharedIntoContext('technicians')} />
+                <TechniciansEditor
+                  technicians={payload.masters.technicians ?? []}
+                  onChange={(technicians) => setPayload({ ...payload, masters: { ...payload.masters, technicians } })}
+                  schedulingDate={payload.schedulingDate}
+                  onLoadShared={() => void loadSharedIntoContext('technicians')}
+                />
+              </section>
+            ) : null}
             {mainTab === 'machines' ? (
               <section className='space-y-6'>
                 <ExcelImporter type='machines' onImported={() => void loadSharedIntoContext('machines')} />
@@ -689,6 +727,7 @@ export function SchedulingApp() {
                 <ProceduresEditor
                   procedures={payload.masters.procedures}
                   doctors={payload.masters.doctors}
+                  technicians={payload.masters.technicians ?? []}
                   machines={payload.masters.machines}
                   onChange={(procedures) => setPayload({ ...payload, masters: { ...payload.masters, procedures } })}
                 />
@@ -1135,11 +1174,13 @@ function MachinesEditor({
 function ProceduresEditor({
   procedures,
   doctors,
+  technicians,
   machines,
   onChange,
 }: {
   procedures: SchedProcedure[]
   doctors: SchedDoctor[]
+  technicians: SchedTechnician[]
   machines: SchedMachine[]
   onChange: (p: SchedProcedure[]) => void
 }) {
@@ -1163,6 +1204,7 @@ function ProceduresEditor({
         substituteCodes: '',
         machineType: '',
         priority: false,
+        technicianCodes: '',
       },
     ])
   return (
@@ -1352,6 +1394,44 @@ function ProceduresEditor({
                   </div>
                 ) : (
                   <p className='mt-1 text-[11px] text-amber-600'>Chưa có bác sĩ nào.</p>
+                )}
+              </div>
+              <div className='sm:col-span-2'>
+                <span className={subLabelCls}>KTV được phép thực hiện (tuỳ chọn)</span>
+                {technicians.length > 0 ? (
+                  <div className='mt-1 flex flex-wrap gap-2'>
+                    {technicians.map((t) => {
+                      const selected = (p.technicianCodes ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+                      const isChecked = selected.includes(t.code.toLowerCase())
+                      return (
+                        <label key={t.id} className={cn(
+                          'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                          isChecked
+                            ? 'border-amber-500 bg-amber-500 text-white'
+                            : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-amber-50 dark:hover:bg-amber-950/20',
+                        )}>
+                          <input
+                            type='checkbox'
+                            className='sr-only'
+                            checked={isChecked}
+                            onChange={() => {
+                              const codes = (p.technicianCodes ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+                              const next = isChecked
+                                ? codes.filter((c) => c.toLowerCase() !== t.code.toLowerCase())
+                                : [...codes, t.code]
+                              update(i, { technicianCodes: next.join(',') })
+                            }}
+                          />
+                          <span className='font-bold'>{t.code}</span>
+                          <span className='opacity-70'>({t.name})</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className='mt-1 text-[11px] text-[var(--notika-muted)]'>
+                    Chưa có KTV nào. Nếu thủ thuật không cần KTV, bỏ qua trường này.
+                  </p>
                 )}
               </div>
               <label className='flex cursor-pointer items-start gap-3 text-sm sm:col-span-2 sm:items-center'>

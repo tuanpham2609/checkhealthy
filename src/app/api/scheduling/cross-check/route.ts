@@ -12,6 +12,7 @@ export interface CrossCheckResult {
   userName: string
   assignments: {
     doctorCodes: string[]
+    technicianCodes: string[]
     machineId: string
     startM: number
     pillowEndM: number
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
 
   const { data: assigns, error: aErr } = await supabase
     .from('sched_assignments')
-    .select('context_id, doctor_codes, machine_id, start_m, pillow_end_m, end_m, patient_id, procedure_id')
+    .select('context_id, doctor_codes, technician_codes, machine_id, start_m, pillow_end_m, end_m, patient_id, procedure_id')
     .in('context_id', ctxIds)
 
   if (aErr) return NextResponse.json({ error: aErr.message }, { status: 500 })
@@ -80,6 +81,7 @@ export async function GET(req: NextRequest) {
       .filter((a) => a.context_id === ctx.id)
       .map((a) => ({
         doctorCodes: (a.doctor_codes as string[]) ?? [],
+        technicianCodes: (a.technician_codes as string[]) ?? [],
         machineId: a.machine_id as string,
         startM: a.start_m as number,
         pillowEndM: a.pillow_end_m as number,

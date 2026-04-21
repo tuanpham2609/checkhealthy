@@ -6,10 +6,11 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin'
 import { getSessionUser } from '@/lib/auth/session'
 
-type SharedType = 'doctors' | 'machines' | 'procedures'
+type SharedType = 'doctors' | 'technicians' | 'machines' | 'procedures'
 
 const TABLE_MAP: Record<SharedType, string> = {
   doctors: 'shared_doctors',
+  technicians: 'shared_technicians',
   machines: 'shared_machines',
   procedures: 'shared_procedures',
 }
@@ -29,7 +30,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ type: string }
 
   const { type } = await ctx.params
   if (!isValidType(type)) {
-    return NextResponse.json({ error: 'Type không hợp lệ (doctors|machines|procedures).' }, { status: 400 })
+    return NextResponse.json({ error: 'Type không hợp lệ (doctors|technicians|machines|procedures).' }, { status: 400 })
   }
 
   const supabase = createSupabaseAdmin()
@@ -63,7 +64,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ type: string }
   const supabase = createSupabaseAdmin()
   const table = TABLE_MAP[type]
 
-  if (type === 'doctors') {
+  if (type === 'doctors' || type === 'technicians') {
     const rows = body.items.map((r) => ({
       code: String(r.code ?? '').trim(),
       name: String(r.name ?? '').trim(),

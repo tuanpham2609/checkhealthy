@@ -10,6 +10,7 @@ import type {
   SchedPatient,
   SchedProcedure,
   SchedSettings,
+  SchedTechnician,
   UnscheduledItem,
 } from '@/lib/scheduling/types'
 import {
@@ -59,6 +60,35 @@ function* doctorCodeAttempts(mainCodes: string, substituteCodes: string): Genera
 
 function doctorByCode(doctors: SchedDoctor[], code: string): SchedDoctor | undefined {
   return doctors.find((d) => d.code.toLowerCase() === code.toLowerCase())
+}
+
+function technicianByCode(techs: SchedTechnician[], code: string): SchedTechnician | undefined {
+  return techs.find((t) => t.code.toLowerCase() === code.toLowerCase())
+}
+
+/** Tra ve gio lam hieu luc cua KTV cho mot ngay (dua vao monthlyShifts neu co) */
+export function getTechnicianEffectiveHours(
+  tech: SchedTechnician,
+  schedulingDate: string | null,
+): { amStartM: number | null; amEndM: number | null; pmStartM: number | null; pmEndM: number | null; isOff: boolean } {
+  const shift = schedulingDate ? tech.monthlyShifts[schedulingDate] : undefined
+  if (shift === 'off') {
+    return { amStartM: null, amEndM: null, pmStartM: null, pmEndM: null, isOff: true }
+  }
+  if (shift === 'am') {
+    return { amStartM: tech.amStartM, amEndM: tech.amEndM, pmStartM: null, pmEndM: null, isOff: false }
+  }
+  if (shift === 'pm') {
+    return { amStartM: null, amEndM: null, pmStartM: tech.pmStartM, pmEndM: tech.pmEndM, isOff: false }
+  }
+  // 'full' hoac khong co entry -> dung gio mac dinh
+  return {
+    amStartM: tech.amStartM,
+    amEndM: tech.amEndM,
+    pmStartM: tech.pmStartM,
+    pmEndM: tech.pmEndM,
+    isOff: false,
+  }
 }
 
 function hasMachineConflict(
@@ -158,6 +188,7 @@ function tryPlace(
   assignments: SchedAssignment[],
   machineExtras: Map<string, { startM: number; endM: number }[]>,
   settings: SchedSettings,
+  schedulingDate: string | null,
 ): SchedAssignment | null {
   const dur = procedure.durationM
   const pil = procedure.pillowM
@@ -182,6 +213,41 @@ function tryPlace(
     }
   }
 
+  // KTV: neu procedure yeu cau KTV -> tim 1 KTV available
+  let assignedTechCode: string | null = null
+  const technicianCodesRaw = (procedure.technicianCodes ?? '').trim()
+  if (technicianCodesRaw) {
+    const techCandidates = splitCommaCodes(technicianCodesRaw)
+    const technicians = masters.technicians ?? []
+    for (const code of techCandidates) {
+      const tech = technicianByCode(technicians, code)
+      if (!tech) continue
+      const hours = getTechnicianEffectiveHours(tech, schedulingDate)
+      if (hours.isOff) continue
+      if (!intervalInsideDoctorShift(startM, endM, hours.amStartM, hours.amEndM, hours.pmStartM, hours.pmEndM)) continue
+      let techBusyConflict = false
+      for (const b of tech.busy) {
+        if (windowOverlapsInterval(b, startM, endM)) {
+          techBusyConflict = true
+          break
+        }
+      }
+      if (techBusyConflict) continue
+      let conflictWithOther = false
+      for (const a of assignments) {
+        if (!(a.technicianCodes ?? []).map((c) => c.toLowerCase()).includes(code.toLowerCase())) continue
+        if (intervalsOverlap(startM, endM, a.startM, a.endM)) {
+          conflictWithOther = true
+          break
+        }
+      }
+      if (conflictWithOther) continue
+      assignedTechCode = code
+      break
+    }
+    if (!assignedTechCode) return null
+  }
+
   if (hasPatientConflict(patient, startM, endM)) return null
   for (const a of assignments) {
     if (a.patientId !== patient.id) continue
@@ -197,6 +263,7 @@ function tryPlace(
     procedureId: procedure.id,
     machineId: machine.id,
     doctorCodes,
+    technicianCodes: assignedTechCode ? [assignedTechCode] : [],
     startM,
     pillowEndM: pillowEnd,
     endM,
@@ -211,6 +278,7 @@ function findSlot(
   assignments: SchedAssignment[],
   machineExtras: Map<string, { startM: number; endM: number }[]>,
   settings: SchedSettings,
+  schedulingDate: string | null,
 ): SchedAssignment | null {
   const duration = procedure.durationM
   if (duration === null || duration <= 0) return null
@@ -221,7 +289,7 @@ function findSlot(
 
   for (const codes of doctorCodeAttempts(procedure.mainCodes, procedure.substituteCodes)) {
     for (let t = startFrom; t <= dayEnd - duration; t += 1) {
-      const placed = tryPlace(masters, procedure, patient, codes, t, assignments, machineExtras, settings)
+      const placed = tryPlace(masters, procedure, patient, codes, t, assignments, machineExtras, settings, schedulingDate)
       if (placed) return placed
     }
   }
@@ -233,6 +301,7 @@ export function runSchedule(
   settings: SchedSettings,
   mode: ScheduleMode,
   existing: SchedAssignment[],
+  schedulingDate: string | null = null,
 ): { assignments: SchedAssignment[]; unscheduled: UnscheduledItem[] } {
   const proceduresById = new Map(masters.procedures.map((p) => [p.id, p]))
 
@@ -316,12 +385,12 @@ export function runSchedule(
       continue
     }
 
-    const next = findSlot(masters, job.procedure, job.patient, assignments, machineExtras, settings)
+    const next = findSlot(masters, job.procedure, job.patient, assignments, machineExtras, settings, schedulingDate)
     if (!next) {
       unscheduled.push({
         patientId: job.patient.id,
         procedureId: job.procedure.id,
-        reason: 'Không tìm được khung giờ thỏa bác sĩ / máy / lịch bận / giờ làm việc',
+        reason: 'Không tìm được khung giờ thỏa bác sĩ / KTV / máy / lịch bận / giờ làm việc',
       })
       continue
     }
