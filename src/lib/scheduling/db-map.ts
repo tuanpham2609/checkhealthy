@@ -55,20 +55,6 @@ function normalizeBusy(raw: unknown): TimeWindowM[] {
   })
 }
 
-function normalizeDoctor(raw: unknown): SchedDoctor {
-  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
-  return {
-    id: String(o.id ?? ''),
-    code: typeof o.code === 'string' ? o.code : '',
-    name: typeof o.name === 'string' ? o.name : '',
-    amStartM: numOrNull(o.amStartM),
-    amEndM: numOrNull(o.amEndM),
-    pmStartM: numOrNull(o.pmStartM),
-    pmEndM: numOrNull(o.pmEndM),
-    busy: normalizeBusy(o.busy),
-  }
-}
-
 function isTechShift(v: unknown): v is TechShift {
   return v === 'off' || v === 'am' || v === 'pm' || v === 'full'
 }
@@ -99,6 +85,25 @@ function normalizeDayHoursMap(raw: unknown): Record<string, TechDayHours> | unde
     if (hasAny) out[k] = entry
   }
   return Object.keys(out).length > 0 ? out : undefined
+}
+
+function normalizeDoctor(raw: unknown): SchedDoctor {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const monthlyShifts = normalizeMonthlyShifts(o.monthlyShifts)
+  const dayHours = normalizeDayHoursMap(o.dayHours)
+  const doctor: SchedDoctor = {
+    id: String(o.id ?? ''),
+    code: typeof o.code === 'string' ? o.code : '',
+    name: typeof o.name === 'string' ? o.name : '',
+    amStartM: numOrNull(o.amStartM),
+    amEndM: numOrNull(o.amEndM),
+    pmStartM: numOrNull(o.pmStartM),
+    pmEndM: numOrNull(o.pmEndM),
+    busy: normalizeBusy(o.busy),
+  }
+  if (Object.keys(monthlyShifts).length > 0) doctor.monthlyShifts = monthlyShifts
+  if (dayHours) doctor.dayHours = dayHours
+  return doctor
 }
 
 function normalizeTechnician(raw: unknown): SchedTechnician {

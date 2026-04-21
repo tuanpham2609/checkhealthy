@@ -62,6 +62,35 @@ function doctorByCode(doctors: SchedDoctor[], code: string): SchedDoctor | undef
   return doctors.find((d) => d.code.toLowerCase() === code.toLowerCase())
 }
 
+/** Tra ve gio lam hieu luc cua BS cho mot ngay (dua vao monthlyShifts + dayHours neu co) */
+export function getDoctorEffectiveHours(
+  doc: SchedDoctor,
+  schedulingDate: string | null,
+): { amStartM: number | null; amEndM: number | null; pmStartM: number | null; pmEndM: number | null; isOff: boolean } {
+  const shift = schedulingDate && doc.monthlyShifts ? doc.monthlyShifts[schedulingDate] : undefined
+  if (shift === 'off') {
+    return { amStartM: null, amEndM: null, pmStartM: null, pmEndM: null, isOff: true }
+  }
+  const override = schedulingDate && doc.dayHours ? doc.dayHours[schedulingDate] : undefined
+  const amStart = override?.amStartM ?? doc.amStartM
+  const amEnd = override?.amEndM ?? doc.amEndM
+  const pmStart = override?.pmStartM ?? doc.pmStartM
+  const pmEnd = override?.pmEndM ?? doc.pmEndM
+  if (shift === 'am') {
+    return { amStartM: amStart, amEndM: amEnd, pmStartM: null, pmEndM: null, isOff: false }
+  }
+  if (shift === 'pm') {
+    return { amStartM: null, amEndM: null, pmStartM: pmStart, pmEndM: pmEnd, isOff: false }
+  }
+  return {
+    amStartM: amStart,
+    amEndM: amEnd,
+    pmStartM: pmStart,
+    pmEndM: pmEnd,
+    isOff: false,
+  }
+}
+
 function technicianByCode(techs: SchedTechnician[], code: string): SchedTechnician | undefined {
   return techs.find((t) => t.code.toLowerCase() === code.toLowerCase())
 }
@@ -205,7 +234,9 @@ function tryPlace(
   for (const code of doctorCodes) {
     const doc = doctorByCode(doctors, code)
     if (!doc) return null
-    if (!intervalInsideDoctorShift(startM, pillowEnd, doc.amStartM, doc.amEndM, doc.pmStartM, doc.pmEndM)) return null
+    const docHours = getDoctorEffectiveHours(doc, schedulingDate)
+    if (docHours.isOff) return null
+    if (!intervalInsideDoctorShift(startM, pillowEnd, docHours.amStartM, docHours.amEndM, docHours.pmStartM, docHours.pmEndM)) return null
     const segs = collectPillowSegsForDoctor(code, assignments)
     if (!pillowGapOk(segs, procedure.id, startM, pillowEnd, settings)) return null
     for (const b of doc.busy) {

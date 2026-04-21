@@ -43,6 +43,7 @@ import { APP_DOCUMENT_TITLE } from '@/constants/app-document.constants'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserManager } from '@/components/scheduling/user-manager'
 import { ExcelImporter } from '@/components/scheduling/excel-importer'
+import { MonthlyScheduleImporter } from '@/components/scheduling/monthly-schedule-importer'
 import { ConflictPanel } from '@/components/scheduling/conflict-panel'
 import { ProcedureTimer } from '@/components/scheduling/procedure-timer'
 import { NotikaSelect } from '@/components/scheduling/notika-select'
@@ -692,6 +693,13 @@ export function SchedulingApp() {
             {mainTab === 'doctors' ? (
               <section className='space-y-6'>
                 <ExcelImporter type='doctors' onImported={() => void loadSharedIntoContext('doctors')} />
+                <MonthlyScheduleImporter
+                  doctors={payload.masters.doctors}
+                  technicians={payload.masters.technicians ?? []}
+                  onApply={({ doctors, technicians }) =>
+                    setPayload({ ...payload, masters: { ...payload.masters, doctors, technicians } })
+                  }
+                />
                 <LoadSharedButton type='doctors' onLoad={() => void loadSharedIntoContext('doctors')} busy={busy} />
                 <DoctorsEditor
                   doctors={payload.masters.doctors}
@@ -702,6 +710,13 @@ export function SchedulingApp() {
             {mainTab === 'technicians' ? (
               <section className='space-y-6'>
                 <ExcelImporter type='technicians' onImported={() => void loadSharedIntoContext('technicians')} />
+                <MonthlyScheduleImporter
+                  doctors={payload.masters.doctors}
+                  technicians={payload.masters.technicians ?? []}
+                  onApply={({ doctors, technicians }) =>
+                    setPayload({ ...payload, masters: { ...payload.masters, doctors, technicians } })
+                  }
+                />
                 <TechniciansEditor
                   technicians={payload.masters.technicians ?? []}
                   onChange={(technicians) => setPayload({ ...payload, masters: { ...payload.masters, technicians } })}
