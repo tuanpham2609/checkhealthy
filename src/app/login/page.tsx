@@ -7,6 +7,7 @@
 import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { AppLogo } from '@/components/app-logo'
 import { APP_DOCUMENT_TITLE } from '@/constants/app-document.constants'
 import { appToast } from '@/lib/app-toast'
 
@@ -53,22 +54,21 @@ export default function LoginPage() {
           </div>
           <div className='px-5 pb-8 pt-7 sm:px-8'>
             <div className='mb-7 text-center'>
-              <div className='mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--notika-border)] bg-[#f8fafb] shadow-sm dark:bg-[var(--muted)]'>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  className='h-5 w-5 text-[var(--notika-green)]'
-                >
-                  <rect width='18' height='11' x='3' y='11' rx='2' ry='2' />
-                  <path d='M7 11V7a5 5 0 0 1 10 0v4' />
-                </svg>
+              <div className='relative mx-auto mb-4 flex items-center justify-center'>
+                <div
+                  className='absolute inset-x-2 inset-y-0 -z-[1] rounded-full bg-[radial-gradient(circle_at_center,var(--notika-green-soft)_0%,transparent_70%)] blur-lg opacity-80'
+                  aria-hidden
+                />
+                <div className='flex h-20 w-20 items-center justify-center rounded-3xl border border-[var(--notika-border)] bg-white shadow-[0_16px_32px_-20px_rgba(30,143,62,0.55)]'>
+                  <AppLogo variant='mark' size={60} priority />
+                </div>
               </div>
-              <h1 className='text-lg font-semibold tracking-tight text-[var(--notika-text)]'>{APP_DOCUMENT_TITLE}</h1>
+              <p className='text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--notika-green)]'>
+                Tâm Thiện Tâm
+              </p>
+              <h1 className='mt-0.5 text-base font-semibold leading-snug tracking-tight text-[var(--notika-text)] sm:text-[17px]'>
+                {APP_DOCUMENT_TITLE}
+              </h1>
               <p className='mt-1 text-xs text-[var(--notika-muted)]'>Đăng nhập để vào bảng điều khiển</p>
             </div>
 

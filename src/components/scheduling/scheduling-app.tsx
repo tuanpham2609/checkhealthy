@@ -41,6 +41,7 @@ import { useCurrentUser } from '@/hooks/use-current-user'
 import { useRouter } from 'next/navigation'
 import { APP_DOCUMENT_TITLE } from '@/constants/app-document.constants'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { AppLogo, AppLogoTile } from '@/components/app-logo'
 import { UserManager } from '@/components/scheduling/user-manager'
 import { ExcelImporter } from '@/components/scheduling/excel-importer'
 import { MonthlyScheduleImporter } from '@/components/scheduling/monthly-schedule-importer'
@@ -422,8 +423,16 @@ export function SchedulingApp() {
         )}
         aria-label='Menu chính'
       >
-        <div className='flex h-14 shrink-0 items-center border-b border-[var(--notika-sidebar-border)] px-4'>
-          <span className='text-[15px] font-bold tracking-wide text-[var(--notika-green)]'>QLCV</span>
+        <div className='flex h-16 shrink-0 items-center gap-2.5 border-b border-[var(--notika-sidebar-border)] px-3'>
+          <AppLogoTile size={34} priority />
+          <div className='min-w-0 flex-1 leading-tight'>
+            <p className='truncate text-[13px] font-extrabold tracking-tight text-[var(--notika-green)]'>
+              Tâm Thiện Tâm
+            </p>
+            <p className='truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--notika-muted)]'>
+              Phòng khám Đa khoa
+            </p>
+          </div>
         </div>
         <nav className='flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3'>
           {MAIN_NAV.map(({ id, label }) => (
@@ -450,7 +459,7 @@ export function SchedulingApp() {
       <div className='flex min-h-dvh min-w-0 max-w-full flex-1 flex-col md:pl-56'>
         <header className='sticky top-0 z-30 min-w-0 max-w-full border-b border-[var(--notika-border)] bg-[var(--notika-header)] shadow-[0_1px_2px_rgba(0,0,0,0.06)]'>
           <div className='flex min-w-0 max-w-full flex-col gap-3 px-3 py-3 pt-[max(0.5rem,env(safe-area-inset-top,0px))] sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:px-5 sm:py-3 sm:pt-3'>
-            <div className='flex min-w-0 items-center gap-2 sm:min-w-0 sm:flex-1'>
+            <div className='flex min-w-0 items-center gap-2.5 sm:min-w-0 sm:flex-1'>
               <button
                 type='button'
                 className='min-h-11 shrink-0 rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-2 text-xs font-semibold text-[var(--notika-text)] shadow-sm md:hidden'
@@ -458,6 +467,7 @@ export function SchedulingApp() {
               >
                 Menu
               </button>
+              <AppLogoTile size={36} className='md:hidden' />
               <div className='min-w-0 flex-1'>
                 <p className='text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--notika-muted)]'>Bảng điều khiển</p>
                 <h1 className='line-clamp-2 font-sans text-sm font-semibold leading-snug text-[var(--notika-text)] sm:line-clamp-1 sm:text-lg'>
@@ -788,7 +798,56 @@ export function SchedulingApp() {
             {mainTab === 'procedures' ? (
               <>
               <section className='space-y-6'>
-                <ExcelImporter type='procedures' onImported={() => void loadSharedIntoContext('procedures')} />
+                <ExcelImporter
+                  type='procedures'
+                  onDirectItems={(items) => {
+                    const existingNames = new Set(
+                      payload.masters.procedures.map((p) => p.name.trim().toLowerCase()),
+                    )
+                    const newProcs: SchedProcedure[] = []
+                    for (const r of items) {
+                      const name = String(r.name ?? '').trim()
+                      if (!name) continue
+                      if (existingNames.has(name.toLowerCase())) continue
+                      existingNames.add(name.toLowerCase())
+                      const durationM =
+                        typeof r.durationM === 'number'
+                          ? r.durationM
+                          : Number.isFinite(Number(r.durationM))
+                            ? Number(r.durationM)
+                            : null
+                      const pillowM =
+                        typeof r.pillowM === 'number'
+                          ? r.pillowM
+                          : Number.isFinite(Number(r.pillowM))
+                            ? Number(r.pillowM)
+                            : null
+                      newProcs.push({
+                        id: crypto.randomUUID(),
+                        name,
+                        durationM,
+                        pillowM,
+                        mainCodes: String(r.mainCodes ?? '').trim(),
+                        substituteCodes: String(r.substituteCodes ?? '').trim(),
+                        machineType: String(r.machineType ?? '').trim(),
+                        priority: Boolean(r.priority),
+                        technicianCodes: '',
+                      })
+                    }
+                    if (newProcs.length === 0) {
+                      appToast.info('Không có thủ thuật mới (đã tồn tại trong danh sách).')
+                      return 0
+                    }
+                    setPayload({
+                      ...payload,
+                      masters: {
+                        ...payload.masters,
+                        procedures: [...payload.masters.procedures, ...newProcs],
+                      },
+                    })
+                    return newProcs.length
+                  }}
+                />
                 <LoadSharedButton type='procedures' onLoad={() => void loadSharedIntoContext('procedures')} busy={busy} />
                 <ProceduresEditor
                   procedures={payload.masters.procedures}

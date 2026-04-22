@@ -37,7 +37,45 @@ export async function GET(_req: Request, ctx: { params: Promise<{ type: string }
   const { data, error } = await supabase.from(TABLE_MAP[type]).select('*').order('created_at', { ascending: true })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ items: data ?? [] })
+  const rows = (data ?? []) as Record<string, unknown>[]
+  const items = rows.map((row) => mapSharedRowToClient(type, row))
+  return NextResponse.json({ items })
+}
+
+/**
+ * Map 1 dong shared_* (snake_case) sang dang client (camelCase) de dong bo
+ * voi type SharedDoctor/SharedTechnician/SharedMachine/SharedProcedure.
+ */
+function mapSharedRowToClient(type: SharedType, row: Record<string, unknown>): Record<string, unknown> {
+  if (type === 'doctors' || type === 'technicians') {
+    return {
+      id: row.id,
+      code: row.code ?? '',
+      name: row.name ?? '',
+      amStart: row.am_start ?? '',
+      amEnd: row.am_end ?? '',
+      pmStart: row.pm_start ?? '',
+      pmEnd: row.pm_end ?? '',
+    }
+  }
+  if (type === 'machines') {
+    return {
+      id: row.id,
+      typeName: row.type_name ?? '',
+      unitName: row.unit_name ?? '',
+    }
+  }
+  // procedures
+  return {
+    id: row.id,
+    name: row.name ?? '',
+    durationM: typeof row.duration_m === 'number' ? row.duration_m : null,
+    pillowM: typeof row.pillow_m === 'number' ? row.pillow_m : null,
+    mainCodes: row.main_codes ?? '',
+    substituteCodes: row.substitute_codes ?? '',
+    machineType: row.machine_type ?? '',
+    priority: Boolean(row.priority),
+  }
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ type: string }> }) {

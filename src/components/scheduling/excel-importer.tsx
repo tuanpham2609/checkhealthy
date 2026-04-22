@@ -14,6 +14,12 @@ type ImportType = 'doctors' | 'technicians' | 'machines' | 'procedures'
 interface ExcelImporterProps {
   type: ImportType
   onImported?: () => void
+  /**
+   * Neu cung cap, nut "Import" se goi callback nay voi danh sach rows da parse
+   * thay vi POST len API `/api/scheduling/shared/...`.
+   * Dung khi muon them thang vao context hien tai (bo qua bang shared).
+   */
+  onDirectItems?: (items: Record<string, unknown>[]) => Promise<number> | number
 }
 
 const COLUMN_MAPS: Record<ImportType, { key: string; label: string; aliases: string[] }[]> = {
@@ -81,10 +87,16 @@ function parseRows(wb: WorkBook, type: ImportType): Record<string, unknown>[] {
       const srcKey = mapping[col.key]
       let val: unknown = srcKey ? row[srcKey] : ''
       if (col.key === 'durationM' || col.key === 'pillowM') {
-        val = typeof val === 'number' ? val : (parseInt(String(val), 10) || null)
+        if (typeof val === 'number' && Number.isFinite(val)) {
+          // keep as number
+        } else {
+          const n = Number(String(val).replace(/[^\d.-]/g, ''))
+          val = Number.isFinite(n) && n > 0 ? n : null
+        }
       }
       if (col.key === 'priority') {
-        val = val === true || val === 1 || String(val).toLowerCase() === 'x' || String(val).toLowerCase() === 'true'
+        const s = String(val).toLowerCase().trim()
+        val = val === true || val === 1 || s === 'x' || s === 'true' || s === '1' || s === 'có' || s === 'co' || s === 'yes'
       }
       out[col.key] = val
     }
@@ -112,7 +124,7 @@ const btnSecondary = cn(
   'hover:bg-[var(--muted)] disabled:opacity-50',
 )
 
-export function ExcelImporter({ type, onImported }: ExcelImporterProps) {
+export function ExcelImporter({ type, onImported, onDirectItems }: ExcelImporterProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<Record<string, unknown>[] | null>(null)
   const [importing, setImporting] = useState(false)
@@ -139,17 +151,22 @@ export function ExcelImporter({ type, onImported }: ExcelImporterProps) {
     if (!preview?.length) return
     setImporting(true)
     try {
-      const res = await fetch(`/api/scheduling/shared/${type}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: preview }),
-      })
-      if (!res.ok) {
-        const d = (await res.json()) as { error?: string }
-        throw new Error(d.error ?? 'Lỗi import')
+      if (onDirectItems) {
+        const count = await onDirectItems(preview)
+        appToast.success(`Đã thêm ${count} ${TYPE_LABELS[type]}`)
+      } else {
+        const res = await fetch(`/api/scheduling/shared/${type}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: preview }),
+        })
+        if (!res.ok) {
+          const d = (await res.json().catch(() => ({}))) as { error?: string }
+          throw new Error(d.error ?? 'Lỗi import')
+        }
+        const data = (await res.json()) as { imported: number }
+        appToast.success(`Đã import ${data.imported} ${TYPE_LABELS[type]}`)
       }
-      const data = (await res.json()) as { imported: number }
-      appToast.success(`Đã import ${data.imported} ${TYPE_LABELS[type]}`)
       setPreview(null)
       if (fileRef.current) fileRef.current.value = ''
       onImported?.()
@@ -158,7 +175,7 @@ export function ExcelImporter({ type, onImported }: ExcelImporterProps) {
     } finally {
       setImporting(false)
     }
-  }, [preview, type, onImported])
+  }, [preview, type, onImported, onDirectItems])
 
   const handleCancel = useCallback(() => {
     setPreview(null)
