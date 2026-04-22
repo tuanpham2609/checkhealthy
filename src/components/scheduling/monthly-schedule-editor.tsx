@@ -5,7 +5,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { SchedTechnician, TechDayHours, TechShift } from '@/lib/scheduling/types'
+import type { SchedDoctor, SchedTechnician, TechDayHours, TechShift, TimeWindowM } from '@/lib/scheduling/types'
 import { minutesToLabel, parseTimeToMinutes } from '@/lib/scheduling/time'
 import { appToast } from '@/lib/app-toast'
 import { cn } from '@/lib/styles'
@@ -26,6 +26,64 @@ const SHIFT_LABEL: Record<TechShift, string> = {
 const SHIFT_ORDER: TechShift[] = ['full', 'am', 'pm', 'off']
 
 type ClickMode = 'cycle' | 'range' | 'edit-hours'
+
+export type MonthlyScheduleKind = 'doctor' | 'technician'
+
+export interface MonthlyScheduleResource {
+  id: string
+  code: string
+  name: string
+  amStartM: number | null
+  amEndM: number | null
+  pmStartM: number | null
+  pmEndM: number | null
+  monthlyShifts?: Record<string, TechShift>
+  dayHours?: Record<string, TechDayHours>
+  busy: TimeWindowM[]
+}
+
+interface KindLabels {
+  singular: string
+  plural: string
+  codePrefix: string
+  codeLabel: string
+  codeInputHint: string
+  addLabel: string
+  deleteLabel: string
+  deleteConfirm: string
+  deletedToast: string
+  emptyTitle: string
+  emptyHint: string
+}
+
+const LABELS: Record<MonthlyScheduleKind, KindLabels> = {
+  doctor: {
+    singular: 'Bác sĩ',
+    plural: 'Bác sĩ',
+    codePrefix: 'BS',
+    codeLabel: 'Mã bác sĩ',
+    codeInputHint: 'VD: A, B',
+    addLabel: '+ Thêm bác sĩ',
+    deleteLabel: 'Xoá bác sĩ',
+    deleteConfirm: 'Xoá bác sĩ này?',
+    deletedToast: 'Đã xoá bác sĩ',
+    emptyTitle: 'Chưa có bác sĩ nào',
+    emptyHint: 'Thêm mới hoặc tải từ danh sách chung để bắt đầu',
+  },
+  technician: {
+    singular: 'KTV',
+    plural: 'KTV',
+    codePrefix: 'K',
+    codeLabel: 'Mã KTV',
+    codeInputHint: 'VD: K1',
+    addLabel: '+ Thêm KTV',
+    deleteLabel: 'Xoá KTV',
+    deleteConfirm: 'Xoá KTV này?',
+    deletedToast: 'Đã xoá KTV',
+    emptyTitle: 'Chưa có KTV nào',
+    emptyHint: 'Thêm mới hoặc tải từ danh sách chung để bắt đầu',
+  },
+}
 
 function pad2(n: number) {
   return String(n).padStart(2, '0')
@@ -64,15 +122,6 @@ function expandDateRange(startIso: string, endIso: string): string[] {
   return out
 }
 
-interface TechniciansEditorProps {
-  technicians: SchedTechnician[]
-  onChange: (next: SchedTechnician[]) => void
-  schedulingDate: string
-  onLoadShared?: () => void
-  onSaveContext?: () => void | Promise<void>
-  saving?: boolean
-}
-
 const inputCls = cn(
   'min-h-[2.5rem] w-full rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-2 text-sm text-[var(--notika-text)] outline-none transition',
   'placeholder:text-[var(--notika-muted)] focus:border-[var(--notika-green)] focus:ring-2 focus:ring-[var(--notika-green)]/20',
@@ -93,17 +142,32 @@ const btnGhost = cn(
   'hover:border-rose-300 hover:text-rose-600',
 )
 
-export function TechniciansEditor({
-  technicians,
+export interface MonthlyScheduleEditorProps<T extends MonthlyScheduleResource> {
+  kind: MonthlyScheduleKind
+  items: T[]
+  onChange: (next: T[]) => void
+  schedulingDate: string
+  /** Ham tao ban ghi moi khi bam "+ Them". Tra ve object day du fields cua type T. */
+  createItem: () => T
+  onLoadShared?: () => void
+  onSaveContext?: () => void | Promise<void>
+  saving?: boolean
+}
+
+export function MonthlyScheduleEditor<T extends MonthlyScheduleResource>({
+  kind,
+  items,
   onChange,
   schedulingDate,
+  createItem,
   onLoadShared,
   onSaveContext,
   saving = false,
-}: TechniciansEditorProps) {
+}: MonthlyScheduleEditorProps<T>) {
+  const L = LABELS[kind]
   const initialMonth = schedulingDate ? schedulingDate.slice(0, 7) : goToday()
   const [viewMonth, setViewMonth] = useState(initialMonth)
-  const [selectedId, setSelectedId] = useState<string | null>(technicians[0]?.id ?? null)
+  const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id ?? null)
   const [clickMode, setClickMode] = useState<ClickMode>('cycle')
   const [rangeShift, setRangeShift] = useState<TechShift>('off')
   const [rangeStart, setRangeStart] = useState<string | null>(null)
@@ -111,8 +175,8 @@ export function TechniciansEditor({
   const [editDate, setEditDate] = useState<string | null>(null)
 
   const selected = useMemo(
-    () => technicians.find((t) => t.id === selectedId) ?? technicians[0] ?? null,
-    [technicians, selectedId],
+    () => items.find((t) => t.id === selectedId) ?? items[0] ?? null,
+    [items, selectedId],
   )
 
   const [viewY, viewM] = viewMonth.split('-').map(Number)
@@ -144,76 +208,69 @@ export function TechniciansEditor({
     return wks
   }, [viewY, viewM])
 
-  const addTechnician = () => {
-    const tech: SchedTechnician = {
-      id: newId(),
-      code: '',
-      name: '',
-      amStartM: 7 * 60 + 30,
-      amEndM: 11 * 60 + 30,
-      pmStartM: 13 * 60 + 30,
-      pmEndM: 17 * 60,
-      monthlyShifts: {},
-      busy: [],
-    }
-    const next = [...technicians, tech]
+  const addItem = () => {
+    const item = createItem()
+    const next = [...items, item]
     onChange(next)
-    setSelectedId(tech.id)
+    setSelectedId(item.id)
   }
 
-  const updateTech = (id: string, patch: Partial<SchedTechnician>) => {
-    onChange(technicians.map((t) => (t.id === id ? { ...t, ...patch } : t)))
+  const updateItem = (id: string, patch: Partial<T>) => {
+    onChange(items.map((t) => (t.id === id ? { ...t, ...patch } : t)))
   }
 
-  const removeTech = (id: string) => {
-    const ok = window.confirm('Xóa KTV này?')
+  const removeItem = (id: string) => {
+    const ok = window.confirm(L.deleteConfirm)
     if (!ok) return
-    onChange(technicians.filter((t) => t.id !== id))
+    onChange(items.filter((t) => t.id !== id))
     if (selectedId === id) setSelectedId(null)
-    appToast.success('Đã xóa KTV')
+    appToast.success(L.deletedToast)
   }
+
+  const getShifts = (item: T): Record<string, TechShift> => item.monthlyShifts ?? {}
 
   const toggleDayShift = (iso: string) => {
     if (!selected) return
-    const current = selected.monthlyShifts[iso]
+    const shifts = getShifts(selected)
+    const current = shifts[iso]
     const idx = current ? SHIFT_ORDER.indexOf(current) : -1
     const nextShift = SHIFT_ORDER[(idx + 1) % SHIFT_ORDER.length] ?? 'full'
-    const nextMap = { ...selected.monthlyShifts }
+    const nextMap = { ...shifts }
     if (nextShift === 'full') {
       delete nextMap[iso]
     } else {
       nextMap[iso] = nextShift
     }
-    updateTech(selected.id, { monthlyShifts: nextMap })
+    updateItem(selected.id, { monthlyShifts: nextMap } as Partial<T>)
   }
 
   const setDayShift = (iso: string, shift: TechShift) => {
     if (!selected) return
-    const nextMap = { ...selected.monthlyShifts }
+    const nextMap = { ...getShifts(selected) }
     if (shift === 'full') {
       delete nextMap[iso]
     } else {
       nextMap[iso] = shift
     }
-    updateTech(selected.id, { monthlyShifts: nextMap })
+    updateItem(selected.id, { monthlyShifts: nextMap } as Partial<T>)
   }
 
   const clearMonth = () => {
     if (!selected) return
-    const ok = window.confirm(`Xóa toàn bộ lịch tháng ${viewM}/${viewY} của KTV ${selected.name}?`)
+    const ok = window.confirm(`Xoá toàn bộ lịch tháng ${viewM}/${viewY} của ${L.singular} ${selected.name}?`)
     if (!ok) return
-    const nextMap = { ...selected.monthlyShifts }
+    const nextMap = { ...getShifts(selected) }
     const prefix = `${viewY}-${pad2(viewM!)}`
     for (const k of Object.keys(nextMap)) {
       if (k.startsWith(prefix)) delete nextMap[k]
     }
-    updateTech(selected.id, { monthlyShifts: nextMap })
-    appToast.success('Đã xóa lịch tháng')
+    updateItem(selected.id, { monthlyShifts: nextMap } as Partial<T>)
+    appToast.success('Đã xoá lịch tháng')
   }
 
   const bulkOffWeekends = () => {
     if (!selected) return
-    const nextMap = { ...selected.monthlyShifts }
+    const nextMap = { ...getShifts(selected) }
     const daysInMonth = new Date(viewY!, viewM!, 0).getDate()
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(viewY!, viewM! - 1, d)
@@ -222,7 +279,7 @@ export function TechniciansEditor({
         nextMap[toYYYYMMDD(date)] = 'off'
       }
     }
-    updateTech(selected.id, { monthlyShifts: nextMap })
+    updateItem(selected.id, { monthlyShifts: nextMap } as Partial<T>)
     appToast.success('Đã đánh dấu nghỉ T7 + CN')
   }
 
@@ -234,7 +291,7 @@ export function TechniciansEditor({
   const applyShiftToRange = (startIso: string, endIso: string, shift: TechShift) => {
     if (!selected) return
     const list = expandDateRange(startIso, endIso)
-    const nextMap = { ...selected.monthlyShifts }
+    const nextMap = { ...getShifts(selected) }
     for (const iso of list) {
       if (shift === 'full') {
         delete nextMap[iso]
@@ -242,7 +299,7 @@ export function TechniciansEditor({
         nextMap[iso] = shift
       }
     }
-    updateTech(selected.id, { monthlyShifts: nextMap })
+    updateItem(selected.id, { monthlyShifts: nextMap } as Partial<T>)
     appToast.success(`Đã áp dụng "${SHIFT_LABEL[shift]}" cho ${list.length} ngày`)
   }
 
@@ -267,7 +324,7 @@ export function TechniciansEditor({
 
   const saveDayHours = (iso: string, shift: TechShift, hours: TechDayHours | null) => {
     if (!selected) return
-    const nextShifts = { ...selected.monthlyShifts }
+    const nextShifts = { ...getShifts(selected) }
     if (shift === 'full') delete nextShifts[iso]
     else nextShifts[iso] = shift
 
@@ -293,19 +350,19 @@ export function TechniciansEditor({
       }
     }
     const cleaned = Object.keys(nextDayHours).length > 0 ? nextDayHours : undefined
-    updateTech(selected.id, { monthlyShifts: nextShifts, dayHours: cleaned })
+    updateItem(selected.id, { monthlyShifts: nextShifts, dayHours: cleaned } as Partial<T>)
     appToast.success(`Đã cập nhật ${iso}`)
   }
 
   const clearDayOverride = (iso: string) => {
     if (!selected) return
-    const nextShifts = { ...selected.monthlyShifts }
+    const nextShifts = { ...getShifts(selected) }
     delete nextShifts[iso]
     const prevDayHours = selected.dayHours ?? {}
     const nextDayHours = { ...prevDayHours }
     delete nextDayHours[iso]
     const cleaned = Object.keys(nextDayHours).length > 0 ? nextDayHours : undefined
-    updateTech(selected.id, { monthlyShifts: nextShifts, dayHours: cleaned })
+    updateItem(selected.id, { monthlyShifts: nextShifts, dayHours: cleaned } as Partial<T>)
     appToast.info('Đã đặt lại về mặc định')
   }
 
@@ -330,33 +387,33 @@ export function TechniciansEditor({
   return (
     <div className='space-y-5'>
       <div className='flex flex-wrap items-center justify-between gap-2'>
-        <h3 className='text-base font-bold text-[var(--notika-text)]'>Kỹ thuật viên</h3>
+        <h3 className='text-base font-bold text-[var(--notika-text)]'>{L.plural}</h3>
         <div className='flex flex-wrap items-center gap-2'>
           {onLoadShared && (
             <button type='button' className={btnSecondary} onClick={onLoadShared}>
               + Từ danh sách chung
             </button>
           )}
-          <button type='button' className={btnPrimary} onClick={addTechnician}>
-            + Thêm KTV
+          <button type='button' className={btnPrimary} onClick={addItem}>
+            {L.addLabel}
           </button>
         </div>
       </div>
 
-      {technicians.length === 0 ? (
+      {items.length === 0 ? (
         <div className='rounded-2xl border border-dashed border-[var(--notika-border)] bg-[var(--notika-card)] p-8 text-center'>
-          <p className='mb-2 text-sm font-semibold text-[var(--notika-text)]'>Chưa có KTV nào</p>
-          <p className='text-xs text-[var(--notika-muted)]'>Thêm mới hoặc tải từ danh sách chung để bắt đầu</p>
+          <p className='mb-2 text-sm font-semibold text-[var(--notika-text)]'>{L.emptyTitle}</p>
+          <p className='text-xs text-[var(--notika-muted)]'>{L.emptyHint}</p>
         </div>
       ) : (
         <div className='grid gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]'>
           <div className='space-y-2'>
             <p className='text-xs font-semibold uppercase tracking-wide text-[var(--notika-muted)]'>
-              Danh sách ({technicians.length})
+              Danh sách ({items.length})
             </p>
             <div className='max-h-[30rem] space-y-1 overflow-auto rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] p-2'>
-              {technicians.map((t) => {
-                const offCount = Object.values(t.monthlyShifts).filter((s) => s === 'off').length
+              {items.map((t) => {
+                const offCount = Object.values(getShifts(t)).filter((s) => s === 'off').length
                 return (
                   <button
                     key={t.id}
@@ -393,13 +450,13 @@ export function TechniciansEditor({
               <div className='grid gap-3 md:grid-cols-2'>
                 <div>
                   <label className='mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--notika-muted)]'>
-                    Mã KTV
+                    {L.codeLabel}
                   </label>
                   <input
                     className={inputCls}
                     value={selected.code}
-                    onChange={(e) => updateTech(selected.id, { code: e.target.value })}
-                    placeholder='VD: K1'
+                    onChange={(e) => updateItem(selected.id, { code: e.target.value } as Partial<T>)}
+                    placeholder={L.codeInputHint}
                   />
                 </div>
                 <div>
@@ -409,7 +466,7 @@ export function TechniciansEditor({
                   <input
                     className={inputCls}
                     value={selected.name}
-                    onChange={(e) => updateTech(selected.id, { name: e.target.value })}
+                    onChange={(e) => updateItem(selected.id, { name: e.target.value } as Partial<T>)}
                     placeholder='Nguyễn Văn A'
                   />
                 </div>
@@ -423,22 +480,22 @@ export function TechniciansEditor({
                   <TimeInput
                     label='Sáng BĐ'
                     value={selected.amStartM}
-                    onChange={(v) => updateTech(selected.id, { amStartM: v })}
+                    onChange={(v) => updateItem(selected.id, { amStartM: v } as Partial<T>)}
                   />
                   <TimeInput
                     label='Sáng KT'
                     value={selected.amEndM}
-                    onChange={(v) => updateTech(selected.id, { amEndM: v })}
+                    onChange={(v) => updateItem(selected.id, { amEndM: v } as Partial<T>)}
                   />
                   <TimeInput
                     label='Chiều BĐ'
                     value={selected.pmStartM}
-                    onChange={(v) => updateTech(selected.id, { pmStartM: v })}
+                    onChange={(v) => updateItem(selected.id, { pmStartM: v } as Partial<T>)}
                   />
                   <TimeInput
                     label='Chiều KT'
                     value={selected.pmEndM}
-                    onChange={(v) => updateTech(selected.id, { pmEndM: v })}
+                    onChange={(v) => updateItem(selected.id, { pmEndM: v } as Partial<T>)}
                   />
                 </div>
               </div>
@@ -484,7 +541,7 @@ export function TechniciansEditor({
                       Nghỉ T7 + CN
                     </button>
                     <button type='button' className={btnGhost} onClick={clearMonth}>
-                      Xóa tháng này
+                      Xoá tháng này
                     </button>
                   </div>
                 </div>
@@ -583,7 +640,7 @@ export function TechniciansEditor({
                 <div className='grid grid-cols-7 gap-1'>
                   {weeks.flat().map((cell, idx) => {
                     const iso = toYYYYMMDD(cell.date)
-                    const shift = selected.monthlyShifts[iso]
+                    const shift = getShifts(selected)[iso]
                     const customHours = selected.dayHours?.[iso]
                     const hasCustomHours = Boolean(customHours)
                     const isEditing = clickMode === 'edit-hours' && editDate === iso
@@ -629,8 +686,7 @@ export function TechniciansEditor({
                         onFocus={() => cell.inMonth && clickMode === 'range' && rangeStart && setHoverDate(iso)}
                         title={titleText}
                         className={cn(
-                          'relative flex flex-col items-center justify-center rounded-lg border text-xs transition',
-                          hasCustomHours ? 'h-16' : 'h-14',
+                          'relative flex h-20 flex-col items-center justify-center rounded-lg border text-xs transition sm:h-[5.5rem]',
                           cell.inMonth
                             ? 'cursor-pointer border-[var(--notika-border)] bg-[var(--notika-card)] hover:border-[var(--notika-green)]'
                             : 'cursor-default border-transparent opacity-30',
@@ -644,13 +700,12 @@ export function TechniciansEditor({
                           isEditing && 'ring-2 ring-[var(--notika-green)]',
                         )}
                       >
-                        <span className={cn('text-[13px] font-semibold leading-none', isWeekend && cell.inMonth && !shift && !isRangeAnchor && !isInPreview && 'text-rose-500')}>
+                        <span className={cn('text-[14px] font-semibold leading-none', isWeekend && cell.inMonth && !shift && !isRangeAnchor && !isInPreview && 'text-rose-500')}>
                           {cell.date.getDate()}
                         </span>
 
-                        {/* Hien khung gio chi tiet neu co custom hours */}
                         {hasCustomHours && !isRangeAnchor && !isInPreview && shift !== 'off' && (
-                          <div className='mt-0.5 flex flex-col items-center gap-0 text-[9px] font-semibold leading-[1.1] tabular-nums text-indigo-700 dark:text-indigo-300'>
+                          <div className='mt-1 flex flex-col items-center gap-0.5 text-[11px] font-semibold leading-[1.15] tabular-nums text-indigo-700 dark:text-indigo-300'>
                             {showAMRow && (
                               <span>
                                 {minutesToLabel(effAmStart!)}-{minutesToLabel(effAmEnd!)}
@@ -664,16 +719,14 @@ export function TechniciansEditor({
                           </div>
                         )}
 
-                        {/* Neu khong co custom hours -> hien SHIFT_LABEL nhu cu */}
                         {!hasCustomHours && shift && !isRangeAnchor && !isInPreview && (
-                          <span className='mt-0.5 text-[9px] font-bold uppercase'>
+                          <span className='mt-0.5 text-[10px] font-bold uppercase'>
                             {SHIFT_LABEL[shift]}
                           </span>
                         )}
 
-                        {/* Neu nghi ca ngay ma co custom hours cu -> hien NGHI */}
                         {hasCustomHours && shift === 'off' && !isRangeAnchor && !isInPreview && (
-                          <span className='mt-0.5 text-[9px] font-bold uppercase'>
+                          <span className='mt-0.5 text-[10px] font-bold uppercase'>
                             {SHIFT_LABEL.off}
                           </span>
                         )}
@@ -698,7 +751,7 @@ export function TechniciansEditor({
                 {clickMode === 'edit-hours' && editDate && (
                   <DayHoursEditor
                     iso={editDate}
-                    tech={selected}
+                    item={selected}
                     onClose={() => setEditDate(null)}
                     onSave={(shift, hours) => {
                       saveDayHours(editDate, shift, hours)
@@ -715,16 +768,16 @@ export function TechniciansEditor({
                   <div className='flex items-center gap-2'>
                     <span className='text-[var(--notika-muted)]'>Thống kê tháng:</span>
                     <span className='font-semibold text-rose-600'>
-                      {Object.entries(selected.monthlyShifts).filter(([k, v]) => k.startsWith(`${viewY}-${pad2(viewM!)}`) && v === 'off').length} ngày nghỉ
+                      {Object.entries(getShifts(selected)).filter(([k, v]) => k.startsWith(`${viewY}-${pad2(viewM!)}`) && v === 'off').length} ngày nghỉ
                     </span>
                   </div>
                   <div className='flex items-center justify-end gap-3 text-right'>
                     <button
                       type='button'
                       className='rounded-lg border border-rose-300 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/30'
-                      onClick={() => removeTech(selected.id)}
+                      onClick={() => removeItem(selected.id)}
                     >
-                      Xóa KTV
+                      {L.deleteLabel}
                     </button>
                   </div>
                 </div>
@@ -734,7 +787,7 @@ export function TechniciansEditor({
         </div>
       )}
 
-      {onSaveContext && technicians.length > 0 && (
+      {onSaveContext && items.length > 0 && (
         <div className='sticky bottom-2 z-10 flex justify-end'>
           <button
             type='button'
@@ -822,25 +875,26 @@ function formatIsoVi(iso: string): string {
 
 function DayHoursEditor({
   iso,
-  tech,
+  item,
   onClose,
   onSave,
   onReset,
 }: {
   iso: string
-  tech: SchedTechnician
+  item: MonthlyScheduleResource
   onClose: () => void
   onSave: (shift: TechShift, hours: TechDayHours | null) => void
   onReset: () => void
 }) {
-  const existingShift = tech.monthlyShifts[iso] ?? 'full'
-  const existingHours = tech.dayHours?.[iso]
+  const shifts = item.monthlyShifts ?? {}
+  const existingShift = shifts[iso] ?? 'full'
+  const existingHours = item.dayHours?.[iso]
 
   const [shift, setShift] = useState<TechShift>(existingShift)
-  const [amStart, setAmStart] = useState<number | null>(existingHours?.amStartM ?? tech.amStartM)
-  const [amEnd, setAmEnd] = useState<number | null>(existingHours?.amEndM ?? tech.amEndM)
-  const [pmStart, setPmStart] = useState<number | null>(existingHours?.pmStartM ?? tech.pmStartM)
-  const [pmEnd, setPmEnd] = useState<number | null>(existingHours?.pmEndM ?? tech.pmEndM)
+  const [amStart, setAmStart] = useState<number | null>(existingHours?.amStartM ?? item.amStartM)
+  const [amEnd, setAmEnd] = useState<number | null>(existingHours?.amEndM ?? item.amEndM)
+  const [pmStart, setPmStart] = useState<number | null>(existingHours?.pmStartM ?? item.pmStartM)
+  const [pmEnd, setPmEnd] = useState<number | null>(existingHours?.pmEndM ?? item.pmEndM)
 
   const showAM = shift === 'am' || shift === 'full'
   const showPM = shift === 'pm' || shift === 'full'
@@ -928,7 +982,7 @@ function DayHoursEditor({
 
       {shift !== 'off' && (
         <p className='mt-2 text-[11px] text-[var(--notika-muted)]'>
-          Mặc định: Sáng {tech.amStartM != null ? minutesToLabel(tech.amStartM) : '--'}–{tech.amEndM != null ? minutesToLabel(tech.amEndM) : '--'} · Chiều {tech.pmStartM != null ? minutesToLabel(tech.pmStartM) : '--'}–{tech.pmEndM != null ? minutesToLabel(tech.pmEndM) : '--'}
+          Mặc định: Sáng {item.amStartM != null ? minutesToLabel(item.amStartM) : '--'}–{item.amEndM != null ? minutesToLabel(item.amEndM) : '--'} · Chiều {item.pmStartM != null ? minutesToLabel(item.pmStartM) : '--'}–{item.pmEndM != null ? minutesToLabel(item.pmEndM) : '--'}
         </p>
       )}
 
@@ -956,5 +1010,70 @@ function DayHoursEditor({
         </button>
       </div>
     </div>
+  )
+}
+
+// Convenience wrappers for specific resource kinds
+export function TechniciansEditor(props: {
+  technicians: SchedTechnician[]
+  onChange: (next: SchedTechnician[]) => void
+  schedulingDate: string
+  onLoadShared?: () => void
+  onSaveContext?: () => void | Promise<void>
+  saving?: boolean
+}) {
+  return (
+    <MonthlyScheduleEditor<SchedTechnician>
+      kind='technician'
+      items={props.technicians}
+      onChange={props.onChange}
+      schedulingDate={props.schedulingDate}
+      onLoadShared={props.onLoadShared}
+      onSaveContext={props.onSaveContext}
+      saving={props.saving}
+      createItem={() => ({
+        id: newId(),
+        code: '',
+        name: '',
+        amStartM: 7 * 60 + 30,
+        amEndM: 11 * 60 + 30,
+        pmStartM: 13 * 60 + 30,
+        pmEndM: 17 * 60,
+        monthlyShifts: {},
+        busy: [],
+      })}
+    />
+  )
+}
+
+export function DoctorsScheduleEditor(props: {
+  doctors: SchedDoctor[]
+  onChange: (next: SchedDoctor[]) => void
+  schedulingDate: string
+  onLoadShared?: () => void
+  onSaveContext?: () => void | Promise<void>
+  saving?: boolean
+}) {
+  return (
+    <MonthlyScheduleEditor<SchedDoctor>
+      kind='doctor'
+      items={props.doctors}
+      onChange={props.onChange}
+      schedulingDate={props.schedulingDate}
+      onLoadShared={props.onLoadShared}
+      onSaveContext={props.onSaveContext}
+      saving={props.saving}
+      createItem={() => ({
+        id: newId(),
+        code: '',
+        name: '',
+        amStartM: 7 * 60 + 30,
+        amEndM: 11 * 60 + 30,
+        pmStartM: 13 * 60 + 30,
+        pmEndM: 17 * 60,
+        monthlyShifts: {},
+        busy: [],
+      })}
+    />
   )
 }

@@ -56,6 +56,15 @@ export interface SchedMachine {
   busy: TimeWindowM[]
 }
 
+/**
+ * Cach xep ca KTV / may cua thu thuat:
+ * - 'parallel': cho phep chong gio giua cac ca (vd dien cham, dien xung).
+ *   Hai ca song song cung KTV chi can cach nhau `gapMinutes` phut tinh tu start.
+ * - 'sequential': khong duoc chong gio; ca sau phai bat dau sau ca truoc ket thuc
+ *   + `gapMinutes` phut.
+ */
+export type SchedOverlapMode = 'parallel' | 'sequential'
+
 export interface SchedProcedure {
   id: string
   name: string
@@ -69,6 +78,14 @@ export interface SchedProcedure {
   priority: boolean
   /** Ma KTV duoc phep thuc hien (ngan cach bang dau phay). Neu rong -> khong yeu cau KTV */
   technicianCodes?: string
+  /** Cach xep ca. Mac dinh 'sequential' (khong chong gio). */
+  overlapMode?: SchedOverlapMode
+  /**
+   * Khoang cach toi thieu giua 2 ca cung mot KTV (phut).
+   * - 'parallel': cach nhau theo startM (vd 7' cho dien cham, 5' cho dien xung)
+   * - 'sequential': cach nhau theo endM -> startM (vd 1' de noi tiep gio)
+   */
+  gapMinutes?: number
 }
 
 export interface SchedPatient {
@@ -79,6 +96,33 @@ export interface SchedPatient {
   highPriority: boolean
   procedureIds: string[]
   busy: TimeWindowM[]
+  /**
+   * Lieu trinh (so ngay). >=1. Neu null / <=0 -> coi nhu 1 (chi xep trong ngay ma
+   * schedulingDate == admissionDate).
+   */
+  treatmentDays?: number | null
+  /** Ngay vao vien / bat dau lieu trinh (yyyy-mm-dd). */
+  admissionDate?: string | null
+  /**
+   * Phut ket thuc kham benh. Neu co, thu thuat trong ngay `examEndDate`
+   * phai bat dau sau moc nay.
+   */
+  examEndM?: number | null
+  /**
+   * Ngay ket thuc kham (yyyy-mm-dd). Neu khong dat, mac dinh la `admissionDate`
+   * (tuc ngay dau lieu trinh).
+   */
+  examEndDate?: string | null
+  /**
+   * Phut ra vien. Neu co, thu thuat trong ngay `dischargeDate` phai
+   * ket thuc truoc moc nay.
+   */
+  dischargeM?: number | null
+  /**
+   * Ngay ra vien (yyyy-mm-dd). Neu khong dat, mac dinh la ngay cuoi cua
+   * lieu trinh (admissionDate + treatmentDays - 1).
+   */
+  dischargeDate?: string | null
 }
 
 export interface SchedSettings {
@@ -184,6 +228,8 @@ export interface SharedProcedure {
   machineType: string
   priority: boolean
   technicianCodes?: string
+  overlapMode?: SchedOverlapMode
+  gapMinutes?: number
 }
 
 export interface GlobalHoliday {

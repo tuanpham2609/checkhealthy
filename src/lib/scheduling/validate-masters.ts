@@ -39,6 +39,19 @@ export function validateMastersForSchedule(masters: SchedMasters): string[] {
   for (const p of masters.patients) {
     if (!p.name.trim()) errors.push('Mỗi bệnh nhân cần tên.')
     if (p.procedureIds.length === 0) errors.push(`Bệnh nhân "${p.name || '?'}" cần chọn ít nhất một thủ thuật.`)
+    if (typeof p.treatmentDays === 'number' && p.treatmentDays < 1) {
+      errors.push(`Bệnh nhân "${p.name || '?'}": liệu trình phải >= 1 ngày.`)
+    }
+    if (
+      typeof p.examEndM === 'number' &&
+      typeof p.dischargeM === 'number' &&
+      p.examEndM >= p.dischargeM &&
+      (p.treatmentDays ?? 1) === 1
+    ) {
+      errors.push(
+        `Bệnh nhân "${p.name || '?'}": giờ kết thúc khám phải trước giờ ra viện khi liệu trình chỉ 1 ngày.`,
+      )
+    }
   }
   return [...new Set(errors)]
 }

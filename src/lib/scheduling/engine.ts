@@ -20,6 +20,59 @@ import {
   windowOverlapsInterval,
 } from '@/lib/scheduling/time'
 
+/** Tra ve chenh lech ngay giua 2 chuoi 'yyyy-mm-dd'. Neu a truoc b -> so duong. */
+function daysBetween(aIso: string, bIso: string): number {
+  const a = Date.parse(`${aIso}T00:00:00Z`)
+  const b = Date.parse(`${bIso}T00:00:00Z`)
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 0
+  return Math.round((b - a) / (24 * 60 * 60 * 1000))
+}
+
+/** Cong `days` ngay vao chuoi ISO yyyy-mm-dd. */
+function addDaysIso(iso: string, days: number): string {
+  const ms = Date.parse(`${iso}T00:00:00Z`)
+  if (!Number.isFinite(ms)) return iso
+  const next = new Date(ms + days * 24 * 60 * 60 * 1000)
+  const y = next.getUTCFullYear()
+  const m = String(next.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(next.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
+ * Tinh chi so ngay cua lieu trinh cho benh nhan (1-indexed).
+ * - Neu khong co admissionDate -> coi nhu ngay 1 (bo qua constraint lieu trinh)
+ * - Neu schedulingDate nam TRUOC admissionDate -> tra ve 0 (chua bat dau)
+ * - Neu schedulingDate nam SAU ket thuc lieu trinh (admission + treatmentDays - 1)
+ *   -> tra ve so > treatmentDays
+ */
+export function computeTreatmentDayIndex(
+  patient: SchedPatient,
+  schedulingDate: string | null,
+): number | null {
+  if (!schedulingDate) return null
+  if (!patient.admissionDate) return null
+  const diff = daysBetween(patient.admissionDate, schedulingDate)
+  return diff + 1
+}
+
+/** Ngay thuc te ap dung moc "ket thuc kham" (co the user override hoac auto = admissionDate) */
+export function resolveExamEndDate(patient: SchedPatient): string | null {
+  if (patient.examEndDate) return patient.examEndDate
+  if (patient.admissionDate) return patient.admissionDate
+  return null
+}
+
+/** Ngay thuc te ap dung moc "ra vien" (co the user override hoac auto = ngay cuoi lieu trinh) */
+export function resolveDischargeDate(patient: SchedPatient): string | null {
+  if (patient.dischargeDate) return patient.dischargeDate
+  if (patient.admissionDate) {
+    const days = Math.max(1, patient.treatmentDays ?? 1)
+    return addDaysIso(patient.admissionDate, days - 1)
+  }
+  return null
+}
+
 export type ScheduleMode = 'full' | 'preserve'
 
 interface PillowSeg {
@@ -212,6 +265,42 @@ function pickMachine(
   return null
 }
 
+/**
+ * Kiem tra 2 ca cung mot KTV co duoc phep cung ton tai khong.
+ * Quy tac:
+ * - Neu ca A va ca B CUNG bat nguon tu cung mot benh nhan -> luon cho phep
+ *   (vi dung KTV voi cung benh nhan la truong hop binh thuong, vd KTV lam
+ *   tuan tu 2 thu thuat Cuu va Xoa bop cho cung 1 BN).
+ * - Neu ca A va ca B cho 2 benh nhan khac nhau:
+ *     * Neu ca nao co overlapMode='sequential' -> khong duoc chong gio,
+ *       phai cach nhau it nhat max(gapA, gapB) phut tinh tu endPrev -> startNext.
+ *     * Neu ca CA HAI deu overlapMode='parallel' -> duoc phep chong gio,
+ *       nhung 2 diem bat dau phai cach nhau >= max(gapA, gapB).
+ */
+function technicianPairAllowed(
+  newStart: number,
+  newEnd: number,
+  newProc: SchedProcedure,
+  otherStart: number,
+  otherEnd: number,
+  otherProc: SchedProcedure | undefined,
+  samePatient: boolean,
+): boolean {
+  if (samePatient) return true
+  const newMode: 'parallel' | 'sequential' = newProc.overlapMode ?? 'sequential'
+  const otherMode: 'parallel' | 'sequential' = otherProc?.overlapMode ?? 'sequential'
+  const gap = Math.max(0, newProc.gapMinutes ?? 0, otherProc?.gapMinutes ?? 0)
+  if (newMode === 'parallel' && otherMode === 'parallel') {
+    return Math.abs(newStart - otherStart) >= gap
+  }
+  if (!intervalsOverlap(newStart, newEnd, otherStart, otherEnd)) {
+    if (newStart >= otherEnd) return newStart - otherEnd >= gap
+    if (otherStart >= newEnd) return otherStart - newEnd >= gap
+    return true
+  }
+  return false
+}
+
 function tryPlace(
   masters: SchedMasters,
   procedure: SchedProcedure,
@@ -222,6 +311,7 @@ function tryPlace(
   machineExtras: Map<string, { startM: number; endM: number }[]>,
   settings: SchedSettings,
   schedulingDate: string | null,
+  proceduresById: Map<string, SchedProcedure>,
 ): SchedAssignment | null {
   const dur = procedure.durationM
   const pil = procedure.pillowM
@@ -229,6 +319,36 @@ function tryPlace(
   const pillowEnd = startM + pil
   const endM = startM + dur
   if (pillowEnd > endM) return null
+
+  // Rang buoc lieu trinh + moc gio kham / ra vien
+  const dayIdx = computeTreatmentDayIndex(patient, schedulingDate)
+  if (dayIdx !== null) {
+    const totalDays = Math.max(1, patient.treatmentDays ?? 1)
+    if (dayIdx < 1) return null
+    if (dayIdx > totalDays) return null
+  }
+  if (schedulingDate) {
+    const examEndDate = resolveExamEndDate(patient)
+    if (
+      examEndDate &&
+      examEndDate === schedulingDate &&
+      typeof patient.examEndM === 'number' &&
+      patient.examEndM > 0 &&
+      startM < patient.examEndM
+    ) {
+      return null
+    }
+    const dischargeDate = resolveDischargeDate(patient)
+    if (
+      dischargeDate &&
+      dischargeDate === schedulingDate &&
+      typeof patient.dischargeM === 'number' &&
+      patient.dischargeM > 0 &&
+      endM > patient.dischargeM
+    ) {
+      return null
+    }
+  }
 
   const doctors = masters.doctors
   for (const code of doctorCodes) {
@@ -271,7 +391,9 @@ function tryPlace(
       let conflictWithOther = false
       for (const a of assignments) {
         if (!(a.technicianCodes ?? []).map((c) => c.toLowerCase()).includes(code.toLowerCase())) continue
-        if (intervalsOverlap(startM, endM, a.startM, a.endM)) {
+        const otherProc = proceduresById.get(a.procedureId)
+        const samePatient = a.patientId === patient.id
+        if (!technicianPairAllowed(startM, endM, procedure, a.startM, a.endM, otherProc, samePatient)) {
           conflictWithOther = true
           break
         }
@@ -314,17 +436,44 @@ function findSlot(
   machineExtras: Map<string, { startM: number; endM: number }[]>,
   settings: SchedSettings,
   schedulingDate: string | null,
+  proceduresById: Map<string, SchedProcedure>,
 ): SchedAssignment | null {
   const duration = procedure.durationM
   if (duration === null || duration <= 0) return null
 
   const { dayStart, dayEnd } = inferDayBounds(masters)
   const admission = patient.admissionM ?? 0
-  const startFrom = Math.max(dayStart, admission)
+  let startFrom = Math.max(dayStart, admission)
+  let endLimit = dayEnd
+
+  // Cat ngan pham vi tim kiem theo moc kham / ra vien neu trung ngay chay lich
+  const dayIdx = computeTreatmentDayIndex(patient, schedulingDate)
+  if (dayIdx !== null) {
+    const totalDays = Math.max(1, patient.treatmentDays ?? 1)
+    if (dayIdx < 1 || dayIdx > totalDays) return null
+  }
+  if (schedulingDate) {
+    const examEndDate = resolveExamEndDate(patient)
+    if (
+      examEndDate === schedulingDate &&
+      typeof patient.examEndM === 'number' &&
+      patient.examEndM > 0
+    ) {
+      startFrom = Math.max(startFrom, patient.examEndM)
+    }
+    const dischargeDate = resolveDischargeDate(patient)
+    if (
+      dischargeDate === schedulingDate &&
+      typeof patient.dischargeM === 'number' &&
+      patient.dischargeM > 0
+    ) {
+      endLimit = Math.min(endLimit, patient.dischargeM)
+    }
+  }
 
   for (const codes of doctorCodeAttempts(procedure.mainCodes, procedure.substituteCodes)) {
-    for (let t = startFrom; t <= dayEnd - duration; t += 1) {
-      const placed = tryPlace(masters, procedure, patient, codes, t, assignments, machineExtras, settings, schedulingDate)
+    for (let t = startFrom; t <= endLimit - duration; t += 1) {
+      const placed = tryPlace(masters, procedure, patient, codes, t, assignments, machineExtras, settings, schedulingDate, proceduresById)
       if (placed) return placed
     }
   }
@@ -411,6 +560,27 @@ export function runSchedule(
       })
       continue
     }
+    // Benh nhan chua bat dau / da ket thuc lieu trinh
+    const dayIdx = computeTreatmentDayIndex(job.patient, schedulingDate)
+    if (dayIdx !== null) {
+      const totalDays = Math.max(1, job.patient.treatmentDays ?? 1)
+      if (dayIdx < 1) {
+        unscheduled.push({
+          patientId: job.patient.id,
+          procedureId: job.procedure.id,
+          reason: `Chưa đến ngày vào liệu trình (còn ${1 - dayIdx} ngày)`,
+        })
+        continue
+      }
+      if (dayIdx > totalDays) {
+        unscheduled.push({
+          patientId: job.patient.id,
+          procedureId: job.procedure.id,
+          reason: `Đã kết thúc liệu trình (ngày ${dayIdx}/${totalDays})`,
+        })
+        continue
+      }
+    }
     if (!proc.machineType.trim()) {
       unscheduled.push({
         patientId: job.patient.id,
@@ -420,7 +590,16 @@ export function runSchedule(
       continue
     }
 
-    const next = findSlot(masters, job.procedure, job.patient, assignments, machineExtras, settings, schedulingDate)
+    const next = findSlot(
+      masters,
+      job.procedure,
+      job.patient,
+      assignments,
+      machineExtras,
+      settings,
+      schedulingDate,
+      proceduresById,
+    )
     if (!next) {
       unscheduled.push({
         patientId: job.patient.id,

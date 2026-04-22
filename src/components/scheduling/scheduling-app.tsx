@@ -47,13 +47,14 @@ import { MonthlyScheduleImporter } from '@/components/scheduling/monthly-schedul
 import { ConflictPanel } from '@/components/scheduling/conflict-panel'
 import { ProcedureTimer } from '@/components/scheduling/procedure-timer'
 import { NotikaSelect } from '@/components/scheduling/notika-select'
-import { TechniciansEditor } from '@/components/scheduling/technicians-editor'
+import { TechniciansEditor, DoctorsScheduleEditor } from '@/components/scheduling/monthly-schedule-editor'
 
-type MainTab = 'calendar' | 'doctors' | 'technicians' | 'machines' | 'procedures' | 'patients' | 'output' | 'users'
+type MainTab = 'overview' | 'calendar' | 'doctors' | 'technicians' | 'machines' | 'procedures' | 'patients' | 'output' | 'users'
 
 type OutputTab = 'results' | 'unsorted' | 'stats' | 'docTime' | 'machTime' | 'gantt' | 'estimate' | 'timer'
 
 const BASE_NAV: { id: MainTab; label: string }[] = [
+  { id: 'overview', label: 'Thống kê' },
   { id: 'calendar', label: 'Lịch tháng' },
   { id: 'doctors', label: 'Bác sĩ' },
   { id: 'technicians', label: 'Kỹ thuật viên' },
@@ -68,6 +69,40 @@ const tableCell = 'px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3'
 
 function newId(): string {
   return crypto.randomUUID()
+}
+
+function StickySaveBar({ onSave, saving }: { onSave: () => void | Promise<void>; saving: boolean }) {
+  return (
+    <div className='sticky bottom-2 z-10 mt-6 flex justify-end'>
+      <button
+        type='button'
+        disabled={saving}
+        onClick={() => void onSave()}
+        className={cn(
+          'inline-flex items-center gap-2 rounded-xl border border-[var(--notika-green)] bg-[var(--notika-green)] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition',
+          'hover:bg-[var(--notika-green)]/90 hover:shadow-lg active:scale-[0.98]',
+          'disabled:cursor-not-allowed disabled:opacity-60',
+        )}
+      >
+        {saving ? (
+          <>
+            <svg className='h-4 w-4 animate-spin' viewBox='0 0 24 24' fill='none'>
+              <circle cx='12' cy='12' r='9' stroke='currentColor' strokeWidth='3' strokeOpacity='0.25' />
+              <path d='M21 12a9 9 0 0 0-9-9' stroke='currentColor' strokeWidth='3' strokeLinecap='round' />
+            </svg>
+            Đang lưu…
+          </>
+        ) : (
+          <>
+            <svg width='16' height='16' viewBox='0 0 16 16' fill='none'>
+              <path d='M12.5 2h-9A1.5 1.5 0 0 0 2 3.5v9A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5L11 2zM5 2v4h5V2M5 10h6' stroke='currentColor' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round' />
+            </svg>
+            Lưu lên hệ thống
+          </>
+        )}
+      </button>
+    </div>
+  )
 }
 
 export function SchedulingApp() {
@@ -98,7 +133,7 @@ export function SchedulingApp() {
     return nav
   }, [isSuperAdmin])
 
-  const [mainTab, setMainTab] = useState<MainTab>('calendar')
+  const [mainTab, setMainTab] = useState<MainTab>('overview')
   const [outputTab, setOutputTab] = useState<OutputTab>('results')
   const [sessionPickerOpen, setSessionPickerOpen] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -269,6 +304,8 @@ export function SchedulingApp() {
             machineType: s.machineType,
             priority: s.priority,
             technicianCodes: s.technicianCodes ?? '',
+            overlapMode: s.overlapMode,
+            gapMinutes: s.gapMinutes,
           }))
         masters.procedures = [...masters.procedures, ...newProcs]
         appToast.success(`Đã thêm ${newProcs.length} thủ thuật từ danh sách chung`)
@@ -459,47 +496,64 @@ export function SchedulingApp() {
         </header>
 
         <main className='mx-auto w-full min-w-0 max-w-[1600px] flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:py-6'>
-        {payload && contextId ? (
-          <div className='mb-4 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2 sm:mb-6 sm:gap-3 lg:grid-cols-4'>
-            {(
-              [
-                { n: payload.masters.patients.length, l: 'Bệnh nhân', c: 'var(--notika-green)' },
-                { n: payload.assignments.length, l: 'Ca đã xếp', c: 'var(--notika-blue)' },
-                { n: payload.masters.doctors.length, l: 'Bác sĩ', c: 'var(--notika-coral)' },
-                { n: payload.masters.machines.length, l: 'Máy', c: 'var(--notika-purple)' },
-              ] as const
-            ).map((s) => (
-              <div
-                key={s.l}
-                className='relative overflow-hidden rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] pt-1 shadow-sm'
-              >
-                <div className='absolute inset-x-0 top-0 h-1' style={{ backgroundColor: s.c }} aria-hidden />
-                <div className='px-3 pb-3 pt-3.5 sm:px-4 sm:pt-4'>
-                  <p className='text-xl font-bold tabular-nums text-[var(--notika-text)] sm:text-2xl'>{s.n}</p>
-                  <p className='text-[10px] font-semibold uppercase tracking-wide text-[var(--notika-muted)] sm:text-[11px]'>{s.l}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
 
-        {bootstrapping ? (
+        {bootstrapping || (contextId && !payload) ? (
           <div
             className={cn(panelCls, 'py-14 text-center')}
           >
             <p className='text-sm font-medium text-muted-foreground'>Đang tải bản lịch gần nhất…</p>
           </div>
         ) : !contextId || !payload ? (
-          <div className='rounded-2xl border-2 border-dashed border-[var(--notika-border)] bg-[var(--notika-card)] p-6 text-center shadow-sm sm:p-10'>
-            <p className='text-muted-foreground'>
-              Chưa có bản lịch nào. Bấm &quot;Tạo bản lịch mới&quot; hoặc mở danh sách đã lưu.
+          <div className={cn(panelCls, 'py-14 text-center')}>
+            <p className='text-sm font-medium text-muted-foreground'>
+              Chưa có bản lịch nào. Vui lòng dùng nút “Tạo mới” ở thanh công cụ phía trên.
             </p>
-            <button type='button' className={cn(btnPrimary, 'mt-5')} onClick={() => void handleCreate()}>
-              Tạo bản lịch đầu tiên
-            </button>
           </div>
         ) : (
           <>
+            <div
+              className={cn(
+                tabBarCls,
+                'touch-scroll-x mb-6 min-w-0 max-w-full flex-nowrap overflow-x-auto overflow-y-hidden md:hidden',
+              )}
+            >
+              {MAIN_NAV.map(({ id, label }) => (
+                <button
+                  key={id}
+                  type='button'
+                  className={cn(tabBtn, mainTab === id && tabBtnActive)}
+                  onClick={() => setMainTab(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {mainTab === 'overview' ? (
+            <>
+            <div className='mb-6 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2 sm:gap-3 lg:grid-cols-5'>
+              {(
+                [
+                  { n: payload.masters.patients.length, l: 'Bệnh nhân', c: 'var(--notika-green)' },
+                  { n: payload.assignments.length, l: 'Ca đã xếp', c: 'var(--notika-blue)' },
+                  { n: payload.masters.doctors.length, l: 'Bác sĩ', c: 'var(--notika-coral)' },
+                  { n: (payload.masters.technicians ?? []).length, l: 'Kỹ thuật viên', c: '#f59e0b' },
+                  { n: payload.masters.machines.length, l: 'Máy', c: 'var(--notika-purple)' },
+                ] as const
+              ).map((s) => (
+                <div
+                  key={s.l}
+                  className='relative overflow-hidden rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] pt-1 shadow-sm'
+                >
+                  <div className='absolute inset-x-0 top-0 h-1' style={{ backgroundColor: s.c }} aria-hidden />
+                  <div className='px-3 pb-3 pt-3.5 sm:px-4 sm:pt-4'>
+                    <p className='text-xl font-bold tabular-nums text-[var(--notika-text)] sm:text-2xl'>{s.n}</p>
+                    <p className='text-[10px] font-semibold uppercase tracking-wide text-[var(--notika-muted)] sm:text-[11px]'>{s.l}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <section className={cn(panelCls, 'mb-8')}>
               <div className='flex flex-col gap-8'>
                 <div className='grid grid-cols-1 gap-7 lg:grid-cols-2 lg:gap-x-14 lg:gap-y-6'>
@@ -627,25 +681,11 @@ export function SchedulingApp() {
               </div>
             </section>
 
-            <div
-              className={cn(
-                tabBarCls,
-                'touch-scroll-x mb-8 min-w-0 max-w-full flex-nowrap overflow-x-auto overflow-y-hidden md:hidden',
-              )}
-            >
-              {MAIN_NAV.map(({ id, label }) => (
-                <button
-                  key={id}
-                  type='button'
-                  className={cn(tabBtn, mainTab === id && tabBtnActive)}
-                  onClick={() => setMainTab(id)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            </>
+            ) : null}
 
             {mainTab === 'calendar' ? (
+              <>
               <section className={cn(panelCls, 'space-y-8')}>
                 <div className='grid grid-cols-1 gap-8 lg:grid-cols-2'>
                   <MonthCalendar
@@ -689,6 +729,8 @@ export function SchedulingApp() {
                   />
                 </div>
               </section>
+              <StickySaveBar onSave={handleSave} saving={busy} />
+              </>
             ) : null}
             {mainTab === 'doctors' ? (
               <section className='space-y-6'>
@@ -700,10 +742,13 @@ export function SchedulingApp() {
                     setPayload({ ...payload, masters: { ...payload.masters, doctors, technicians } })
                   }
                 />
-                <LoadSharedButton type='doctors' onLoad={() => void loadSharedIntoContext('doctors')} busy={busy} />
-                <DoctorsEditor
+                <DoctorsScheduleEditor
                   doctors={payload.masters.doctors}
                   onChange={(doctors) => setPayload({ ...payload, masters: { ...payload.masters, doctors } })}
+                  schedulingDate={payload.schedulingDate}
+                  onLoadShared={() => void loadSharedIntoContext('doctors')}
+                  onSaveContext={handleSave}
+                  saving={busy}
                 />
               </section>
             ) : null}
@@ -728,6 +773,7 @@ export function SchedulingApp() {
               </section>
             ) : null}
             {mainTab === 'machines' ? (
+              <>
               <section className='space-y-6'>
                 <ExcelImporter type='machines' onImported={() => void loadSharedIntoContext('machines')} />
                 <LoadSharedButton type='machines' onLoad={() => void loadSharedIntoContext('machines')} busy={busy} />
@@ -736,8 +782,11 @@ export function SchedulingApp() {
                   onChange={(machines) => setPayload({ ...payload, masters: { ...payload.masters, machines } })}
                 />
               </section>
+              <StickySaveBar onSave={handleSave} saving={busy} />
+              </>
             ) : null}
             {mainTab === 'procedures' ? (
+              <>
               <section className='space-y-6'>
                 <ExcelImporter type='procedures' onImported={() => void loadSharedIntoContext('procedures')} />
                 <LoadSharedButton type='procedures' onLoad={() => void loadSharedIntoContext('procedures')} busy={busy} />
@@ -749,12 +798,16 @@ export function SchedulingApp() {
                   onChange={(procedures) => setPayload({ ...payload, masters: { ...payload.masters, procedures } })}
                 />
               </section>
+              <StickySaveBar onSave={handleSave} saving={busy} />
+              </>
             ) : null}
             {mainTab === 'patients' ? (
               <PatientsEditor
                 patients={payload.masters.patients}
                 procedures={payload.masters.procedures}
                 onChange={(patients) => setPayload({ ...payload, masters: { ...payload.masters, patients } })}
+                onSaveContext={handleSave}
+                saving={busy}
               />
             ) : null}
 
@@ -1032,106 +1085,6 @@ function SessionPickerModal({
   )
 }
 
-function DoctorsEditor({
-  doctors,
-  onChange,
-}: {
-  doctors: SchedDoctor[]
-  onChange: (d: SchedDoctor[]) => void
-}) {
-  const update = (i: number, patch: Partial<SchedDoctor>) => {
-    const next = doctors.map((d, idx) => (idx === i ? { ...d, ...patch } : d))
-    onChange(next)
-  }
-  const add = () =>
-    onChange([
-      ...doctors,
-      {
-        id: newId(),
-        code: '',
-        name: '',
-        amStartM: null,
-        amEndM: null,
-        pmStartM: null,
-        pmEndM: null,
-        busy: [],
-      },
-    ])
-  return (
-    <section className={cn(panelCls, 'space-y-6')}>
-      <div className='flex flex-col gap-4 border-b border-[var(--notika-border)] pb-5 sm:flex-row sm:items-center sm:justify-between'>
-        <h2 className='text-lg font-semibold text-foreground'>Danh sách bác sĩ</h2>
-        <button type='button' className={btnSecondary} onClick={add}>
-          Thêm bác sĩ
-        </button>
-      </div>
-      <p className='text-sm leading-relaxed text-muted-foreground'>
-        Mã bác sĩ phải trùng với phần nhập ở mục Thủ thuật (ví dụ A, B). Ca nghỉ: nhập giờ bắt đầu và kết thúc giống nhau (ví dụ 07:30–07:30).
-      </p>
-      <div className='space-y-6'>
-        {doctors.map((d, i) => (
-          <div key={d.id} className='rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] p-4 sm:p-5'>
-            <div className='mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-              <input
-                className={inputCls}
-                value={d.code}
-                onChange={(e) => update(i, { code: e.target.value })}
-                placeholder='Mã bác sĩ (vd A, B)'
-                autoComplete='off'
-              />
-              <input
-                className={inputCls}
-                value={d.name}
-                onChange={(e) => update(i, { name: e.target.value })}
-                placeholder='Họ tên bác sĩ'
-                autoComplete='name'
-              />
-              <div className='sm:col-span-2'>
-                <p className={subLabelCls}>Buổi sáng — giờ vào / giờ ra</p>
-                <div className='flex flex-wrap gap-3'>
-                  <SchedTimeField
-                    ariaLabel={`Bác sĩ ${d.name || d.code || i + 1}: giờ bắt đầu ca sáng`}
-                    value={d.amStartM}
-                    onChange={(m) => update(i, { amStartM: m })}
-                  />
-                  <SchedTimeField
-                    ariaLabel={`Bác sĩ ${d.name || d.code || i + 1}: giờ kết thúc ca sáng`}
-                    value={d.amEndM}
-                    onChange={(m) => update(i, { amEndM: m })}
-                  />
-                </div>
-              </div>
-              <div className='sm:col-span-2'>
-                <p className={subLabelCls}>Buổi chiều — giờ vào / giờ ra</p>
-                <div className='flex flex-wrap gap-3'>
-                  <SchedTimeField
-                    ariaLabel={`Bác sĩ ${d.name || d.code || i + 1}: giờ bắt đầu ca chiều`}
-                    value={d.pmStartM}
-                    onChange={(m) => update(i, { pmStartM: m })}
-                  />
-                  <SchedTimeField
-                    ariaLabel={`Bác sĩ ${d.name || d.code || i + 1}: giờ kết thúc ca chiều`}
-                    value={d.pmEndM}
-                    onChange={(m) => update(i, { pmEndM: m })}
-                  />
-                </div>
-              </div>
-            </div>
-            <BusyEditor
-              label='Những lúc bác sĩ không xếp ca'
-              busy={d.busy}
-              onChange={(busy) => update(i, { busy })}
-            />
-            <button type='button' className='mt-4 text-sm font-medium text-red-600 hover:underline dark:text-red-400' onClick={() => onChange(doctors.filter((_, idx) => idx !== i))}>
-              Xóa bác sĩ
-            </button>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
 function MachinesEditor({
   machines,
   onChange,
@@ -1222,6 +1175,8 @@ function ProceduresEditor({
         machineType: '',
         priority: false,
         technicianCodes: '',
+        overlapMode: 'sequential',
+        gapMinutes: 1,
       },
     ])
   return (
@@ -1451,6 +1406,78 @@ function ProceduresEditor({
                   </p>
                 )}
               </div>
+              <div className='sm:col-span-2'>
+                <span className={subLabelCls}>Cách xếp ca (giữa các bệnh nhân khác nhau)</span>
+                <div className='mt-1 flex flex-wrap gap-2'>
+                  {([
+                    { id: 'sequential', label: 'Nối tiếp', hint: 'Không chồng giờ — ca sau cách ca trước' },
+                    { id: 'parallel', label: 'Song song', hint: 'Cho phép chồng giờ — 2 ca cách nhau theo giờ bắt đầu' },
+                  ] as const).map((opt) => {
+                    const current = p.overlapMode ?? 'sequential'
+                    const active = current === opt.id
+                    return (
+                      <button
+                        key={opt.id}
+                        type='button'
+                        className={cn(
+                          'rounded-lg border px-3 py-1.5 text-xs font-semibold transition',
+                          active
+                            ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white'
+                            : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
+                        )}
+                        title={opt.hint}
+                        onClick={() => update(i, { overlapMode: opt.id })}
+                      >
+                        {opt.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className='mt-1 text-[11px] text-[var(--notika-muted)]'>
+                  {(p.overlapMode ?? 'sequential') === 'parallel'
+                    ? 'VD: Điện châm (7\'), Điện xung / Hồng ngoại / Sóng ngắn / Kéo giãn / Xoa bóp áp lạc (5\')'
+                    : 'VD: Cứu, Xoa bóp bấm huyệt, Siêu âm, Xung kích, Tập vận động (1\')'}
+                </p>
+              </div>
+              <div className='sm:col-span-2'>
+                <span className={subLabelCls}>
+                  Khoảng cách tối thiểu giữa 2 ca cùng KTV (phút)
+                </span>
+                <div className='mt-1 flex flex-wrap items-center gap-2'>
+                  <input
+                    type='text'
+                    inputMode='numeric'
+                    className={cn(inputCls, 'w-24')}
+                    value={p.gapMinutes == null ? '' : String(p.gapMinutes)}
+                    placeholder='phút'
+                    onChange={(e) => {
+                      const v = e.target.value.trim()
+                      if (v === '') update(i, { gapMinutes: undefined })
+                      else if (/^\d+$/.test(v)) update(i, { gapMinutes: Number(v) })
+                    }}
+                  />
+                  {[0, 1, 5, 7].map((m) => (
+                    <button
+                      key={m}
+                      type='button'
+                      className={cn(
+                        'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                        (p.gapMinutes ?? 0) === m
+                          ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white'
+                          : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
+                      )}
+                      onClick={() => update(i, { gapMinutes: m })}
+                    >
+                      {m}&apos;
+                    </button>
+                  ))}
+                  <span className='text-[11px] text-[var(--notika-muted)]'>
+                    {(p.overlapMode ?? 'sequential') === 'parallel'
+                      ? '(cách giữa các giờ bắt đầu)'
+                      : '(cách giữa kết thúc ca trước và bắt đầu ca sau)'}
+                  </span>
+                </div>
+              </div>
               <label className='flex cursor-pointer items-start gap-3 text-sm sm:col-span-2 sm:items-center'>
                 <input
                   type='checkbox'
@@ -1471,14 +1498,28 @@ function ProceduresEditor({
   )
 }
 
+function addDaysIso(iso: string, days: number): string {
+  const ms = Date.parse(`${iso}T00:00:00Z`)
+  if (!Number.isFinite(ms)) return iso
+  const next = new Date(ms + days * 24 * 60 * 60 * 1000)
+  const y = next.getUTCFullYear()
+  const m = String(next.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(next.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 function PatientsEditor({
   patients,
   procedures,
   onChange,
+  onSaveContext,
+  saving = false,
 }: {
   patients: SchedPatient[]
   procedures: SchedProcedure[]
   onChange: (p: SchedPatient[]) => void
+  onSaveContext?: () => void | Promise<void>
+  saving?: boolean
 }) {
   const update = (i: number, patch: Partial<SchedPatient>) => {
     onChange(patients.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))
@@ -1493,6 +1534,12 @@ function PatientsEditor({
         highPriority: false,
         procedureIds: [],
         busy: [],
+        treatmentDays: 1,
+        admissionDate: null,
+        examEndM: null,
+        examEndDate: null,
+        dischargeM: null,
+        dischargeDate: null,
       },
     ])
   return (
@@ -1508,20 +1555,161 @@ function PatientsEditor({
           <div key={p.id} className='rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] p-4 sm:p-5'>
             <div className='grid gap-4 sm:grid-cols-2'>
               <input
-                className={inputCls}
+                className={cn(inputCls, 'sm:col-span-2')}
                 value={p.name}
                 onChange={(e) => update(i, { name: e.target.value })}
                 placeholder='Tên hoặc mã bệnh nhân'
                 autoComplete='name'
               />
-              <div>
-                <SchedTimeField
-                  label='Giờ vào viện (thường cách lúc chỉ định khoảng 1 phút)'
-                  ariaLabel={`Bệnh nhân ${p.name || i + 1}: giờ vào viện`}
-                  value={p.admissionM}
-                  onChange={(m) => update(i, { admissionM: m })}
-                />
+
+              <div className='sm:col-span-2 rounded-xl border border-dashed border-[var(--notika-border)] bg-[var(--notika-content)] p-3'>
+                <p className='mb-3 text-xs font-bold uppercase tracking-wide text-[var(--notika-muted)]'>
+                  Liệu trình điều trị
+                </p>
+                <div className='grid gap-3 sm:grid-cols-2'>
+                  <label className='block'>
+                    <span className={subLabelCls}>Số ngày liệu trình</span>
+                    <div className='mt-1 flex items-center gap-2'>
+                      <input
+                        type='text'
+                        inputMode='numeric'
+                        className={cn(inputCls, 'w-24')}
+                        value={p.treatmentDays == null ? '' : String(p.treatmentDays)}
+                        placeholder='ngày'
+                        onChange={(e) => {
+                          const v = e.target.value.trim()
+                          if (v === '') update(i, { treatmentDays: null })
+                          else if (/^\d+$/.test(v)) update(i, { treatmentDays: Number(v) })
+                        }}
+                      />
+                      {[3, 5, 7, 10, 14].map((d) => (
+                        <button
+                          key={d}
+                          type='button'
+                          className={cn(
+                            'rounded-lg border px-2 py-1 text-xs font-medium transition',
+                            p.treatmentDays === d
+                              ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white'
+                              : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
+                          )}
+                          onClick={() => update(i, { treatmentDays: d })}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </label>
+                  <div className='block sm:col-span-2'>
+                    <span className={subLabelCls}>Ngày giờ vào viện</span>
+                    <div className='mt-1 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]'>
+                      <SchedDateField
+                        ariaLabel={`Bệnh nhân ${p.name || i + 1}: ngày vào viện`}
+                        value={p.admissionDate ?? ''}
+                        onChange={(iso) => update(i, { admissionDate: iso })}
+                      />
+                      <SchedTimeField
+                        ariaLabel={`Bệnh nhân ${p.name || i + 1}: giờ vào viện`}
+                        value={p.admissionM}
+                        onChange={(m) => update(i, { admissionM: m })}
+                      />
+                      {(p.admissionDate || p.admissionM != null) && (
+                        <button
+                          type='button'
+                          className='rounded-lg border border-[var(--notika-border)] px-3 text-xs font-medium text-[var(--notika-muted)] hover:bg-[var(--muted)]'
+                          onClick={() => update(i, { admissionDate: null, admissionM: null })}
+                        >
+                          Xoá mốc
+                        </button>
+                      )}
+                    </div>
+                    <p className='mt-1 text-[11px] text-[var(--notika-muted)]'>
+                      Mốc bắt đầu liệu trình. Giờ vào viện thường cách lúc chỉ định ~1 phút.
+                      {!p.admissionDate && (
+                        <span className='ml-1 italic'>(chưa đặt — coi như bắt đầu ngay ngày xếp lịch)</span>
+                      )}
+                    </p>
+                  </div>
+                  {(() => {
+                    const effectiveExamDate =
+                      p.examEndDate ?? p.admissionDate ?? ''
+                    const totalDays = Math.max(1, p.treatmentDays ?? 1)
+                    const effectiveDischargeDate =
+                      p.dischargeDate ??
+                      (p.admissionDate ? addDaysIso(p.admissionDate, totalDays - 1) : '')
+                    return (
+                      <>
+                        <div className='block sm:col-span-2'>
+                          <span className={subLabelCls}>Ngày giờ kết thúc khám bệnh</span>
+                          <div className='mt-1 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]'>
+                            <SchedDateField
+                              ariaLabel={`Bệnh nhân ${p.name || i + 1}: ngày kết thúc khám`}
+                              value={effectiveExamDate}
+                              onChange={(iso) => update(i, { examEndDate: iso })}
+                            />
+                            <SchedTimeField
+                              ariaLabel={`Bệnh nhân ${p.name || i + 1}: giờ kết thúc khám`}
+                              value={p.examEndM ?? null}
+                              onChange={(m) => update(i, { examEndM: m })}
+                            />
+                            {(p.examEndDate || p.examEndM != null) && (
+                              <button
+                                type='button'
+                                className='rounded-lg border border-[var(--notika-border)] px-3 text-xs font-medium text-[var(--notika-muted)] hover:bg-[var(--muted)]'
+                                onClick={() =>
+                                  update(i, { examEndDate: null, examEndM: null })
+                                }
+                              >
+                                Xoá mốc
+                              </button>
+                            )}
+                          </div>
+                          <p className='mt-1 text-[11px] text-[var(--notika-muted)]'>
+                            Thủ thuật trong đúng ngày này chỉ được bắt đầu <b>sau</b> giờ kết thúc khám.
+                            {!p.examEndDate && p.admissionDate && (
+                              <span className='ml-1 italic'>(mặc định = ngày vào viện)</span>
+                            )}
+                          </p>
+                        </div>
+                        <div className='block sm:col-span-2'>
+                          <span className={subLabelCls}>Ngày giờ ra viện</span>
+                          <div className='mt-1 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]'>
+                            <SchedDateField
+                              ariaLabel={`Bệnh nhân ${p.name || i + 1}: ngày ra viện`}
+                              value={effectiveDischargeDate}
+                              onChange={(iso) => update(i, { dischargeDate: iso })}
+                            />
+                            <SchedTimeField
+                              ariaLabel={`Bệnh nhân ${p.name || i + 1}: giờ ra viện`}
+                              value={p.dischargeM ?? null}
+                              onChange={(m) => update(i, { dischargeM: m })}
+                            />
+                            {(p.dischargeDate || p.dischargeM != null) && (
+                              <button
+                                type='button'
+                                className='rounded-lg border border-[var(--notika-border)] px-3 text-xs font-medium text-[var(--notika-muted)] hover:bg-[var(--muted)]'
+                                onClick={() =>
+                                  update(i, { dischargeDate: null, dischargeM: null })
+                                }
+                              >
+                                Xoá mốc
+                              </button>
+                            )}
+                          </div>
+                          <p className='mt-1 text-[11px] text-[var(--notika-muted)]'>
+                            Thủ thuật trong đúng ngày này phải <b>kết thúc trước</b> giờ ra viện.
+                            {!p.dischargeDate && p.admissionDate && (
+                              <span className='ml-1 italic'>
+                                (mặc định = ngày cuối liệu trình: {effectiveDischargeDate})
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </>
+                    )
+                  })()}
+                </div>
               </div>
+
               <label className='flex cursor-pointer items-start gap-3 text-sm sm:col-span-2 sm:items-center'>
                 <input
                   type='checkbox'
@@ -1563,6 +1751,37 @@ function PatientsEditor({
           </div>
         ))}
       </div>
+      {onSaveContext && patients.length > 0 && (
+        <div className='sticky bottom-2 z-10 flex justify-end'>
+          <button
+            type='button'
+            disabled={saving}
+            onClick={() => void onSaveContext()}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-xl border border-[var(--notika-green)] bg-[var(--notika-green)] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition',
+              'hover:bg-[var(--notika-green)]/90 hover:shadow-lg active:scale-[0.98]',
+              'disabled:cursor-not-allowed disabled:opacity-60',
+            )}
+          >
+            {saving ? (
+              <>
+                <svg className='h-4 w-4 animate-spin' viewBox='0 0 24 24' fill='none'>
+                  <circle cx='12' cy='12' r='9' stroke='currentColor' strokeWidth='3' strokeOpacity='0.25' />
+                  <path d='M21 12a9 9 0 0 0-9-9' stroke='currentColor' strokeWidth='3' strokeLinecap='round' />
+                </svg>
+                Đang lưu…
+              </>
+            ) : (
+              <>
+                <svg width='16' height='16' viewBox='0 0 16 16' fill='none'>
+                  <path d='M12.5 2h-9A1.5 1.5 0 0 0 2 3.5v9A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5L11 2zM5 2v4h5V2M5 10h6' stroke='currentColor' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round' />
+                </svg>
+                Lưu lên hệ thống
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </section>
   )
 }

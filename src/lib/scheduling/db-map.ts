@@ -136,6 +136,7 @@ function normalizeMachine(raw: unknown): SchedMachine {
 
 function normalizeProcedure(raw: unknown): SchedProcedure {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const overlapMode = o.overlapMode === 'parallel' ? 'parallel' : o.overlapMode === 'sequential' ? 'sequential' : undefined
   return {
     id: String(o.id ?? ''),
     name: typeof o.name === 'string' ? o.name : '',
@@ -146,6 +147,8 @@ function normalizeProcedure(raw: unknown): SchedProcedure {
     machineType: typeof o.machineType === 'string' ? o.machineType : '',
     priority: Boolean(o.priority),
     technicianCodes: typeof o.technicianCodes === 'string' ? o.technicianCodes : '',
+    overlapMode,
+    gapMinutes: typeof o.gapMinutes === 'number' && Number.isFinite(o.gapMinutes) ? o.gapMinutes : undefined,
   }
 }
 
@@ -154,6 +157,17 @@ function normalizePatient(raw: unknown): SchedPatient {
   const procedureIds = Array.isArray(o.procedureIds)
     ? o.procedureIds.filter((x): x is string => typeof x === 'string')
     : []
+  const treatmentDaysRaw = o.treatmentDays
+  const treatmentDays =
+    typeof treatmentDaysRaw === 'number' && Number.isFinite(treatmentDaysRaw) && treatmentDaysRaw > 0
+      ? Math.floor(treatmentDaysRaw)
+      : null
+  const admissionDate =
+    typeof o.admissionDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.admissionDate) ? o.admissionDate : null
+  const examEndDate =
+    typeof o.examEndDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.examEndDate) ? o.examEndDate : null
+  const dischargeDate =
+    typeof o.dischargeDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.dischargeDate) ? o.dischargeDate : null
   return {
     id: String(o.id ?? ''),
     name: typeof o.name === 'string' ? o.name : '',
@@ -161,6 +175,12 @@ function normalizePatient(raw: unknown): SchedPatient {
     highPriority: Boolean(o.highPriority),
     procedureIds,
     busy: normalizeBusy(o.busy),
+    treatmentDays,
+    admissionDate,
+    examEndM: numOrNull(o.examEndM),
+    examEndDate,
+    dischargeM: numOrNull(o.dischargeM),
+    dischargeDate,
   }
 }
 
