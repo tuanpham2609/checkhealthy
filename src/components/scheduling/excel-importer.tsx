@@ -66,26 +66,87 @@ function matchColumn(header: string, aliases: string[]): boolean {
   return aliases.some((a) => h.includes(a))
 }
 
-function parseRows(wb: WorkBook, type: ImportType): Record<string, unknown>[] {
-  const ws = wb.Sheets[wb.SheetNames[0]!]
-  if (!ws) return []
-  const raw = utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' })
-  if (raw.length === 0) return []
+/**
+ * Tim header row trong sheet bang cach quet 20 dong dau, dong nao co >=2 cell match
+ * voi aliases cua loai du lieu thi coi la header. Tra ve { startRow, headers } hoac null.
+ */
+function detectHeaderRow(
+  rows: unknown[][],
+  colMap: { key: string; aliases: string[] }[],
+): { startRow: number; headers: string[] } | null {
+  const limit = Math.min(rows.length, 20)
+  for (let i = 0; i < limit; i++) {
+    const row = rows[i] ?? []
+    const cells = row.map((c) => String(c ?? '').trim()).filter((c) => c.length > 0)
+    if (cells.length < 2) continue
+    let matchCount = 0
+    for (const col of colMap) {
+      if (cells.some((cell) => matchColumn(cell, col.aliases))) matchCount++
+    }
+    if (matchCount >= 2) {
+      return { startRow: i, headers: row.map((c) => String(c ?? '').trim()) }
+    }
+  }
+  return null
+}
 
+/**
+ * Quet tat ca cac sheet trong workbook va tra ve sheet co header row khop nhat
+ * voi loai du lieu can import. Vi du file may moc co 3 sheet thi se chon dung
+ * sheet "May moc" thay vi sheet bang gia dich vu.
+ */
+function pickBestSheet(
+  wb: WorkBook,
+  type: ImportType,
+): { sheetName: string; startRow: number; headers: string[]; rows: unknown[][] } | null {
   const colMap = COLUMN_MAPS[type]
-  const headers = Object.keys(raw[0]!)
-  const mapping: Record<string, string> = {}
+  let best: { sheetName: string; startRow: number; headers: string[]; rows: unknown[][]; score: number } | null = null
 
-  for (const col of colMap) {
-    const match = headers.find((h) => matchColumn(h, col.aliases))
-    if (match) mapping[col.key] = match
+  for (const name of wb.SheetNames) {
+    const ws = wb.Sheets[name]
+    if (!ws) continue
+    const rows = utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '' })
+    if (!rows.length) continue
+    const detected = detectHeaderRow(rows, colMap)
+    if (!detected) continue
+    let score = 0
+    for (const col of colMap) {
+      if (detected.headers.some((h) => matchColumn(h, col.aliases))) score++
+    }
+    if (!best || score > best.score) {
+      best = { sheetName: name, ...detected, rows, score }
+    }
   }
 
-  return raw.map((row) => {
+  if (!best) return null
+  return {
+    sheetName: best.sheetName,
+    startRow: best.startRow,
+    headers: best.headers,
+    rows: best.rows,
+  }
+}
+
+function parseRows(wb: WorkBook, type: ImportType): { rows: Record<string, unknown>[]; sheetName: string | null } {
+  const detected = pickBestSheet(wb, type)
+  if (!detected) return { rows: [], sheetName: null }
+
+  const colMap = COLUMN_MAPS[type]
+  const { headers, rows: allRows, startRow, sheetName } = detected
+
+  // Build mapping key -> column index (dung index thay vi ten cot vi co the trung ten/ rong)
+  const indexMap: Record<string, number> = {}
+  for (const col of colMap) {
+    const idx = headers.findIndex((h) => matchColumn(h, col.aliases))
+    if (idx >= 0) indexMap[col.key] = idx
+  }
+
+  const dataRows = allRows.slice(startRow + 1)
+  const parsed = dataRows.map((row) => {
     const out: Record<string, unknown> = {}
     for (const col of colMap) {
-      const srcKey = mapping[col.key]
-      let val: unknown = srcKey ? row[srcKey] : ''
+      const idx = indexMap[col.key]
+      let val: unknown = idx != null && idx >= 0 ? row[idx] : ''
       if (col.key === 'durationM' || col.key === 'pillowM') {
         if (typeof val === 'number' && Number.isFinite(val)) {
           // keep as number
@@ -102,10 +163,12 @@ function parseRows(wb: WorkBook, type: ImportType): Record<string, unknown>[] {
     }
     return out
   }).filter((r) => {
-    if (type === 'doctors' || type === 'technicians') return r.code && r.name
-    if (type === 'machines') return r.typeName && r.unitName
-    return r.name
+    if (type === 'doctors' || type === 'technicians') return String(r.code ?? '').trim() && String(r.name ?? '').trim()
+    if (type === 'machines') return String(r.typeName ?? '').trim() && String(r.unitName ?? '').trim()
+    return String(r.name ?? '').trim()
   })
+
+  return { rows: parsed, sheetName }
 }
 
 const inputCls = cn(
@@ -127,6 +190,7 @@ const btnSecondary = cn(
 export function ExcelImporter({ type, onImported, onDirectItems }: ExcelImporterProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<Record<string, unknown>[] | null>(null)
+  const [detectedSheet, setDetectedSheet] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
 
   const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,13 +199,22 @@ export function ExcelImporter({ type, onImported, onDirectItems }: ExcelImporter
     try {
       const buf = await file.arrayBuffer()
       const wb = read(buf, { type: 'array' })
-      const rows = parseRows(wb, type)
+      const { rows, sheetName } = parseRows(wb, type)
       if (rows.length === 0) {
-        appToast.warning('Không tìm thấy dữ liệu hợp lệ. Kiểm tra lại header cột.')
+        appToast.warning(
+          `Không tìm thấy dữ liệu hợp lệ${
+            wb.SheetNames.length > 1 ? ` (đã quét ${wb.SheetNames.length} sheet)` : ''
+          }. Kiểm tra header cột: ${COLUMN_MAPS[type].map((c) => c.label).join(' | ')}`,
+        )
         return
       }
       setPreview(rows)
-      appToast.info(`Tìm thấy ${rows.length} dòng — xem preview bên dưới`)
+      setDetectedSheet(sheetName)
+      appToast.info(
+        sheetName
+          ? `Sheet "${sheetName}": tìm thấy ${rows.length} dòng — xem preview bên dưới`
+          : `Tìm thấy ${rows.length} dòng — xem preview bên dưới`,
+      )
     } catch (err) {
       appToast.error('Lỗi đọc file Excel: ' + (err instanceof Error ? err.message : String(err)))
     }
@@ -168,6 +241,7 @@ export function ExcelImporter({ type, onImported, onDirectItems }: ExcelImporter
         appToast.success(`Đã import ${data.imported} ${TYPE_LABELS[type]}`)
       }
       setPreview(null)
+      setDetectedSheet(null)
       if (fileRef.current) fileRef.current.value = ''
       onImported?.()
     } catch (err) {
@@ -179,6 +253,7 @@ export function ExcelImporter({ type, onImported, onDirectItems }: ExcelImporter
 
   const handleCancel = useCallback(() => {
     setPreview(null)
+    setDetectedSheet(null)
     if (fileRef.current) fileRef.current.value = ''
   }, [])
 
@@ -207,6 +282,11 @@ export function ExcelImporter({ type, onImported, onDirectItems }: ExcelImporter
           <div className='flex items-center justify-between'>
             <p className='text-sm font-semibold text-[var(--notika-text)]'>
               Preview: {preview.length} dòng
+              {detectedSheet ? (
+                <span className='ml-2 rounded-md bg-[var(--notika-green-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--notika-green)]'>
+                  Sheet: {detectedSheet}
+                </span>
+              ) : null}
             </p>
             <div className='flex gap-2'>
               <button type='button' className={btnPrimary} disabled={importing} onClick={() => void handleImport()}>

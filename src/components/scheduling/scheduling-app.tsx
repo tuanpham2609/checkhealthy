@@ -785,7 +785,43 @@ export function SchedulingApp() {
             {mainTab === 'machines' ? (
               <>
               <section className='space-y-6'>
-                <ExcelImporter type='machines' onImported={() => void loadSharedIntoContext('machines')} />
+                <ExcelImporter
+                  type='machines'
+                  onDirectItems={(items) => {
+                    const existingKeys = new Set(
+                      payload.masters.machines.map(
+                        (m) => `${m.typeName.trim().toLowerCase()}|${m.unitName.trim().toLowerCase()}`,
+                      ),
+                    )
+                    const newMachines: SchedMachine[] = []
+                    for (const r of items) {
+                      const typeName = String(r.typeName ?? '').trim()
+                      const unitName = String(r.unitName ?? '').trim()
+                      if (!typeName || !unitName) continue
+                      const key = `${typeName.toLowerCase()}|${unitName.toLowerCase()}`
+                      if (existingKeys.has(key)) continue
+                      existingKeys.add(key)
+                      newMachines.push({
+                        id: crypto.randomUUID(),
+                        typeName,
+                        unitName,
+                        busy: [],
+                      })
+                    }
+                    if (newMachines.length === 0) {
+                      appToast.info('Không có máy mới (đã tồn tại trong danh sách).')
+                      return 0
+                    }
+                    setPayload({
+                      ...payload,
+                      masters: {
+                        ...payload.masters,
+                        machines: [...payload.masters.machines, ...newMachines],
+                      },
+                    })
+                    return newMachines.length
+                  }}
+                />
                 <LoadSharedButton type='machines' onLoad={() => void loadSharedIntoContext('machines')} busy={busy} />
                 <MachinesEditor
                   machines={payload.masters.machines}
