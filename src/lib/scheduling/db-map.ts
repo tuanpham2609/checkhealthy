@@ -137,11 +137,17 @@ function normalizeMachine(raw: unknown): SchedMachine {
 function normalizeProcedure(raw: unknown): SchedProcedure {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
   const overlapMode = o.overlapMode === 'parallel' ? 'parallel' : o.overlapMode === 'sequential' ? 'sequential' : undefined
+  const durationM = numOrNull(o.durationM)
+  let pillowM = numOrNull(o.pillowM)
+  // Mac dinh pillowM = durationM khi user khong nhap (UI da an truong nay).
+  if ((pillowM === null || pillowM < 0) && durationM !== null && durationM > 0) {
+    pillowM = durationM
+  }
   return {
     id: String(o.id ?? ''),
     name: typeof o.name === 'string' ? o.name : '',
-    durationM: numOrNull(o.durationM),
-    pillowM: numOrNull(o.pillowM),
+    durationM,
+    pillowM,
     mainCodes: typeof o.mainCodes === 'string' ? o.mainCodes : '',
     substituteCodes: typeof o.substituteCodes === 'string' ? o.substituteCodes : '',
     machineType: typeof o.machineType === 'string' ? o.machineType : '',

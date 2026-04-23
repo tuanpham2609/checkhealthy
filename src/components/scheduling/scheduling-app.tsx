@@ -299,7 +299,7 @@ export function SchedulingApp() {
             id: crypto.randomUUID(),
             name: s.name,
             durationM: s.durationM,
-            pillowM: s.pillowM,
+            pillowM: s.pillowM !== null && s.pillowM > 0 ? s.pillowM : s.durationM,
             mainCodes: s.mainCodes,
             substituteCodes: s.substituteCodes,
             machineType: s.machineType,
@@ -852,12 +852,14 @@ export function SchedulingApp() {
                           : Number.isFinite(Number(r.durationM))
                             ? Number(r.durationM)
                             : null
-                      const pillowM =
+                      const rawPillow =
                         typeof r.pillowM === 'number'
                           ? r.pillowM
                           : Number.isFinite(Number(r.pillowM))
                             ? Number(r.pillowM)
                             : null
+                      // An truong "TG BS co mat" khoi UI -> mac dinh = durationM khi import rong.
+                      const pillowM = rawPillow !== null && rawPillow > 0 ? rawPillow : durationM
                       newProcs.push({
                         id: crypto.randomUUID(),
                         name,
@@ -1255,7 +1257,17 @@ function ProceduresEditor({
     return [...set].sort((a, b) => a.localeCompare(b, 'vi'))
   }, [machines])
   const update = (i: number, patch: Partial<SchedProcedure>) => {
-    onChange(procedures.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))
+    onChange(
+      procedures.map((p, idx) => {
+        if (idx !== i) return p
+        const next = { ...p, ...patch }
+        // Truong "TG BS co mat" bi an -> auto mirror pillowM = durationM.
+        if ('durationM' in patch) {
+          next.pillowM = next.durationM
+        }
+        return next
+      }),
+    )
   }
   const add = () =>
     onChange([
@@ -1346,43 +1358,6 @@ function ProceduresEditor({
                   {p.durationM != null && (
                     <span className='text-xs text-[var(--notika-muted)]'>
                       = {Math.floor(p.durationM / 60) > 0 ? `${Math.floor(p.durationM / 60)}h` : ''}{p.durationM % 60 > 0 ? `${p.durationM % 60}p` : p.durationM >= 60 ? '' : ''}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className='sm:col-span-2'>
-                <span className={subLabelCls}>Thời gian bác sĩ phải có mặt (phút)</span>
-                <div className='mt-1 flex flex-wrap items-center gap-2'>
-                  <input
-                    type='text'
-                    inputMode='numeric'
-                    className={cn(inputCls, 'w-24')}
-                    value={p.pillowM == null ? '' : String(p.pillowM)}
-                    placeholder='phút'
-                    onChange={(e) => {
-                      const v = e.target.value.trim()
-                      if (v === '') update(i, { pillowM: null })
-                      else if (/^\d+$/.test(v)) update(i, { pillowM: Number(v) })
-                    }}
-                  />
-                  {[3, 5, 10, 15, 20].map((m) => (
-                    <button
-                      key={m}
-                      type='button'
-                      className={cn(
-                        'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
-                        p.pillowM === m
-                          ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white'
-                          : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
-                      )}
-                      onClick={() => update(i, { pillowM: m })}
-                    >
-                      {m}&apos;
-                    </button>
-                  ))}
-                  {p.durationM != null && p.pillowM != null && p.pillowM > 0 && (
-                    <span className={cn('text-xs', p.pillowM > p.durationM ? 'font-semibold text-rose-600' : 'text-[var(--notika-muted)]')}>
-                      {p.pillowM > p.durationM ? 'Lỗi: > thời lượng ca' : `BS ${Math.round(p.pillowM / p.durationM * 100)}% ca`}
                     </span>
                   )}
                 </div>
