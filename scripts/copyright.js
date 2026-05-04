@@ -1,10 +1,10 @@
 /**
- * Copyright (c) 2025 Mythuatcmc. All rights reserved.
+ * Copyright (c) 2026 TuanPham. All rights reserved.
  *
  * This source code is proprietary and confidential.
  * Unauthorized copying, distribution, or modification of this file,
  * in whole or in part, is strictly prohibited without prior written consent
- * from Mythuatcmc.
+ * from TuanPham.
  */
 
 'use strict'
@@ -12,14 +12,14 @@
 const fs = require('fs')
 const glob = require('glob')
 
-const Mythuatcmc_COPYRIGHT_COMMENT_BLOCK =
+const TUANPHAM_COPYRIGHT_COMMENT_BLOCK =
   `/**
- * Copyright (c) 2025 Mythuatcmc. All rights reserved.
+ * Copyright (c) 2026 TuanPham. All rights reserved.
  *
  * This source code is proprietary and confidential.
  * Unauthorized copying, distribution, or modification of this file,
  * in whole or in part, is strictly prohibited without prior written consent
- * from Mythuatcmc.
+ * from TuanPham.
  */`.trim() + '\n\n'
 
 const files = glob.sync('**/*.{js,ts,tsx,jsx,rs}', {
@@ -67,13 +67,13 @@ function processFile(file) {
     }
   }
 
-  if (source.indexOf(Mythuatcmc_COPYRIGHT_COMMENT_BLOCK) === 0) {
+  if (source.indexOf(TUANPHAM_COPYRIGHT_COMMENT_BLOCK) === 0) {
     return null
   }
   if (/^\/\*\*/.test(source)) {
-    source = source.replace(/\/\*\*[^\/]+\/\s+/, Mythuatcmc_COPYRIGHT_COMMENT_BLOCK)
+    source = source.replace(/\/\*\*[^\/]+\/\s+/, TUANPHAM_COPYRIGHT_COMMENT_BLOCK)
   } else {
-    source = `${Mythuatcmc_COPYRIGHT_COMMENT_BLOCK}${source}`
+    source = `${TUANPHAM_COPYRIGHT_COMMENT_BLOCK}${source}`
   }
 
   if (shebang) {

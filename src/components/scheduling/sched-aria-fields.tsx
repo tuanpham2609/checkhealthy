@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Mythuatcmc. All rights reserved.
+ * Copyright (c) 2026 TuanPham. All rights reserved.
  *
  * TimeField / DateField từ React Aria (Adobe): nhất quán giữa Chrome, Safari, Firefox,
  * hỗ trợ bàn phím & đọc màn hình; không phụ thuộc <input type="time"> native.

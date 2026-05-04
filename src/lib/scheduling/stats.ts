@@ -1,9 +1,35 @@
 /**
- * Copyright (c) 2025 Mythuatcmc. All rights reserved.
+ * Copyright (c) 2026 TuanPham. All rights reserved.
  */
 
 import { inferDayBounds } from '@/lib/scheduling/engine'
 import type { SchedAssignment, SchedMasters, SchedProcedure, UnscheduledItem } from '@/lib/scheduling/types'
+
+/**
+ * Một ca được coi là "đầy đủ" khi mọi tham chiếu của nó (bệnh nhân, thủ thuật,
+ * máy, và toàn bộ mã bác sĩ) đều còn tồn tại trong masters hiện tại.
+ *
+ * Bất kỳ tham chiếu nào bị xoá hoặc do import lại sinh id mới ⇒ ca thành "mồ
+ * côi" và sẽ bị ẩn khỏi mọi giao diện hiển thị.
+ */
+export function isAssignmentComplete(a: SchedAssignment, masters: SchedMasters): boolean {
+  if (!masters.patients.some((p) => p.id === a.patientId)) return false
+  if (!masters.procedures.some((p) => p.id === a.procedureId)) return false
+  if (!masters.machines.some((m) => m.id === a.machineId)) return false
+  const doctorCodes = new Set(masters.doctors.map((d) => d.code.toLowerCase()))
+  for (const c of a.doctorCodes) {
+    if (!doctorCodes.has(c.toLowerCase())) return false
+  }
+  return true
+}
+
+/** Lọc danh sách assignments, chỉ giữ ca còn đầy đủ tham chiếu. */
+export function filterCompleteAssignments(
+  assignments: SchedAssignment[],
+  masters: SchedMasters,
+): SchedAssignment[] {
+  return assignments.filter((a) => isAssignmentComplete(a, masters))
+}
 
 export interface ProcedureStatRow {
   procedureId: string
@@ -76,17 +102,19 @@ export function buildDoctorDaySlices(
   const patientById = new Map(masters.patients.map((p) => [p.id, p]))
   const doctorByCode = new Map(masters.doctors.map((d) => [d.code.toLowerCase(), d]))
   const out: DoctorDaySlice[] = []
-  for (const a of assignments) {
+  // Bỏ qua ca có bất kỳ tham chiếu nào đã bị xoá khỏi masters.
+  for (const a of filterCompleteAssignments(assignments, masters)) {
     const proc = procById.get(a.procedureId)
     const patient = patientById.get(a.patientId)
     for (const code of a.doctorCodes) {
       const doc = doctorByCode.get(code.toLowerCase())
+      if (!doc || !proc || !patient) continue
       out.push({
         doctorCode: code,
-        doctorName: doc?.name ?? code,
+        doctorName: doc.name,
         procedureId: a.procedureId,
-        procedureName: proc?.name ?? a.procedureId,
-        patientName: patient?.name ?? a.patientId,
+        procedureName: proc.name,
+        patientName: patient.name,
         pillowStartM: a.startM,
         pillowEndM: a.pillowEndM,
       })
@@ -108,17 +136,17 @@ export function buildMachineDaySlices(masters: SchedMasters, assignments: SchedA
   const procById = new Map(masters.procedures.map((p) => [p.id, p]))
   const patientById = new Map(masters.patients.map((p) => [p.id, p]))
   const machineById = new Map(masters.machines.map((m) => [m.id, m]))
-  return assignments
+  // Bỏ qua ca có bất kỳ tham chiếu nào đã bị xoá khỏi masters.
+  return filterCompleteAssignments(assignments, masters)
     .map((a) => {
-      const proc = procById.get(a.procedureId)
-      const patient = patientById.get(a.patientId)
-      const machine = machineById.get(a.machineId)
-      const label = machine ? `${machine.typeName} — ${machine.unitName}` : a.machineId
+      const proc = procById.get(a.procedureId)!
+      const patient = patientById.get(a.patientId)!
+      const machine = machineById.get(a.machineId)!
       return {
         machineId: a.machineId,
-        label,
-        patientName: patient?.name ?? a.patientId,
-        procedureName: proc?.name ?? a.procedureId,
+        label: `${machine.typeName} — ${machine.unitName}`,
+        patientName: patient.name,
+        procedureName: proc.name,
         startM: a.startM,
         endM: a.endM,
       }

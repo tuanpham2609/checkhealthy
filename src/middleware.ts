@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Mythuatcmc. All rights reserved.
+ * Copyright (c) 2026 TuanPham. All rights reserved.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -7,7 +7,7 @@ import { jwtVerify } from 'jose'
 
 const AUTH_COOKIE = 'auth_token'
 
-const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout']
+const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout', '/huongdan']
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))

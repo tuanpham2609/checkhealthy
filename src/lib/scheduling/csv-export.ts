@@ -1,9 +1,10 @@
 /**
- * Copyright (c) 2025 Mythuatcmc. All rights reserved.
+ * Copyright (c) 2026 TuanPham. All rights reserved.
  */
 
 import type { SchedAssignment, SchedMasters } from '@/lib/scheduling/types'
 import { minutesToLabel } from '@/lib/scheduling/time'
+import { filterCompleteAssignments } from '@/lib/scheduling/stats'
 
 function escapeCsvCell(value: string): string {
   if (/[",\n\r]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -29,23 +30,27 @@ export function buildAssignmentsCsv(masters: SchedMasters, assignments: SchedAss
   ]
 
   const lines = [headers.map(escapeCsvCell).join(',')]
-  for (const a of [...assignments].sort((x, y) => x.startM - y.startM)) {
-    const patient = patientById.get(a.patientId)
-    const proc = procById.get(a.procedureId)
-    const machine = machineById.get(a.machineId)
+  // Ẩn hoàn toàn ca có tham chiếu (BN/TT/máy/BS) đã bị xoá khỏi masters.
+  const visible = filterCompleteAssignments(assignments, masters)
+  for (const a of [...visible].sort((x, y) => x.startM - y.startM)) {
+    const patient = patientById.get(a.patientId)!
+    const proc = procById.get(a.procedureId)!
+    const machine = machineById.get(a.machineId)!
     const doctorNames = a.doctorCodes
-      .map((c) => doctorByCode.get(c.toLowerCase())?.name ?? c)
+      .map((c) => doctorByCode.get(c.toLowerCase())!.name)
       .join(' + ')
+    const patientName = patient.name.trim() || '(Bệnh nhân chưa đặt tên)'
+    const procName = proc.name.trim() || '(Thủ thuật chưa đặt tên)'
     const row = [
-      patient?.name ?? a.patientId,
-      proc?.name ?? a.procedureId,
+      patientName,
+      procName,
       minutesToLabel(a.startM),
       minutesToLabel(a.pillowEndM),
       minutesToLabel(a.endM),
       a.doctorCodes.join(','),
       doctorNames,
-      machine?.typeName ?? '',
-      machine?.unitName ?? '',
+      machine.typeName,
+      machine.unitName,
     ].map((v) => escapeCsvCell(String(v)))
     lines.push(row.join(','))
   }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Mythuatcmc. All rights reserved.
+ * Copyright (c) 2026 TuanPham. All rights reserved.
  */
 
 'use client'
@@ -29,6 +29,7 @@ import {
   buildMachineDaySlices,
   buildProcedureStats,
   estimateExtraSlots,
+  isAssignmentComplete,
 } from '@/lib/scheduling/stats'
 import { inferDayBounds } from '@/lib/scheduling/engine'
 import { validateMastersForSchedule } from '@/lib/scheduling/validate-masters'
@@ -39,6 +40,7 @@ import { useScheduling } from '@/hooks/use-scheduling'
 import { useHolidays } from '@/hooks/use-holidays'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { APP_DOCUMENT_TITLE } from '@/constants/app-document.constants'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { AppLogo, AppLogoTile } from '@/components/app-logo'
@@ -71,6 +73,36 @@ const tableCell = 'px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3'
 function newId(): string {
   return crypto.randomUUID()
 }
+
+/**
+ * Đối chiếu id bệnh nhân với danh sách masters.
+ * - Nếu tìm thấy: trả về tên (hoặc nhãn dự phòng nếu chưa đặt tên).
+ * - Nếu KHÔNG tìm thấy: bệnh nhân đã bị xoá / re-import sinh id mới ⇒
+ *   trả về nhãn "(Bệnh nhân đã bị xoá)" và đánh dấu missing để UI tô màu cảnh báo.
+ *   KHÔNG bao giờ trả về UUID thô để hiển thị cho người dùng cuối.
+ */
+function resolvePatientLabel(
+  id: string,
+  byId: Map<string, SchedPatient>,
+): { name: string; missing: boolean } {
+  const p = byId.get(id)
+  if (!p) return { name: '(Bệnh nhân đã bị xoá)', missing: true }
+  const trimmed = p.name.trim()
+  return { name: trimmed || '(Bệnh nhân chưa đặt tên)', missing: false }
+}
+
+/** Tương tự resolvePatientLabel nhưng cho thủ thuật. */
+function resolveProcedureLabel(
+  id: string,
+  byId: Map<string, SchedProcedure>,
+): { name: string; missing: boolean } {
+  const p = byId.get(id)
+  if (!p) return { name: '(Thủ thuật đã bị xoá)', missing: true }
+  const trimmed = p.name.trim()
+  return { name: trimmed || '(Thủ thuật chưa đặt tên)', missing: false }
+}
+
+const missingRefCls = 'italic text-amber-600 dark:text-amber-400'
 
 function StickySaveBar({ onSave, saving }: { onSave: () => void | Promise<void>; saving: boolean }) {
   return (
@@ -453,6 +485,27 @@ export function SchedulingApp() {
               {label}
             </button>
           ))}
+
+          <div className='my-2 border-t border-[var(--notika-border)]' aria-hidden='true' />
+
+          <Link
+            href='/huongdan'
+            target='_blank'
+            rel='noopener noreferrer'
+            onClick={() => setSidebarOpen(false)}
+            className='flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--notika-muted)] transition-colors hover:bg-[var(--notika-sidebar-hover)] hover:text-[var(--notika-green)]'
+          >
+            <span className='inline-flex items-center gap-2'>
+              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' aria-hidden='true'>
+                <path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13Z' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' />
+                <path d='M4 19.5V20a1 1 0 0 0 1 1h15' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' />
+              </svg>
+              Hướng dẫn sử dụng
+            </span>
+            <svg width='12' height='12' viewBox='0 0 24 24' fill='none' aria-hidden='true'>
+              <path d='M14 5h5v5M19 5l-9 9M10 5H5v14h14v-5' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' />
+            </svg>
+          </Link>
         </nav>
       </aside>
 
@@ -492,6 +545,19 @@ export function SchedulingApp() {
               <button type='button' className={cn(btnPrimary, 'min-h-11 w-full sm:w-auto')} onClick={() => void handleCreate()}>
                 Tạo mới
               </button>
+              <Link
+                href='/huongdan'
+                target='_blank'
+                rel='noopener noreferrer'
+                title='Mở hướng dẫn sử dụng'
+                className='inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] px-3 py-2 text-xs font-semibold text-[var(--notika-green)] shadow-sm transition-colors hover:border-[var(--notika-green)]/40 hover:bg-[var(--notika-green-soft)] sm:w-auto'
+              >
+                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' aria-hidden='true'>
+                  <path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13Z' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' />
+                  <path d='M4 19.5V20a1 1 0 0 0 1 1h15' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' />
+                </svg>
+                Hướng dẫn
+              </Link>
               <button
                 type='button'
                 onClick={() => void handleLogout()}
@@ -537,6 +603,18 @@ export function SchedulingApp() {
                   {label}
                 </button>
               ))}
+              <Link
+                href='/huongdan'
+                target='_blank'
+                rel='noopener noreferrer'
+                className={cn(tabBtn, 'ml-auto inline-flex items-center gap-1.5 text-[var(--notika-green)] hover:text-[var(--notika-green-hover)]')}
+              >
+                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' aria-hidden='true'>
+                  <path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13Z' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' />
+                  <path d='M4 19.5V20a1 1 0 0 0 1 1h15' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' />
+                </svg>
+                Hướng dẫn
+              </Link>
             </div>
 
             {mainTab === 'overview' ? (
@@ -956,23 +1034,25 @@ export function SchedulingApp() {
                   <ProcedureTimer
                     assignments={payload.assignments
                       .slice()
+                      // Ẩn hoàn toàn ca có tham chiếu (BN/TT/máy/BS) đã bị xoá.
+                      .filter((a) => isAssignmentComplete(a, payload.masters))
                       .sort((a, b) => a.startM - b.startM)
                       .map((a) => {
-                        const proc = payload.masters.procedures.find((p) => p.id === a.procedureId)
-                        const pat = payload.masters.patients.find((p) => p.id === a.patientId)
-                        const machine = payload.masters.machines.find((m) => m.id === a.machineId)
+                        const proc = payload.masters.procedures.find((p) => p.id === a.procedureId)!
+                        const pat = payload.masters.patients.find((p) => p.id === a.patientId)!
+                        const machine = payload.masters.machines.find((m) => m.id === a.machineId)!
                         const docNames = a.doctorCodes
-                          .map((c) => payload.masters.doctors.find((d) => d.code.toLowerCase() === c.toLowerCase())?.name ?? c)
+                          .map((c) => payload.masters.doctors.find((d) => d.code.toLowerCase() === c.toLowerCase())!.name)
                           .join(', ')
                         return {
                           id: a.id,
-                          patientName: pat?.name ?? a.patientId,
-                          procedureName: proc?.name ?? a.procedureId,
-                          durationM: proc?.durationM ?? (a.endM - a.startM),
+                          patientName: pat.name.trim() || '(Bệnh nhân chưa đặt tên)',
+                          procedureName: proc.name.trim() || '(Thủ thuật chưa đặt tên)',
+                          durationM: proc.durationM ?? (a.endM - a.startM),
                           startM: a.startM,
                           endM: a.endM,
                           doctorNames: docNames,
-                          machineLabel: machine ? `${machine.typeName} - ${machine.unitName}` : a.machineId,
+                          machineLabel: `${machine.typeName} - ${machine.unitName}`,
                         }
                       })}
                   />
@@ -1922,6 +2002,13 @@ function ResultsTable({
   const patientById = useMemo(() => new Map(payload.masters.patients.map((p) => [p.id, p])), [payload.masters.patients])
   const machineById = useMemo(() => new Map(payload.masters.machines.map((m) => [m.id, m])), [payload.masters.machines])
 
+  // Lọc các ca mồ côi: bất kỳ tham chiếu nào (bệnh nhân, thủ thuật, máy, bác sĩ)
+  // bị xoá khỏi masters ⇒ ẩn ca khỏi giao diện hoàn toàn.
+  const visibleAssignments = useMemo(
+    () => payload.assignments.filter((a) => isAssignmentComplete(a, payload.masters)),
+    [payload.assignments, payload.masters],
+  )
+
   return (
     <div className={tableWrapCls}>
       <table className='min-w-full text-left text-sm'>
@@ -1938,15 +2025,18 @@ function ResultsTable({
           </tr>
         </thead>
         <tbody>
-          {[...payload.assignments]
+          {[...visibleAssignments]
             .sort((a, b) => a.startM - b.startM)
-            .map((a) => (
+            .map((a) => {
+              const patientLabel = resolvePatientLabel(a.patientId, patientById)
+              const procLabel = resolveProcedureLabel(a.procedureId, procById)
+              return (
               <tr key={a.id} className='border-b border-border/65 dark:border-border/35'>
-                <td className={tableCell}>{patientById.get(a.patientId)?.name ?? a.patientId}</td>
-                <td className={tableCell}>{procById.get(a.procedureId)?.name ?? a.procedureId}</td>
+                <td className={cn(tableCell, patientLabel.missing && missingRefCls)}>{patientLabel.name}</td>
+                <td className={cn(tableCell, procLabel.missing && missingRefCls)}>{procLabel.name}</td>
                 <td className={tableCell}>
                   <SchedTimeField
-                    ariaLabel={`Giờ bắt đầu ca — ${patientById.get(a.patientId)?.name ?? a.patientId}`}
+                    ariaLabel={`Giờ bắt đầu ca — ${patientLabel.name}`}
                     value={a.startM}
                     onChange={(m) => {
                       if (m === null) return
@@ -2056,8 +2146,9 @@ function ResultsTable({
                   </div>
                 </td>
               </tr>
-            ))}
-          {payload.assignments.length === 0 ? (
+              )
+            })}
+          {visibleAssignments.length === 0 ? (
             <tr>
               <td colSpan={8} className={cn(tableCell, 'py-8 text-center text-sm text-zinc-500 sm:py-10')}>
                 Chưa có ca nào. Hãy bấm xếp lịch ở phần trên.
@@ -2079,6 +2170,10 @@ function UnsortedTable({
 }) {
   const procById = new Map(payload.masters.procedures.map((p) => [p.id, p]))
   const patientById = new Map(payload.masters.patients.map((p) => [p.id, p]))
+  // Bỏ qua các bản ghi chưa-xếp tham chiếu tới bệnh nhân/thủ thuật đã bị xoá.
+  const visibleUnscheduled = unscheduled.filter(
+    (u) => patientById.has(u.patientId) && procById.has(u.procedureId),
+  )
   return (
     <div className={tableWrapCls}>
       <table className='min-w-full text-left text-sm'>
@@ -2090,14 +2185,18 @@ function UnsortedTable({
           </tr>
         </thead>
         <tbody>
-          {unscheduled.map((u, i) => (
+          {visibleUnscheduled.map((u, i) => {
+            const patientLabel = resolvePatientLabel(u.patientId, patientById)
+            const procLabel = resolveProcedureLabel(u.procedureId, procById)
+            return (
             <tr key={`${u.patientId}-${u.procedureId}-${i}`} className='border-b border-border/65 dark:border-border/35'>
-              <td className={tableCell}>{patientById.get(u.patientId)?.name ?? u.patientId}</td>
-              <td className={tableCell}>{procById.get(u.procedureId)?.name ?? u.procedureId}</td>
+              <td className={cn(tableCell, patientLabel.missing && missingRefCls)}>{patientLabel.name}</td>
+              <td className={cn(tableCell, procLabel.missing && missingRefCls)}>{procLabel.name}</td>
               <td className={cn(tableCell, 'text-zinc-600 dark:text-zinc-400')}>{u.reason}</td>
             </tr>
-          ))}
-          {unscheduled.length === 0 ? (
+            )
+          })}
+          {visibleUnscheduled.length === 0 ? (
             <tr>
               <td colSpan={3} className={cn(tableCell, 'py-8 text-center text-sm text-zinc-500 sm:py-10')}>
                 Không có ca chưa xếp.

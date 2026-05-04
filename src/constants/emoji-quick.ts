@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Mythuatcmc. All rights reserved.
+ * Copyright (c) 2026 TuanPham. All rights reserved.
  */
 
 /** Emoji thường dùng — chèn vào textarea (không cần thư viện nặng) */

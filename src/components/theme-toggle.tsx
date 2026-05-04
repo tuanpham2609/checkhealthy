@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Mythuatcmc. All rights reserved.
+ * Copyright (c) 2026 TuanPham. All rights reserved.
  */
 
 'use client'
@@ -20,7 +20,11 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
     setMounted(true)
   }, [])
 
-  const isDark = resolvedTheme === 'dark'
+  // Tren server resolvedTheme = undefined => tranh dung isDark khi chua mounted
+  // de khong gay hydration mismatch (title / aria-label doi giua server & client).
+  const isDark = mounted && resolvedTheme === 'dark'
+  const title = !mounted ? 'Đổi giao diện' : isDark ? 'Chế độ sáng' : 'Chế độ tối'
+  const ariaLabel = !mounted ? 'Đổi giao diện' : isDark ? 'Bật chế độ sáng' : 'Bật chế độ tối'
 
   return (
     <button
@@ -32,8 +36,9 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--notika-green)]/30',
         className,
       )}
-      title={isDark ? 'Chế độ sáng' : 'Chế độ tối'}
-      aria-label={isDark ? 'Bật chế độ sáng' : 'Bật chế độ tối'}
+      suppressHydrationWarning
+      title={title}
+      aria-label={ariaLabel}
     >
       {!mounted ? (
         <span className='size-[18px]' aria-hidden />
