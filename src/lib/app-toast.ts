@@ -17,7 +17,7 @@ export type AppToastOptions = Omit<ExternalToast, 'id'> & { id?: string }
 
 /**
  * Toast thống nhất cho app — bọc Sonner với mặc định thời lượng / ưu tiên.
- */
+ */ 
 export const appToast = {
   success(message: string, options?: AppToastOptions) {
     return sonnerToast.success(message, { ...base, ...options })
