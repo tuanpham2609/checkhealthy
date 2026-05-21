@@ -174,6 +174,14 @@ function normalizePatient(raw: unknown): SchedPatient {
     typeof o.examEndDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.examEndDate) ? o.examEndDate : null
   const dischargeDate =
     typeof o.dischargeDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.dischargeDate) ? o.dischargeDate : null
+  const pickStringMap = (raw: unknown): Record<string, string> | undefined => {
+    if (!raw || typeof raw !== 'object') return undefined
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof v === 'string') out[k] = v
+    }
+    return Object.keys(out).length > 0 ? out : undefined
+  }
   return {
     id: String(o.id ?? ''),
     name: typeof o.name === 'string' ? o.name : '',
@@ -187,6 +195,8 @@ function normalizePatient(raw: unknown): SchedPatient {
     examEndDate,
     dischargeM: numOrNull(o.dischargeM),
     dischargeDate,
+    doctorOverrides: pickStringMap(o.doctorOverrides),
+    technicianOverrides: pickStringMap(o.technicianOverrides),
   }
 }
 

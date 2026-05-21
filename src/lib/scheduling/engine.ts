@@ -97,7 +97,10 @@ function splitSubstitutes(raw: string): string[] {
 
 function* doctorCodeAttempts(mainCodes: string, substituteCodes: string): Generator<string[]> {
   const mains = splitCommaCodes(mainCodes)
-  if (mains.length === 0) return
+  if (mains.length === 0) {
+    yield []
+    return
+  }
   const subs = splitSubstitutes(substituteCodes)
   yield mains
   if (subs.length === 0) return
@@ -231,18 +234,24 @@ function collectPillowSegsForDoctor(doctorCode: string, assignments: SchedAssign
 export function inferDayBounds(masters: SchedMasters): { dayStart: number; dayEnd: number } {
   let lo = 24 * 60
   let hi = 0
-  for (const d of masters.doctors) {
-    const am = { startM: d.amStartM, endM: d.amEndM }
-    const pm = { startM: d.pmStartM, endM: d.pmEndM }
-    if (!isEmptyWindow(am) && d.amStartM !== null && d.amEndM !== null) {
-      lo = Math.min(lo, d.amStartM)
-      hi = Math.max(hi, d.amEndM)
-    }
-    if (!isEmptyWindow(pm) && d.pmStartM !== null && d.pmEndM !== null) {
-      lo = Math.min(lo, d.pmStartM)
-      hi = Math.max(hi, d.pmEndM)
+  const collectFrom = (
+    items: { amStartM: number | null; amEndM: number | null; pmStartM: number | null; pmEndM: number | null }[],
+  ) => {
+    for (const x of items) {
+      const am = { startM: x.amStartM, endM: x.amEndM }
+      const pm = { startM: x.pmStartM, endM: x.pmEndM }
+      if (!isEmptyWindow(am) && x.amStartM !== null && x.amEndM !== null) {
+        lo = Math.min(lo, x.amStartM)
+        hi = Math.max(hi, x.amEndM)
+      }
+      if (!isEmptyWindow(pm) && x.pmStartM !== null && x.pmEndM !== null) {
+        lo = Math.min(lo, x.pmStartM)
+        hi = Math.max(hi, x.pmEndM)
+      }
     }
   }
+  collectFrom(masters.doctors)
+  if (lo >= hi) collectFrom(masters.technicians ?? [])
   if (lo >= hi) {
     return { dayStart: 7 * 60, dayEnd: 18 * 60 }
   }
@@ -350,21 +359,23 @@ function tryPlace(
     }
   }
 
-  const doctors = masters.doctors
-  for (const code of doctorCodes) {
-    const doc = doctorByCode(doctors, code)
-    if (!doc) return null
-    const docHours = getDoctorEffectiveHours(doc, schedulingDate)
-    if (docHours.isOff) return null
-    if (!intervalInsideDoctorShift(startM, pillowEnd, docHours.amStartM, docHours.amEndM, docHours.pmStartM, docHours.pmEndM)) return null
-    const segs = collectPillowSegsForDoctor(code, assignments)
-    if (!pillowGapOk(segs, procedure.id, startM, pillowEnd, settings)) return null
-    for (const b of doc.busy) {
-      if (windowOverlapsInterval(b, startM, pillowEnd)) return null
-    }
-    for (const a of assignments) {
-      if (!a.doctorCodes.map((c) => c.toLowerCase()).includes(code.toLowerCase())) continue
-      if (intervalsOverlap(startM, pillowEnd, a.startM, a.pillowEndM)) return null
+  if (doctorCodes.length > 0) {
+    const doctors = masters.doctors
+    for (const code of doctorCodes) {
+      const doc = doctorByCode(doctors, code)
+      if (!doc) return null
+      const docHours = getDoctorEffectiveHours(doc, schedulingDate)
+      if (docHours.isOff) return null
+      if (!intervalInsideDoctorShift(startM, pillowEnd, docHours.amStartM, docHours.amEndM, docHours.pmStartM, docHours.pmEndM)) return null
+      const segs = collectPillowSegsForDoctor(code, assignments)
+      if (!pillowGapOk(segs, procedure.id, startM, pillowEnd, settings)) return null
+      for (const b of doc.busy) {
+        if (windowOverlapsInterval(b, startM, pillowEnd)) return null
+      }
+      for (const a of assignments) {
+        if (!a.doctorCodes.map((c) => c.toLowerCase()).includes(code.toLowerCase())) continue
+        if (intervalsOverlap(startM, pillowEnd, a.startM, a.pillowEndM)) return null
+      }
     }
   }
 
@@ -428,6 +439,217 @@ function tryPlace(
   }
 }
 
+function diagnoseFailure(
+  masters: SchedMasters,
+  procedure: SchedProcedure,
+  patient: SchedPatient,
+  assignments: SchedAssignment[],
+  machineExtras: Map<string, { startM: number; endM: number }[]>,
+  schedulingDate: string | null,
+): string {
+  const duration = procedure.durationM ?? 0
+  const pillow = Math.max(0, procedure.pillowM ?? 0)
+  const { dayStart, dayEnd } = inferDayBounds(masters)
+  const admission = patient.admissionM ?? 0
+  let startFrom = Math.max(dayStart, admission)
+  let endLimit = dayEnd
+  if (schedulingDate) {
+    const examEndDate = resolveExamEndDate(patient)
+    if (examEndDate === schedulingDate && typeof patient.examEndM === 'number' && patient.examEndM > 0) {
+      startFrom = Math.max(startFrom, patient.examEndM)
+    }
+    const dischargeDate = resolveDischargeDate(patient)
+    if (dischargeDate === schedulingDate && typeof patient.dischargeM === 'number' && patient.dischargeM > 0) {
+      endLimit = Math.min(endLimit, patient.dischargeM)
+    }
+  }
+  if (endLimit - startFrom < duration) {
+    const winLen = Math.max(0, endLimit - startFrom)
+    return `Khung giờ khả dụng quá ngắn (${winLen}' < ${duration}'). Mở "Liệu trình điều trị" của BN và xoá mốc giờ vào/ra viện.`
+  }
+
+  const docCodes = splitCommaCodes(procedure.mainCodes)
+  const subCodes = splitSubstitutes(procedure.substituteCodes)
+  const allDocCodes = [...new Set([...docCodes, ...subCodes].map((c) => c.toLowerCase()))]
+  if (allDocCodes.length > 0) {
+    const missingDocs = allDocCodes.filter((c) => !masters.doctors.some((d) => d.code.toLowerCase() === c))
+    if (missingDocs.length === allDocCodes.length) {
+      return `Mã BS không tồn tại: ${missingDocs.join(', ')}. Kiểm tra danh sách bác sĩ.`
+    }
+  }
+
+  const machinesOfType = masters.machines.filter((m) => m.typeName.trim() === procedure.machineType.trim())
+  if (machinesOfType.length === 0) {
+    return `Không có máy loại "${procedure.machineType}". Thêm ở tab "Máy" hoặc đổi loại máy của thủ thuật.`
+  }
+
+  const techCodes = splitCommaCodes(procedure.technicianCodes ?? '')
+  if (techCodes.length > 0) {
+    const missing = techCodes.filter((c) => !(masters.technicians ?? []).some((t) => t.code.toLowerCase() === c.toLowerCase()))
+    if (missing.length === techCodes.length) {
+      return `Mã KTV không tồn tại: ${missing.join(', ')}. Kiểm tra danh sách KTV.`
+    }
+  }
+
+  let totalSlots = 0
+  let patientBusyMin = 0
+  let patientOtherProcMin = 0
+  let examNotEndedMin = 0
+  let afterDischargeMin = 0
+  let machineFullMin = 0
+  const docBusyMin = new Map<string, number>()
+  const docOffMin = new Map<string, number>()
+  const techBusyMin = new Map<string, number>()
+  const techOffMin = new Map<string, number>()
+
+  const examEndDate = schedulingDate ? resolveExamEndDate(patient) : null
+  const dischargeDate = schedulingDate ? resolveDischargeDate(patient) : null
+
+  for (let t = startFrom; t <= endLimit - duration; t += 1) {
+    totalSlots += 1
+    const pillowEnd = t + pillow
+    const endM = t + duration
+
+    if (
+      examEndDate &&
+      examEndDate === schedulingDate &&
+      typeof patient.examEndM === 'number' &&
+      patient.examEndM > 0 &&
+      t < patient.examEndM
+    ) {
+      examNotEndedMin += 1
+      continue
+    }
+    if (
+      dischargeDate &&
+      dischargeDate === schedulingDate &&
+      typeof patient.dischargeM === 'number' &&
+      patient.dischargeM > 0 &&
+      endM > patient.dischargeM
+    ) {
+      afterDischargeMin += 1
+      continue
+    }
+
+    let bnBlocked = false
+    if (hasPatientConflict(patient, t, endM)) {
+      patientBusyMin += 1
+      bnBlocked = true
+    }
+    if (!bnBlocked) {
+      for (const a of assignments) {
+        if (a.patientId === patient.id && intervalsOverlap(t, endM, a.startM, a.endM)) {
+          patientOtherProcMin += 1
+          bnBlocked = true
+          break
+        }
+      }
+    }
+
+    let docBlocked = false
+    if (docCodes.length > 0) {
+      for (const code of docCodes) {
+        const doc = doctorByCode(masters.doctors, code)
+        if (!doc) continue
+        const h = getDoctorEffectiveHours(doc, schedulingDate)
+        if (h.isOff || !intervalInsideDoctorShift(t, pillowEnd, h.amStartM, h.amEndM, h.pmStartM, h.pmEndM)) {
+          docOffMin.set(code, (docOffMin.get(code) ?? 0) + 1)
+          docBlocked = true
+          continue
+        }
+        let busy = false
+        for (const b of doc.busy) {
+          if (windowOverlapsInterval(b, t, pillowEnd)) { busy = true; break }
+        }
+        if (!busy) {
+          for (const a of assignments) {
+            if (!a.doctorCodes.map((c) => c.toLowerCase()).includes(code.toLowerCase())) continue
+            if (intervalsOverlap(t, pillowEnd, a.startM, a.pillowEndM)) { busy = true; break }
+          }
+        }
+        if (busy) {
+          docBusyMin.set(code, (docBusyMin.get(code) ?? 0) + 1)
+          docBlocked = true
+        }
+      }
+    }
+
+    let techBlocked = false
+    if (techCodes.length > 0) {
+      let anyFree = false
+      const localBlocks = new Map<string, 'off' | 'busy'>()
+      for (const code of techCodes) {
+        const tech = technicianByCode(masters.technicians ?? [], code)
+        if (!tech) { localBlocks.set(code, 'off'); continue }
+        const h = getTechnicianEffectiveHours(tech, schedulingDate)
+        if (h.isOff || !intervalInsideDoctorShift(t, endM, h.amStartM, h.amEndM, h.pmStartM, h.pmEndM)) {
+          localBlocks.set(code, 'off'); continue
+        }
+        let busy = false
+        for (const b of tech.busy) {
+          if (windowOverlapsInterval(b, t, endM)) { busy = true; break }
+        }
+        if (!busy) {
+          for (const a of assignments) {
+            if (!(a.technicianCodes ?? []).map((c) => c.toLowerCase()).includes(code.toLowerCase())) continue
+            if (intervalsOverlap(t, endM, a.startM, a.endM)) { busy = true; break }
+          }
+        }
+        if (busy) { localBlocks.set(code, 'busy'); continue }
+        anyFree = true
+        break
+      }
+      if (!anyFree) {
+        techBlocked = true
+        for (const [c, kind] of localBlocks) {
+          if (kind === 'off') techOffMin.set(c, (techOffMin.get(c) ?? 0) + 1)
+          else techBusyMin.set(c, (techBusyMin.get(c) ?? 0) + 1)
+        }
+      }
+    }
+
+    let machineBlocked = false
+    if (!pickMachine(masters.machines, procedure.machineType, t, endM, machineExtras)) {
+      machineFullMin += 1
+      machineBlocked = true
+    }
+
+    void bnBlocked; void docBlocked; void techBlocked; void machineBlocked
+  }
+
+  const fmtTopK = (m: Map<string, number>, k = 3): string =>
+    [...m.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, k)
+      .map(([c, n]) => `${c.toUpperCase()} (${n}')`)
+      .join(', ')
+
+  const parts: string[] = []
+  if (patientOtherProcMin > 0) parts.push(`BN đã có ca khác chiếm ${patientOtherProcMin}'`)
+  if (patientBusyMin > 0) parts.push(`BN bận lịch ngoài ${patientBusyMin}'`)
+  if (examNotEndedMin > 0) parts.push(`chưa qua giờ khám ${examNotEndedMin}'`)
+  if (afterDischargeMin > 0) parts.push(`vượt giờ ra viện ${afterDischargeMin}'`)
+  if (machineFullMin > 0) parts.push(`máy "${procedure.machineType}" đầy ${machineFullMin}'`)
+  if (docBusyMin.size > 0) parts.push(`BS bận: ${fmtTopK(docBusyMin)}`)
+  if (docOffMin.size > 0) parts.push(`BS ngoài ca: ${fmtTopK(docOffMin, 2)}`)
+  if (techBusyMin.size > 0) parts.push(`KTV bận: ${fmtTopK(techBusyMin)}`)
+  if (techOffMin.size > 0) parts.push(`KTV ngoài ca: ${fmtTopK(techOffMin, 2)}`)
+
+  if (parts.length === 0) {
+    return `Đã thử ${totalSlots} khung giờ nhưng không nhét được. Kiểm tra liệu trình / mốc khám / ngày ra viện của BN.`
+  }
+
+  const tip: string[] = []
+  if (machineFullMin > 0) tip.push(`thêm máy "${procedure.machineType}"`)
+  if (docBusyMin.size > 0) tip.push(`giảm BS có mặt (pillowM) ở tab Thủ thuật, hoặc thêm BS phụ`)
+  if (techBusyMin.size > 0) tip.push(`thêm KTV hoặc tăng giờ KTV`)
+  if (patientOtherProcMin > 0) tip.push(`tách thủ thuật BN này sang ngày khác`)
+  if (docOffMin.size > 0 || techOffMin.size > 0) tip.push(`cài giờ làm sáng+chiều cho BS/KTV`)
+  const tipMsg = tip.length > 0 ? ` → Cách fix: ${tip.join('; ')}.` : ''
+
+  return `Đã thử ${totalSlots} khung giờ — kẹt do: ${parts.join('; ')}.${tipMsg}`
+}
+
 function findSlot(
   masters: SchedMasters,
   procedure: SchedProcedure,
@@ -480,6 +702,36 @@ function findSlot(
   return null
 }
 
+function assignmentMatchesOverride(
+  a: SchedAssignment,
+  patient: SchedPatient | undefined,
+  procedure: SchedProcedure | undefined,
+): boolean {
+  if (!patient || !procedure) return false
+  const overrideMainRaw = patient.doctorOverrides?.[a.procedureId]
+  const overrideTechRaw = patient.technicianOverrides?.[a.procedureId]
+  const hasMain = typeof overrideMainRaw === 'string'
+  const hasTech = typeof overrideTechRaw === 'string'
+
+  const expectedMain = (hasMain ? overrideMainRaw! : procedure.mainCodes)
+    .split(',').map((s) => s.trim()).filter(Boolean)
+  const actualMain = a.doctorCodes.map((s) => s.trim()).filter(Boolean)
+  if (expectedMain.length !== actualMain.length) return false
+  const expectedMainSet = new Set(expectedMain.map((c) => c.toLowerCase()))
+  for (const c of actualMain) if (!expectedMainSet.has(c.toLowerCase())) return false
+
+  const expectedTechs = (hasTech ? overrideTechRaw! : (procedure.technicianCodes ?? ''))
+    .split(',').map((s) => s.trim()).filter(Boolean).map((c) => c.toLowerCase())
+  const actualTechs = (a.technicianCodes ?? []).map((c) => c.toLowerCase())
+  if (expectedTechs.length === 0) {
+    if (actualTechs.length > 0) return false
+  } else {
+    if (actualTechs.length === 0) return false
+    if (!actualTechs.every((c) => expectedTechs.includes(c))) return false
+  }
+  return true
+}
+
 export function runSchedule(
   masters: SchedMasters,
   settings: SchedSettings,
@@ -488,10 +740,19 @@ export function runSchedule(
   schedulingDate: string | null = null,
 ): { assignments: SchedAssignment[]; unscheduled: UnscheduledItem[] } {
   const proceduresById = new Map(masters.procedures.map((p) => [p.id, p]))
+  const patientsById = new Map(masters.patients.map((p) => [p.id, p]))
 
   let assignments: SchedAssignment[] =
     mode === 'preserve'
-      ? existing.map((a) => ({ ...a, locked: true }))
+      ? existing
+          .filter((a) =>
+            assignmentMatchesOverride(
+              a,
+              patientsById.get(a.patientId),
+              proceduresById.get(a.procedureId),
+            ),
+          )
+          .map((a) => ({ ...a, locked: true }))
       : []
 
   const machineExtras = new Map<string, { startM: number; endM: number }[]>()
@@ -535,7 +796,18 @@ export function runSchedule(
     const key = `${job.patient.id}:${job.procedure.id}`
     if (scheduledKeys.has(key)) continue
 
-    const proc = job.procedure
+    const overrideMainRaw = job.patient.doctorOverrides?.[job.procedure.id]
+    const overrideTechRaw = job.patient.technicianOverrides?.[job.procedure.id]
+    const hasMainOv = typeof overrideMainRaw === 'string'
+    const hasTechOv = typeof overrideTechRaw === 'string'
+    let proc: SchedProcedure = job.procedure
+    if (hasMainOv || hasTechOv) {
+      proc = {
+        ...job.procedure,
+        ...(hasMainOv ? { mainCodes: overrideMainRaw!.trim(), substituteCodes: '' } : {}),
+        ...(hasTechOv ? { technicianCodes: overrideTechRaw!.trim() } : {}),
+      }
+    }
     if (proc.durationM === null || proc.durationM <= 0) {
       unscheduled.push({
         patientId: job.patient.id,
@@ -552,11 +824,11 @@ export function runSchedule(
       })
       continue
     }
-    if (!proc.mainCodes.trim()) {
+    if (!proc.mainCodes.trim() && !(proc.technicianCodes ?? '').trim()) {
       unscheduled.push({
         patientId: job.patient.id,
         procedureId: job.procedure.id,
-        reason: 'Thiếu mã bác sĩ chính',
+        reason: 'Thủ thuật cần ít nhất bác sĩ hoặc KTV',
       })
       continue
     }
@@ -592,7 +864,7 @@ export function runSchedule(
 
     const next = findSlot(
       masters,
-      job.procedure,
+      proc,
       job.patient,
       assignments,
       machineExtras,
@@ -604,7 +876,7 @@ export function runSchedule(
       unscheduled.push({
         patientId: job.patient.id,
         procedureId: job.procedure.id,
-        reason: 'Không tìm được khung giờ thỏa bác sĩ / KTV / máy / lịch bận / giờ làm việc',
+        reason: diagnoseFailure(masters, proc, job.patient, assignments, machineExtras, schedulingDate),
       })
       continue
     }

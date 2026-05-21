@@ -31,7 +31,7 @@ import {
   estimateExtraSlots,
   isAssignmentComplete,
 } from '@/lib/scheduling/stats'
-import { inferDayBounds } from '@/lib/scheduling/engine'
+import { inferDayBounds, getDoctorEffectiveHours, getTechnicianEffectiveHours } from '@/lib/scheduling/engine'
 import { validateMastersForSchedule } from '@/lib/scheduling/validate-masters'
 import { appToast } from '@/lib/app-toast'
 import { cn } from '@/lib/styles'
@@ -830,6 +830,13 @@ export function SchedulingApp() {
                     setPayload({ ...payload, masters: { ...payload.masters, doctors, technicians } })
                   }
                 />
+                <StaffAssignmentsPanel
+                  kind='doctor'
+                  staff={payload.masters.doctors}
+                  patients={payload.masters.patients}
+                  procedures={payload.masters.procedures}
+                  onChange={(patients) => setPayload({ ...payload, masters: { ...payload.masters, patients } })}
+                />
                 <DoctorsScheduleEditor
                   doctors={payload.masters.doctors}
                   onChange={(doctors) => setPayload({ ...payload, masters: { ...payload.masters, doctors } })}
@@ -849,6 +856,13 @@ export function SchedulingApp() {
                   onApply={({ doctors, technicians }) =>
                     setPayload({ ...payload, masters: { ...payload.masters, doctors, technicians } })
                   }
+                />
+                <StaffAssignmentsPanel
+                  kind='technician'
+                  staff={payload.masters.technicians ?? []}
+                  patients={payload.masters.patients}
+                  procedures={payload.masters.procedures}
+                  onChange={(patients) => setPayload({ ...payload, masters: { ...payload.masters, patients } })}
                 />
                 <TechniciansEditor
                   technicians={payload.masters.technicians ?? []}
@@ -980,6 +994,9 @@ export function SchedulingApp() {
               <PatientsEditor
                 patients={payload.masters.patients}
                 procedures={payload.masters.procedures}
+                doctors={payload.masters.doctors}
+                technicians={payload.masters.technicians}
+                schedulingDate={payload.schedulingDate}
                 onChange={(patients) => setPayload({ ...payload, masters: { ...payload.masters, patients } })}
                 onSaveContext={handleSave}
                 saving={busy}
@@ -1024,11 +1041,18 @@ export function SchedulingApp() {
                 )}
 
                 {outputTab === 'results' ? (
-                  <ResultsTable
-                    payload={payload}
-                    onPatchPayload={(fn) => setPayload((p) => (p ? fn(p) : p))}
-                    onUpdateAssignments={(next) => void persistAssignments(next)}
-                  />
+                  <>
+                    <StaleAssignmentsBanner
+                      payload={payload}
+                      onRun={() => void handleRun('full')}
+                      busy={busy}
+                    />
+                    <ResultsTable
+                      payload={payload}
+                      onPatchPayload={(fn) => setPayload((p) => (p ? fn(p) : p))}
+                      onUpdateAssignments={(next) => void persistAssignments(next)}
+                    />
+                  </>
                 ) : null}
                 {outputTab === 'timer' ? (
                   <ProcedureTimer
@@ -1341,8 +1365,7 @@ function ProceduresEditor({
       procedures.map((p, idx) => {
         if (idx !== i) return p
         const next = { ...p, ...patch }
-        // Truong "TG BS co mat" bi an -> auto mirror pillowM = durationM.
-        if ('durationM' in patch) {
+        if ('durationM' in patch && next.pillowM != null && next.durationM != null && next.pillowM > next.durationM) {
           next.pillowM = next.durationM
         }
         return next
@@ -1356,7 +1379,7 @@ function ProceduresEditor({
         id: newId(),
         name: '',
         durationM: null,
-        pillowM: null,
+        pillowM: 3,
         mainCodes: '',
         substituteCodes: '',
         machineType: '',
@@ -1370,13 +1393,16 @@ function ProceduresEditor({
     <section className={cn(panelCls, 'space-y-6')}>
       <div className='flex flex-col gap-4 border-b border-[var(--notika-border)] pb-5 sm:flex-row sm:items-center sm:justify-between'>
         <h2 className='text-lg font-semibold text-foreground'>Danh sách thủ thuật</h2>
-        <button type='button' className={btnSecondary} onClick={add}>
-          Thêm thủ thuật
-        </button>
+        <div className='flex flex-wrap gap-2'>
+          <button type='button' className={btnSecondary} onClick={add}>
+            Thêm thủ thuật
+          </button>
+        </div>
       </div>
       <p className='text-sm leading-relaxed text-muted-foreground'>
-        Thời lượng ca = thời gian làm cho một bệnh nhân. Thời gian bác sĩ tại chỗ = lúc bác sĩ phải có mặt trong ca.
-        Chọn bác sĩ chính và thay thế từ danh sách, chọn loại máy từ dropdown.
+        Thời lượng ca = thời gian làm cho một bệnh nhân. <b>BS có mặt đầu ca</b> = lúc BS xuất hiện trực tiếp (vd 3 phút cắm kim). Càng nhỏ thì 1 BS càng trông được nhiều ca song song.
+        <br />
+        <span className='text-[var(--notika-green)]'>Lưu ý:</span> BS &amp; KTV nay được chọn ngay khi tạo/sửa BN. Tab này chỉ cấu hình thủ thuật.
       </p>
       <div className='space-y-6'>
         {procedures.map((p, i) => (
@@ -1442,119 +1468,53 @@ function ProceduresEditor({
                   )}
                 </div>
               </div>
-              <div>
-                <span className={subLabelCls}>Bác sĩ chính</span>
-                {doctors.length > 0 ? (
-                  <div className='mt-1 flex flex-wrap gap-2'>
-                    {doctors.map((d) => {
-                      const selected = p.mainCodes.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
-                      const isChecked = selected.includes(d.code.toLowerCase())
-                      return (
-                        <label key={d.id} className={cn(
-                          'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
-                          isChecked
-                            ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white'
-                            : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
-                        )}>
-                          <input
-                            type='checkbox'
-                            className='sr-only'
-                            checked={isChecked}
-                            onChange={() => {
-                              const codes = p.mainCodes.split(',').map((s) => s.trim()).filter(Boolean)
-                              const next = isChecked
-                                ? codes.filter((c) => c.toLowerCase() !== d.code.toLowerCase())
-                                : [...codes, d.code]
-                              update(i, { mainCodes: next.join(',') })
-                            }}
-                          />
-                          <span className='font-bold'>{d.code}</span>
-                          <span className='opacity-70'>({d.name})</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <p className='mt-1 text-[11px] text-amber-600'>Chưa có bác sĩ nào. Thêm ở tab &quot;Bác sĩ&quot; trước.</p>
-                )}
-              </div>
-              <div>
-                <span className={subLabelCls}>Bác sĩ thay thế</span>
-                {doctors.length > 0 ? (
-                  <div className='mt-1 flex flex-wrap gap-2'>
-                    {doctors.map((d) => {
-                      const selected = p.substituteCodes.split('--').map((s) => s.trim().toLowerCase()).filter(Boolean)
-                      const isChecked = selected.includes(d.code.toLowerCase())
-                      const mainSelected = p.mainCodes.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
-                      const isMainDoc = mainSelected.includes(d.code.toLowerCase())
-                      return (
-                        <label key={d.id} className={cn(
-                          'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
-                          isMainDoc && 'opacity-30',
-                          isChecked
-                            ? 'border-blue-500 bg-blue-500 text-white'
-                            : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-blue-50 dark:hover:bg-blue-950/20',
-                        )}>
-                          <input
-                            type='checkbox'
-                            className='sr-only'
-                            checked={isChecked}
-                            disabled={isMainDoc}
-                            onChange={() => {
-                              const codes = p.substituteCodes.split('--').map((s) => s.trim()).filter(Boolean)
-                              const next = isChecked
-                                ? codes.filter((c) => c.toLowerCase() !== d.code.toLowerCase())
-                                : [...codes, d.code]
-                              update(i, { substituteCodes: next.join('--') })
-                            }}
-                          />
-                          <span className='font-bold'>{d.code}</span>
-                          <span className='opacity-70'>({d.name})</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <p className='mt-1 text-[11px] text-amber-600'>Chưa có bác sĩ nào.</p>
-                )}
-              </div>
               <div className='sm:col-span-2'>
-                <span className={subLabelCls}>KTV được phép thực hiện (tuỳ chọn)</span>
-                {technicians.length > 0 ? (
-                  <div className='mt-1 flex flex-wrap gap-2'>
-                    {technicians.map((t) => {
-                      const selected = (p.technicianCodes ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
-                      const isChecked = selected.includes(t.code.toLowerCase())
-                      return (
-                        <label key={t.id} className={cn(
-                          'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
-                          isChecked
-                            ? 'border-amber-500 bg-amber-500 text-white'
-                            : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-amber-50 dark:hover:bg-amber-950/20',
-                        )}>
-                          <input
-                            type='checkbox'
-                            className='sr-only'
-                            checked={isChecked}
-                            onChange={() => {
-                              const codes = (p.technicianCodes ?? '').split(',').map((s) => s.trim()).filter(Boolean)
-                              const next = isChecked
-                                ? codes.filter((c) => c.toLowerCase() !== t.code.toLowerCase())
-                                : [...codes, t.code]
-                              update(i, { technicianCodes: next.join(',') })
-                            }}
-                          />
-                          <span className='font-bold'>{t.code}</span>
-                          <span className='opacity-70'>({t.name})</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <p className='mt-1 text-[11px] text-[var(--notika-muted)]'>
-                    Chưa có KTV nào. Nếu thủ thuật không cần KTV, bỏ qua trường này.
-                  </p>
-                )}
+                <span className={subLabelCls}>BS có mặt đầu ca (phút)</span>
+                <div className='mt-1 flex flex-wrap items-center gap-2'>
+                  <input
+                    type='text'
+                    inputMode='numeric'
+                    className={cn(inputCls, 'w-24')}
+                    value={p.pillowM == null ? '' : String(p.pillowM)}
+                    placeholder='phút'
+                    onChange={(e) => {
+                      const v = e.target.value.trim()
+                      if (v === '') update(i, { pillowM: null })
+                      else if (/^\d+$/.test(v)) update(i, { pillowM: Number(v) })
+                    }}
+                  />
+                  {[1, 3, 5, 10].map((m) => (
+                    <button
+                      key={m}
+                      type='button'
+                      className={cn(
+                        'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                        p.pillowM === m
+                          ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white'
+                          : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
+                      )}
+                      onClick={() => update(i, { pillowM: m })}
+                    >
+                      {m}&apos;
+                    </button>
+                  ))}
+                  <button
+                    type='button'
+                    className={cn(
+                      'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                      p.pillowM === p.durationM && p.durationM != null
+                        ? 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white'
+                        : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
+                    )}
+                    onClick={() => update(i, { pillowM: p.durationM })}
+                    disabled={p.durationM == null}
+                  >
+                    Cả ca
+                  </button>
+                </div>
+                <p className='mt-1 text-[11px] text-[var(--notika-muted)]'>
+                  BS chỉ cần có mặt {p.pillowM ?? 0} phút đầu, sau đó KTV/máy theo dõi. Càng nhỏ → 1 BS trông được càng nhiều ca song song.
+                </p>
               </div>
               <div className='sm:col-span-2'>
                 <span className={subLabelCls}>Cách xếp ca (giữa các bệnh nhân khác nhau)</span>
@@ -1661,16 +1621,82 @@ function addDaysIso(iso: string, days: number): string {
 function PatientsEditor({
   patients,
   procedures,
+  doctors,
+  technicians,
+  schedulingDate,
   onChange,
   onSaveContext,
   saving = false,
 }: {
   patients: SchedPatient[]
   procedures: SchedProcedure[]
+  doctors: SchedDoctor[]
+  technicians: SchedTechnician[]
+  schedulingDate: string | null
   onChange: (p: SchedPatient[]) => void
   onSaveContext?: () => void | Promise<void>
   saving?: boolean
 }) {
+  const doctorAvailable = useMemo(() => {
+    const map = new Map<string, { working: boolean; capM: number }>()
+    for (const d of doctors) {
+      const h = getDoctorEffectiveHours(d, schedulingDate)
+      const am = h.amStartM !== null && h.amEndM !== null && h.amEndM > h.amStartM ? h.amEndM - h.amStartM : 0
+      const pm = h.pmStartM !== null && h.pmEndM !== null && h.pmEndM > h.pmStartM ? h.pmEndM - h.pmStartM : 0
+      map.set(d.code.toLowerCase(), { working: !h.isOff && am + pm > 0, capM: am + pm })
+    }
+    return map
+  }, [doctors, schedulingDate])
+  const techAvailable = useMemo(() => {
+    const map = new Map<string, { working: boolean; capM: number }>()
+    for (const t of technicians ?? []) {
+      const h = getTechnicianEffectiveHours(t, schedulingDate)
+      const am = h.amStartM !== null && h.amEndM !== null && h.amEndM > h.amStartM ? h.amEndM - h.amStartM : 0
+      const pm = h.pmStartM !== null && h.pmEndM !== null && h.pmEndM > h.pmStartM ? h.pmEndM - h.pmStartM : 0
+      map.set(t.code.toLowerCase(), { working: !h.isOff && am + pm > 0, capM: am + pm })
+    }
+    return map
+  }, [technicians, schedulingDate])
+  const doctorLoad = useMemo(() => {
+    const map = new Map<string, { count: number; minutes: number }>()
+    for (const p of patients) {
+      for (const procId of p.procedureIds) {
+        const override = p.doctorOverrides?.[procId]
+        const proc = procedures.find((x) => x.id === procId)
+        const pillow = Math.max(0, proc?.pillowM ?? 0)
+        const codes = (override?.trim() || proc?.mainCodes || '')
+          .split(',').map((s) => s.trim()).filter(Boolean)
+        for (const c of codes) {
+          const k = c.toLowerCase()
+          const cur = map.get(k) ?? { count: 0, minutes: 0 }
+          cur.count += 1
+          cur.minutes += pillow
+          map.set(k, cur)
+        }
+      }
+    }
+    return map
+  }, [patients, procedures])
+  const techLoad = useMemo(() => {
+    const map = new Map<string, { count: number; minutes: number }>()
+    for (const p of patients) {
+      for (const procId of p.procedureIds) {
+        const override = p.technicianOverrides?.[procId]
+        const proc = procedures.find((x) => x.id === procId)
+        const dur = Math.max(0, proc?.durationM ?? 0)
+        const codes = (override?.trim() ?? proc?.technicianCodes ?? '')
+          .split(',').map((s) => s.trim()).filter(Boolean)
+        for (const c of codes) {
+          const k = c.toLowerCase()
+          const cur = map.get(k) ?? { count: 0, minutes: 0 }
+          cur.count += 1
+          cur.minutes += dur
+          map.set(k, cur)
+        }
+      }
+    }
+    return map
+  }, [patients, procedures])
   const update = (i: number, patch: Partial<SchedPatient>) => {
     onChange(patients.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))
   }
@@ -1700,9 +1726,41 @@ function PatientsEditor({
           Thêm bệnh nhân
         </button>
       </div>
-      <div className='space-y-6'>
+      <div className='space-y-3'>
         {patients.map((p, i) => (
-          <div key={p.id} className='rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] p-4 sm:p-5'>
+          <details
+            key={p.id}
+            className='group rounded-2xl border border-[var(--notika-border)] bg-[var(--notika-card)] [&[open]>summary>svg.chev]:rotate-90'
+          >
+            <summary className='flex cursor-pointer list-none flex-wrap items-center gap-2 p-4 sm:p-5'>
+              <svg className='chev shrink-0 transition-transform' width='12' height='12' viewBox='0 0 12 12' fill='none'>
+                <path d='M4 2l4 4-4 4' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
+              </svg>
+              <span className={cn('text-sm font-semibold', p.name.trim() ? 'text-[var(--notika-text)]' : 'text-[var(--notika-muted)] italic')}>
+                {p.name.trim() || '(Chưa đặt tên)'}
+              </span>
+              <span className='rounded-md bg-[var(--notika-content)] px-2 py-0.5 text-[10px] font-semibold text-[var(--notika-muted)]'>
+                {p.procedureIds.length} thủ thuật
+              </span>
+              {p.highPriority && (
+                <span className='rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'>
+                  ⭐ Ưu tiên
+                </span>
+              )}
+              {p.admissionDate && (
+                <span className='rounded-md bg-[var(--notika-green-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--notika-green)]'>
+                  vào: {p.admissionDate}
+                </span>
+              )}
+              <button
+                type='button'
+                className='ml-auto text-xs font-medium text-red-600 hover:underline dark:text-red-400'
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(patients.filter((_, idx) => idx !== i)) }}
+              >
+                Xoá
+              </button>
+            </summary>
+            <div className='border-t border-[var(--notika-border)] p-4 pt-4 sm:p-5 sm:pt-4'>
             <div className='grid gap-4 sm:grid-cols-2'>
               <input
                 className={cn(inputCls, 'sm:col-span-2')}
@@ -1712,11 +1770,17 @@ function PatientsEditor({
                 autoComplete='name'
               />
 
-              <div className='sm:col-span-2 rounded-xl border border-dashed border-[var(--notika-border)] bg-[var(--notika-content)] p-3'>
-                <p className='mb-3 text-xs font-bold uppercase tracking-wide text-[var(--notika-muted)]'>
-                  Liệu trình điều trị
-                </p>
-                <div className='grid gap-3 sm:grid-cols-2'>
+              <details className='sm:col-span-2 group rounded-xl border border-dashed border-[var(--notika-border)] bg-[var(--notika-content)] p-3 [&[open]>summary>svg]:rotate-90'>
+                <summary className='flex cursor-pointer list-none items-center gap-2 text-xs font-bold uppercase tracking-wide text-[var(--notika-muted)]'>
+                  <svg width='12' height='12' viewBox='0 0 12 12' className='transition-transform' fill='none'>
+                    <path d='M4 2l4 4-4 4' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
+                  </svg>
+                  Liệu trình điều trị (tuỳ chọn)
+                  <span className='ml-1 normal-case font-normal text-[10px] text-[var(--notika-muted)]/70'>
+                    — chỉ dùng nếu BN có liệu trình nhiều ngày hoặc cần ép giờ vào/ra viện
+                  </span>
+                </summary>
+                <div className='mt-3 grid gap-3 sm:grid-cols-2'>
                   <label className='block'>
                     <span className={subLabelCls}>Số ngày liệu trình</span>
                     <div className='mt-1 flex items-center gap-2'>
@@ -1858,7 +1922,7 @@ function PatientsEditor({
                     )
                   })()}
                 </div>
-              </div>
+              </details>
 
               <label className='flex cursor-pointer items-start gap-3 text-sm sm:col-span-2 sm:items-center'>
                 <input
@@ -1871,34 +1935,371 @@ function PatientsEditor({
               </label>
             </div>
             <div className='mt-5'>
-              <p className={subLabelCls}>Thủ thuật</p>
-              <div className='flex flex-wrap gap-2.5'>
+              <p className={subLabelCls}>Thủ thuật &amp; nhân sự phụ trách</p>
+              <div className='space-y-2.5'>
                 {procedures.map((proc) => {
                   const on = p.procedureIds.includes(proc.id)
+                  const docOverrides = p.doctorOverrides ?? {}
+                  const techOverrides = p.technicianOverrides ?? {}
+                  const docOverrideRaw = docOverrides[proc.id]
+                  const techOverrideRaw = techOverrides[proc.id]
+                  const hasDocOverride = typeof docOverrideRaw === 'string'
+                  const hasTechOverride = typeof techOverrideRaw === 'string'
+                  const docCodes = (hasDocOverride ? docOverrideRaw! : proc.mainCodes)
+                    .split(',').map((s) => s.trim()).filter(Boolean)
+                  const techCodes = (hasTechOverride ? techOverrideRaw! : (proc.technicianCodes ?? ''))
+                    .split(',').map((s) => s.trim()).filter(Boolean)
+                  const docSet = new Set(docCodes.map((c) => c.toLowerCase()))
+                  const techSet = new Set(techCodes.map((c) => c.toLowerCase()))
+                  const toggleProc = () => {
+                    const set = new Set(p.procedureIds)
+                    if (set.has(proc.id)) set.delete(proc.id)
+                    else set.add(proc.id)
+                    update(i, { procedureIds: [...set] })
+                  }
+                  const setDocOverride = (codes: string[]) => {
+                    const next = { ...docOverrides }
+                    next[proc.id] = codes.join(',')
+                    update(i, { doctorOverrides: Object.keys(next).length > 0 ? next : undefined })
+                  }
+                  const setTechOverride = (codes: string[]) => {
+                    const next = { ...techOverrides }
+                    next[proc.id] = codes.join(',')
+                    update(i, { technicianOverrides: Object.keys(next).length > 0 ? next : undefined })
+                  }
+                  const toggleDoc = (code: string) => {
+                    const lower = code.toLowerCase()
+                    const isSelected = docSet.has(lower)
+                    if (isSelected) {
+                      setDocOverride(docCodes.filter((c) => c.toLowerCase() !== lower))
+                      return
+                    }
+                    const nextCodes = hasDocOverride ? [...docCodes, code] : [code]
+                    const next = { ...docOverrides }
+                    next[proc.id] = nextCodes.join(',')
+                    for (const otherId of p.procedureIds) {
+                      if (otherId === proc.id) continue
+                      const oProc = procedures.find((x) => x.id === otherId)
+                      if (!oProc) continue
+                      const ov = next[otherId]
+                      const hasOv = typeof ov === 'string'
+                      const codes = (hasOv ? ov : (oProc.mainCodes ?? '')).split(',').map((s) => s.trim()).filter(Boolean)
+                      if (codes.some((c) => c.toLowerCase() === lower)) {
+                        next[otherId] = codes.filter((c) => c.toLowerCase() !== lower).join(',')
+                      }
+                    }
+                    update(i, { doctorOverrides: Object.keys(next).length > 0 ? next : undefined })
+                  }
+                  const toggleTech = (code: string) => {
+                    const lower = code.toLowerCase()
+                    const isSelected = techSet.has(lower)
+                    if (isSelected) {
+                      setTechOverride(techCodes.filter((c) => c.toLowerCase() !== lower))
+                      return
+                    }
+                    const nextCodes = hasTechOverride ? [...techCodes, code] : [code]
+                    const next = { ...techOverrides }
+                    next[proc.id] = nextCodes.join(',')
+                    for (const otherId of p.procedureIds) {
+                      if (otherId === proc.id) continue
+                      const oProc = procedures.find((x) => x.id === otherId)
+                      if (!oProc) continue
+                      const ov = next[otherId]
+                      const hasOv = typeof ov === 'string'
+                      const codes = (hasOv ? ov : (oProc.technicianCodes ?? '')).split(',').map((s) => s.trim()).filter(Boolean)
+                      if (codes.some((c) => c.toLowerCase() === lower)) {
+                        next[otherId] = codes.filter((c) => c.toLowerCase() !== lower).join(',')
+                      }
+                    }
+                    update(i, { technicianOverrides: Object.keys(next).length > 0 ? next : undefined })
+                  }
+                  const resetDocOverride = () => {
+                    const next = { ...docOverrides }
+                    delete next[proc.id]
+                    update(i, { doctorOverrides: Object.keys(next).length > 0 ? next : undefined })
+                  }
+                  const resetTechOverride = () => {
+                    const next = { ...techOverrides }
+                    delete next[proc.id]
+                    update(i, { technicianOverrides: Object.keys(next).length > 0 ? next : undefined })
+                  }
+                  const otherDocCodes = new Set<string>()
+                  const otherTechCodes = new Set<string>()
+                  for (const otherId of p.procedureIds) {
+                    if (otherId === proc.id) continue
+                    const oProc = procedures.find((x) => x.id === otherId)
+                    if (!oProc) continue
+                    const dOv = p.doctorOverrides?.[otherId]
+                    const tOv = p.technicianOverrides?.[otherId]
+                    const dStr = typeof dOv === 'string' ? dOv : (oProc.mainCodes ?? '')
+                    const tStr = typeof tOv === 'string' ? tOv : (oProc.technicianCodes ?? '')
+                    dStr.split(',').map((s) => s.trim()).filter(Boolean)
+                      .forEach((c) => otherDocCodes.add(c.toLowerCase()))
+                    tStr.split(',').map((s) => s.trim()).filter(Boolean)
+                      .forEach((c) => otherTechCodes.add(c.toLowerCase()))
+                  }
+                  const sortedDoctors = [...doctors].sort((a, b) => {
+                    const al = a.code.toLowerCase(); const bl = b.code.toLowerCase()
+                    const aOther = otherDocCodes.has(al) ? 1 : 0
+                    const bOther = otherDocCodes.has(bl) ? 1 : 0
+                    if (aOther !== bOther) return aOther - bOther
+                    const aw = doctorAvailable.get(al)?.working ? 0 : 1
+                    const bw = doctorAvailable.get(bl)?.working ? 0 : 1
+                    if (aw !== bw) return aw - bw
+                    const am = doctorLoad.get(al)?.minutes ?? 0
+                    const bm = doctorLoad.get(bl)?.minutes ?? 0
+                    return am - bm
+                  })
+                  const sortedTechs = [...(technicians ?? [])].sort((a, b) => {
+                    const al = a.code.toLowerCase(); const bl = b.code.toLowerCase()
+                    const aOther = otherTechCodes.has(al) ? 1 : 0
+                    const bOther = otherTechCodes.has(bl) ? 1 : 0
+                    if (aOther !== bOther) return aOther - bOther
+                    const aw = techAvailable.get(al)?.working ? 0 : 1
+                    const bw = techAvailable.get(bl)?.working ? 0 : 1
+                    if (aw !== bw) return aw - bw
+                    const am = techLoad.get(al)?.minutes ?? 0
+                    const bm = techLoad.get(bl)?.minutes ?? 0
+                    return am - bm
+                  })
                   return (
-                    <label key={proc.id} className='flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700'>
-                      <input
-                        type='checkbox'
-                        className='size-4 shrink-0 rounded accent-[var(--notika-green)]'
-                        checked={on}
-                        onChange={() => {
-                          const set = new Set(p.procedureIds)
-                          if (set.has(proc.id)) set.delete(proc.id)
-                          else set.add(proc.id)
-                          update(i, { procedureIds: [...set] })
-                        }}
-                      />
-                      {proc.name.trim() ? proc.name : '(Thủ thuật chưa đặt tên)'}
-                    </label>
+                    <div
+                      key={proc.id}
+                      className={cn(
+                        'rounded-xl border p-3 transition',
+                        on
+                          ? 'border-[var(--notika-green)] bg-[var(--notika-green-soft)]/40 dark:bg-[var(--notika-green)]/5'
+                          : 'border-[var(--notika-border)] bg-[var(--notika-card)]',
+                      )}
+                    >
+                      <label className='flex cursor-pointer items-center gap-2.5 text-sm'>
+                        <input
+                          type='checkbox'
+                          className='size-[1.125rem] shrink-0 rounded accent-[var(--notika-green)]'
+                          checked={on}
+                          onChange={toggleProc}
+                        />
+                        <span className={cn('font-medium', on ? 'text-[var(--notika-text)]' : 'text-[var(--notika-muted)]')}>
+                          {proc.name.trim() ? proc.name : '(Thủ thuật chưa đặt tên)'}
+                        </span>
+                        {proc.machineType.trim() && (
+                          <span className='ml-auto rounded-md bg-[var(--notika-card)] px-1.5 py-0.5 text-[10px] font-semibold uppercase text-[var(--notika-muted)]'>
+                            {proc.machineType}
+                          </span>
+                        )}
+                      </label>
+                      {on && (
+                        <div className='mt-3 space-y-3 border-t border-[var(--notika-border)]/60 pt-3'>
+                          <div>
+                            <div className='flex flex-wrap items-center gap-2'>
+                              <span className='text-[11px] font-bold uppercase tracking-wide text-[var(--notika-muted)]'>
+                                Bác sĩ:
+                              </span>
+                              {hasDocOverride && (
+                                <button type='button' className='text-[11px] font-medium text-amber-600 underline-offset-2 hover:underline' onClick={resetDocOverride}>
+                                  Dùng mặc định
+                                </button>
+                              )}
+                              {hasDocOverride && docCodes.length === 0 && (
+                                <span className='text-[11px] italic text-amber-600'>(không gán BS cho BN này)</span>
+                              )}
+                              {!hasDocOverride && proc.mainCodes.trim() && (
+                                <span className='text-[11px] italic text-[var(--notika-muted)]'>(theo mặc định)</span>
+                              )}
+                              {!hasDocOverride && !proc.mainCodes.trim() && (
+                                <span className='text-[11px] italic text-amber-600'>(chưa chọn BS)</span>
+                              )}
+                            </div>
+                            {doctors.length === 0 ? (
+                              <p className='mt-1.5 text-[11px] text-amber-600'>Chưa có BS. Thêm ở tab &quot;Bác sĩ&quot; trước.</p>
+                            ) : (
+                              <div className='mt-1.5 flex flex-wrap gap-1.5'>
+                                {sortedDoctors.map((d) => {
+                                  const lower = d.code.toLowerCase()
+                                  const isSelected = docSet.has(lower)
+                                  const usedInOther = otherDocCodes.has(lower)
+                                  const avail = doctorAvailable.get(lower) ?? { working: false, capM: 0 }
+                                  const load = doctorLoad.get(lower) ?? { count: 0, minutes: 0 }
+                                  const overBooked = avail.working && avail.capM > 0 && load.minutes > avail.capM
+                                  const willOverflowOnAdd = !isSelected && avail.working && avail.capM > 0 &&
+                                    load.minutes + Math.max(0, proc.pillowM ?? 0) > avail.capM
+                                  const handleClick = () => {
+                                    if (isSelected) { toggleDoc(d.code); return }
+                                    if (usedInOther) {
+                                      appToast.error(`${d.code} đã gán cho thủ thuật khác của BN này. Mỗi BS chỉ làm 1 thủ thuật/BN.`)
+                                      return
+                                    }
+                                    if (!avail.working) {
+                                      appToast.warning(`${d.code} đang nghỉ ngày xếp lịch.`)
+                                      return
+                                    }
+                                    if (willOverflowOnAdd) {
+                                      appToast.error(`${d.code} đã đầy ca ngày này (${load.count} BN, ${load.minutes}/${avail.capM} phút). Chọn BS khác.`)
+                                      return
+                                    }
+                                    toggleDoc(d.code)
+                                  }
+                                  return (
+                                    <button
+                                      key={d.id}
+                                      type='button'
+                                      onClick={handleClick}
+                                      title={
+                                        usedInOther && !isSelected
+                                          ? `${d.code} đã gán cho thủ thuật khác của BN này`
+                                          : !avail.working
+                                            ? `${d.code} đang nghỉ ngày này`
+                                            : overBooked
+                                              ? `${d.code} đã quá tải (${load.count} BN, ${load.minutes}/${avail.capM} phút)`
+                                              : `${d.code}: ${load.count} BN · ${load.minutes}/${avail.capM} phút (BS có mặt)`
+                                      }
+                                      className={cn(
+                                        'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                                        usedInOther && !isSelected && 'cursor-not-allowed border-zinc-400/50 bg-zinc-200/60 text-zinc-500 line-through dark:border-zinc-600/50 dark:bg-zinc-800/60 dark:text-zinc-500',
+                                        !avail.working && !usedInOther && 'opacity-40',
+                                        isSelected
+                                          ? overBooked
+                                            ? 'border-rose-500 bg-rose-500 text-white shadow-sm ring-2 ring-rose-300'
+                                            : 'border-[var(--notika-green)] bg-[var(--notika-green)] text-white shadow-sm'
+                                          : usedInOther
+                                            ? ''
+                                            : overBooked
+                                              ? 'border-rose-400 bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-300'
+                                              : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-[var(--notika-green-soft)]',
+                                      )}
+                                    >
+                                      <span className='font-bold'>{d.code}</span>
+                                      <span className='ml-1 opacity-70'>{d.name}</span>
+                                      {usedInOther && !isSelected && <span className='ml-1 text-[9px] font-bold uppercase'>🔒 ca khác</span>}
+                                      {!avail.working && !usedInOther && <span className='ml-1 text-[9px]'>nghỉ</span>}
+                                      {avail.working && !usedInOther && load.count > 0 && (
+                                        <span className={cn(
+                                          'ml-1.5 rounded-full px-1.5 text-[9px] font-bold',
+                                          isSelected ? 'bg-white/25' : overBooked ? 'bg-rose-200 text-rose-800' : 'bg-[var(--notika-border)]/40',
+                                        )}>
+                                          {load.count}
+                                        </span>
+                                      )}
+                                      {overBooked && !usedInOther && <span className='ml-1 text-[9px] font-bold'>⚠ đầy</span>}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div className='flex flex-wrap items-center gap-2'>
+                              <span className='text-[11px] font-bold uppercase tracking-wide text-[var(--notika-muted)]'>
+                                KTV:
+                              </span>
+                              {hasTechOverride && (
+                                <button type='button' className='text-[11px] font-medium text-amber-600 underline-offset-2 hover:underline' onClick={resetTechOverride}>
+                                  Dùng mặc định
+                                </button>
+                              )}
+                              {!hasTechOverride && (proc.technicianCodes ?? '').trim() && (
+                                <span className='text-[11px] italic text-[var(--notika-muted)]'>(theo mặc định)</span>
+                              )}
+                              {!hasTechOverride && !(proc.technicianCodes ?? '').trim() && (
+                                <span className='text-[11px] italic text-[var(--notika-muted)]'>(không cần KTV)</span>
+                              )}
+                            </div>
+                            {(technicians ?? []).length === 0 ? (
+                              <p className='mt-1.5 text-[11px] text-[var(--notika-muted)]'>Chưa có KTV.</p>
+                            ) : (
+                              <div className='mt-1.5 flex flex-wrap gap-1.5'>
+                                {sortedTechs.map((t) => {
+                                  const lower = t.code.toLowerCase()
+                                  const isSelected = techSet.has(lower)
+                                  const usedInOther = otherTechCodes.has(lower)
+                                  const avail = techAvailable.get(lower) ?? { working: false, capM: 0 }
+                                  const load = techLoad.get(lower) ?? { count: 0, minutes: 0 }
+                                  const overBooked = avail.working && avail.capM > 0 && load.minutes > avail.capM
+                                  const willOverflowOnAdd = !isSelected && avail.working && avail.capM > 0 &&
+                                    load.minutes + Math.max(0, proc.durationM ?? 0) > avail.capM
+                                  const handleClick = () => {
+                                    if (isSelected) { toggleTech(t.code); return }
+                                    if (usedInOther) {
+                                      appToast.error(`${t.code} đã gán cho thủ thuật khác của BN này. Mỗi KTV chỉ làm 1 thủ thuật/BN.`)
+                                      return
+                                    }
+                                    if (!avail.working) {
+                                      appToast.warning(`${t.code} đang nghỉ ngày xếp lịch.`)
+                                      return
+                                    }
+                                    if (willOverflowOnAdd) {
+                                      appToast.error(`${t.code} đã đầy ca ngày này (${load.count} BN, ${load.minutes}/${avail.capM} phút). Chọn KTV khác.`)
+                                      return
+                                    }
+                                    toggleTech(t.code)
+                                  }
+                                  return (
+                                    <button
+                                      key={t.id}
+                                      type='button'
+                                      onClick={handleClick}
+                                      title={
+                                        usedInOther && !isSelected
+                                          ? `${t.code} đã gán cho thủ thuật khác của BN này`
+                                          : !avail.working
+                                            ? `${t.code} đang nghỉ ngày này`
+                                            : overBooked
+                                              ? `${t.code} đã quá tải (${load.count} BN, ${load.minutes}/${avail.capM} phút)`
+                                              : `${t.code}: ${load.count} BN · ${load.minutes}/${avail.capM} phút`
+                                      }
+                                      className={cn(
+                                        'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                                        usedInOther && !isSelected && 'cursor-not-allowed border-zinc-400/50 bg-zinc-200/60 text-zinc-500 line-through dark:border-zinc-600/50 dark:bg-zinc-800/60 dark:text-zinc-500',
+                                        !avail.working && !usedInOther && 'opacity-40',
+                                        isSelected
+                                          ? overBooked
+                                            ? 'border-rose-500 bg-rose-500 text-white shadow-sm ring-2 ring-rose-300'
+                                            : 'border-amber-500 bg-amber-500 text-white shadow-sm'
+                                          : usedInOther
+                                            ? ''
+                                            : overBooked
+                                              ? 'border-rose-400 bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-300'
+                                              : 'border-[var(--notika-border)] bg-[var(--notika-card)] text-[var(--notika-text)] hover:bg-amber-50 dark:hover:bg-amber-950/20',
+                                      )}
+                                    >
+                                      <span className='font-bold'>{t.code}</span>
+                                      <span className='ml-1 opacity-70'>{t.name}</span>
+                                      {usedInOther && !isSelected && <span className='ml-1 text-[9px] font-bold uppercase'>🔒 ca khác</span>}
+                                      {!avail.working && !usedInOther && <span className='ml-1 text-[9px]'>nghỉ</span>}
+                                      {avail.working && !usedInOther && load.count > 0 && (
+                                        <span className={cn(
+                                          'ml-1.5 rounded-full px-1.5 text-[9px] font-bold',
+                                          isSelected ? 'bg-white/25' : overBooked ? 'bg-rose-200 text-rose-800' : 'bg-[var(--notika-border)]/40',
+                                        )}>
+                                          {load.count}
+                                        </span>
+                                      )}
+                                      {overBooked && !usedInOther && <span className='ml-1 text-[9px] font-bold'>⚠ đầy</span>}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
+                {procedures.length === 0 && (
+                  <p className='text-[11px] text-amber-600'>Chưa có thủ thuật. Thêm ở tab &quot;Thủ thuật&quot; trước.</p>
+                )}
               </div>
+              <p className='mt-2 text-[11px] leading-relaxed text-[var(--notika-muted)]'>
+                <span className='inline-block size-2 rounded-full bg-[var(--notika-green)] align-middle'></span> đang chọn ·
+                <span className='ml-1 inline-block size-2 rounded-full bg-rose-500 align-middle'></span> ⚠ quá tải (chặn) ·
+                pill <s>gạch ngang</s> = đã gán cho thủ thuật khác của BN này (mỗi BS/KTV chỉ 1 thủ thuật/BN) ·
+                pill mờ = nghỉ ngày này. Số trong pill = số BN đang gán.
+              </p>
             </div>
             <BusyEditor label='Những lúc bệnh nhân không đến được' busy={p.busy} onChange={(busy) => update(i, { busy })} />
-            <button type='button' className='mt-4 text-sm font-medium text-red-600 hover:underline dark:text-red-400' onClick={() => onChange(patients.filter((_, idx) => idx !== i))}>
-              Xóa bệnh nhân này
-            </button>
-          </div>
+            </div>
+          </details>
         ))}
       </div>
       {onSaveContext && patients.length > 0 && (
@@ -1933,6 +2334,179 @@ function PatientsEditor({
         </div>
       )}
     </section>
+  )
+}
+
+function StaffAssignmentsPanel({
+  kind,
+  staff,
+  patients,
+  procedures,
+  onChange,
+}: {
+  kind: 'doctor' | 'technician'
+  staff: { id: string; code: string; name: string }[]
+  patients: SchedPatient[]
+  procedures: SchedProcedure[]
+  onChange: (next: SchedPatient[]) => void
+}) {
+  const procById = useMemo(() => new Map(procedures.map((p) => [p.id, p])), [procedures])
+  const rows = useMemo(() => {
+    const out: { staffCode: string; patientId: string; procedureId: string; source: 'override' | 'default' }[] = []
+    for (const p of patients) {
+      for (const procId of p.procedureIds) {
+        const proc = procById.get(procId)
+        if (!proc) continue
+        const overrideRaw = kind === 'doctor'
+          ? p.doctorOverrides?.[procId]
+          : p.technicianOverrides?.[procId]
+        const hasOverride = typeof overrideRaw === 'string'
+        const codes = (hasOverride ? overrideRaw! : (kind === 'doctor' ? proc.mainCodes : (proc.technicianCodes ?? '')))
+          .split(',').map((s) => s.trim()).filter(Boolean)
+        for (const c of codes) {
+          out.push({
+            staffCode: c.toLowerCase(),
+            patientId: p.id,
+            procedureId: procId,
+            source: hasOverride ? 'override' : 'default',
+          })
+        }
+      }
+    }
+    return out
+  }, [patients, procById, kind])
+
+  const grouped = useMemo(() => {
+    const m = new Map<string, typeof rows>()
+    for (const r of rows) {
+      const arr = m.get(r.staffCode) ?? []
+      arr.push(r)
+      m.set(r.staffCode, arr)
+    }
+    return m
+  }, [rows])
+
+  const removeAssignment = (staffCode: string, patientId: string, procedureId: string) => {
+    const next = patients.map((p) => {
+      if (p.id !== patientId) return p
+      const overrideKey = kind === 'doctor' ? 'doctorOverrides' : 'technicianOverrides'
+      const proc = procById.get(procedureId)
+      const overrides = { ...(p[overrideKey] ?? {}) }
+      const overrideRaw = overrides[procedureId]
+      const hasOverride = typeof overrideRaw === 'string'
+      const effectiveCodes = (hasOverride ? overrideRaw! : (kind === 'doctor' ? (proc?.mainCodes ?? '') : (proc?.technicianCodes ?? '')))
+        .split(',').map((s) => s.trim()).filter(Boolean)
+      const filtered = effectiveCodes.filter((c) => c.toLowerCase() !== staffCode.toLowerCase())
+      overrides[procedureId] = filtered.join(',')
+      return { ...p, [overrideKey]: Object.keys(overrides).length > 0 ? overrides : undefined }
+    })
+    onChange(next)
+  }
+
+  const resetToDefault = (patientId: string, procedureId: string) => {
+    const next = patients.map((p) => {
+      if (p.id !== patientId) return p
+      const overrideKey = kind === 'doctor' ? 'doctorOverrides' : 'technicianOverrides'
+      const overrides = { ...(p[overrideKey] ?? {}) }
+      delete overrides[procedureId]
+      return { ...p, [overrideKey]: Object.keys(overrides).length > 0 ? overrides : undefined }
+    })
+    onChange(next)
+  }
+
+  const labelKind = kind === 'doctor' ? 'BS' : 'KTV'
+  const sortedStaff = [...staff].sort((a, b) => a.code.localeCompare(b.code, 'vi'))
+
+  return (
+    <details className={cn(panelCls, 'group')}>
+      <summary className='flex cursor-pointer list-none items-center gap-2'>
+        <svg className='shrink-0 transition-transform group-open:rotate-90' width='12' height='12' viewBox='0 0 12 12' fill='none'>
+          <path d='M4 2l4 4-4 4' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
+        </svg>
+        <h3 className='text-base font-semibold text-foreground'>
+          {labelKind} đang phụ trách BN nào
+        </h3>
+        <span className='ml-2 rounded-md bg-[var(--notika-content)] px-2 py-0.5 text-[11px] font-semibold text-[var(--notika-muted)]'>
+          {rows.length} phân công
+        </span>
+      </summary>
+      <p className='mt-3 text-[12px] text-[var(--notika-muted)]'>
+        Ấn <b>Xoá</b> để bỏ {labelKind} khỏi ca đó · Ấn <b>↺ Mặc định</b> để xoá override BN, dùng lại {labelKind} mặc định của thủ thuật.
+      </p>
+      <div className='mt-3 space-y-3'>
+        {sortedStaff.length === 0 && (
+          <p className='text-sm text-[var(--notika-muted)]'>Chưa có {labelKind}.</p>
+        )}
+        {sortedStaff.map((s) => {
+          const items = grouped.get(s.code.toLowerCase()) ?? []
+          if (items.length === 0) {
+            return (
+              <div key={s.id} className='rounded-xl border border-dashed border-[var(--notika-border)] bg-[var(--notika-content)] p-3 text-xs text-[var(--notika-muted)]'>
+                <span className='font-bold text-[var(--notika-text)]'>{s.code}</span>
+                <span className='ml-1 opacity-70'>{s.name}</span>
+                <span className='ml-2 italic'>— chưa được gán ca nào</span>
+              </div>
+            )
+          }
+          return (
+            <div key={s.id} className='rounded-xl border border-[var(--notika-border)] bg-[var(--notika-card)] p-3'>
+              <div className='mb-2 flex items-center gap-2'>
+                <span className='rounded-md bg-[var(--notika-green-soft)] px-2 py-0.5 text-xs font-bold text-[var(--notika-green)]'>{s.code}</span>
+                <span className='text-sm font-medium text-[var(--notika-text)]'>{s.name}</span>
+                <span className='ml-auto rounded-full bg-[var(--notika-content)] px-2 py-0.5 text-[10px] font-semibold text-[var(--notika-muted)]'>
+                  {items.length} ca
+                </span>
+              </div>
+              <ul className='space-y-1.5'>
+                {items.map((it, idx) => {
+                  const proc = procById.get(it.procedureId)
+                  const patient = patients.find((p) => p.id === it.patientId)
+                  return (
+                    <li key={`${it.patientId}-${it.procedureId}-${idx}`} className='flex flex-wrap items-center gap-2 rounded-lg border border-[var(--notika-border)]/60 bg-[var(--notika-content)] px-3 py-1.5 text-xs'>
+                      <span className='font-medium text-[var(--notika-text)]'>
+                        {patient?.name?.trim() || '(BN chưa đặt tên)'}
+                      </span>
+                      <span className='text-[var(--notika-muted)]'>·</span>
+                      <span className='text-[var(--notika-muted)]'>
+                        {proc?.name?.trim() || '(thủ thuật chưa đặt tên)'}
+                      </span>
+                      <span className={cn(
+                        'rounded-md px-1.5 py-0.5 text-[10px] font-semibold',
+                        it.source === 'override'
+                          ? 'bg-[var(--notika-green-soft)] text-[var(--notika-green)]'
+                          : 'bg-[var(--notika-content)] text-[var(--notika-muted)]',
+                      )}>
+                        {it.source === 'override' ? 'override BN' : 'mặc định proc'}
+                      </span>
+                      <div className='ml-auto flex gap-1.5'>
+                        {it.source === 'override' && (
+                          <button
+                            type='button'
+                            className='rounded-md border border-[var(--notika-border)] bg-[var(--notika-card)] px-2 py-1 text-[11px] font-medium text-[var(--notika-muted)] hover:bg-[var(--muted)]'
+                            onClick={() => resetToDefault(it.patientId, it.procedureId)}
+                            title='Xoá override BN, dùng lại mặc định của thủ thuật'
+                          >
+                            ↺ Mặc định
+                          </button>
+                        )}
+                        <button
+                          type='button'
+                          className='rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400'
+                          onClick={() => removeAssignment(s.code, it.patientId, it.procedureId)}
+                          title={`Bỏ ${s.code} khỏi ca này (giữ các ${labelKind} khác)`}
+                        >
+                          Xoá
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )
+        })}
+      </div>
+    </details>
   )
 }
 
@@ -1989,6 +2563,76 @@ function BusyEditor({
   )
 }
 
+function StaleAssignmentsBanner({
+  payload,
+  onRun,
+  busy,
+}: {
+  payload: SchedContextPayload
+  onRun: () => void
+  busy: boolean
+}) {
+  const stale = useMemo(() => {
+    const out: { patientName: string; procedureName: string; oldDocs: string[]; newDocs: string[] }[] = []
+    const procById = new Map(payload.masters.procedures.map((p) => [p.id, p]))
+    const patientById = new Map(payload.masters.patients.map((p) => [p.id, p]))
+    const docByCode = new Map<string, string>()
+    for (const d of payload.masters.doctors) docByCode.set(d.code.toLowerCase(), d.name)
+    for (const a of payload.assignments) {
+      const patient = patientById.get(a.patientId)
+      const proc = procById.get(a.procedureId)
+      if (!patient || !proc) continue
+      const overrideRaw = patient.doctorOverrides?.[a.procedureId]
+      const hasOverride = typeof overrideRaw === 'string'
+      const expected = (hasOverride ? overrideRaw : proc.mainCodes)
+        .split(',').map((s) => s.trim()).filter(Boolean)
+      const actual = a.doctorCodes.map((s) => s.trim()).filter(Boolean)
+      const expectedSet = new Set(expected.map((c) => c.toLowerCase()))
+      const actualSet = new Set(actual.map((c) => c.toLowerCase()))
+      const same = expectedSet.size === actualSet.size && [...expectedSet].every((c) => actualSet.has(c))
+      if (!same) {
+        out.push({
+          patientName: patient.name.trim() || '(BN chưa đặt tên)',
+          procedureName: proc.name.trim() || '(thủ thuật)',
+          oldDocs: actual.map((c) => docByCode.get(c.toLowerCase()) ?? c),
+          newDocs: expected.map((c) => docByCode.get(c.toLowerCase()) ?? c),
+        })
+      }
+    }
+    return out
+  }, [payload])
+
+  if (stale.length === 0) return null
+  return (
+    <div className='mb-4 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 dark:border-amber-600 dark:bg-amber-950/20'>
+      <div className='flex flex-wrap items-center gap-3'>
+        <span className='text-sm font-bold text-amber-700 dark:text-amber-300'>
+          ⚠ Kết quả lỗi thời — {stale.length} ca có BS/KTV không khớp với BN
+        </span>
+        <button
+          type='button'
+          disabled={busy}
+          onClick={onRun}
+          className='ml-auto rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50'
+        >
+          Cập nhật ngay (xếp lại)
+        </button>
+      </div>
+      <details className='mt-2'>
+        <summary className='cursor-pointer text-xs text-amber-700 hover:underline dark:text-amber-400'>Xem chi tiết</summary>
+        <ul className='mt-2 space-y-1 text-xs text-amber-800 dark:text-amber-200'>
+          {stale.slice(0, 10).map((s, idx) => (
+            <li key={idx}>
+              • <b>{s.patientName}</b> · {s.procedureName}: hiện đang xếp <i>{s.oldDocs.join(', ') || '(không có BS)'}</i> → cần đổi sang <b>{s.newDocs.join(', ') || '(không có BS)'}</b>
+            </li>
+          ))}
+          {stale.length > 10 && <li>… và {stale.length - 10} ca khác</li>}
+        </ul>
+      </details>
+    </div>
+  )
+}
+
 function ResultsTable({
   payload,
   onPatchPayload,
@@ -2001,6 +2645,11 @@ function ResultsTable({
   const procById = useMemo(() => new Map(payload.masters.procedures.map((p) => [p.id, p])), [payload.masters.procedures])
   const patientById = useMemo(() => new Map(payload.masters.patients.map((p) => [p.id, p])), [payload.masters.patients])
   const machineById = useMemo(() => new Map(payload.masters.machines.map((m) => [m.id, m])), [payload.masters.machines])
+  const doctorByCode = useMemo(() => {
+    const m = new Map<string, { code: string; name: string }>()
+    for (const d of payload.masters.doctors) m.set(d.code.toLowerCase(), { code: d.code, name: d.name })
+    return m
+  }, [payload.masters.doctors])
 
   // Lọc các ca mồ côi: bất kỳ tham chiếu nào (bệnh nhân, thủ thuật, máy, bác sĩ)
   // bị xoá khỏi masters ⇒ ẩn ca khỏi giao diện hoàn toàn.
@@ -2061,7 +2710,15 @@ function ResultsTable({
                 </td>
                 <td className={tableCell}>{minutesToLabel(a.pillowEndM)}</td>
                 <td className={tableCell}>{minutesToLabel(a.endM)}</td>
-                <td className={tableCell}>{a.doctorCodes.join(', ')}</td>
+                <td className={tableCell}>
+                  {a.doctorCodes.length === 0 ? (
+                    <span className='italic text-[var(--notika-muted)]'>—</span>
+                  ) : (
+                    a.doctorCodes
+                      .map((c) => doctorByCode.get(c.toLowerCase())?.name?.trim() || c)
+                      .join(', ')
+                  )}
+                </td>
                 <td className={tableCell}>
                   {machineById.get(a.machineId)?.typeName} — {machineById.get(a.machineId)?.unitName}
                 </td>

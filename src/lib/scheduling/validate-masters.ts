@@ -7,8 +7,8 @@ import { isEmptyWindow } from '@/lib/scheduling/time'
 
 export function validateMastersForSchedule(masters: SchedMasters): string[] {
   const errors: string[] = []
-  if (masters.doctors.length === 0) {
-    errors.push('Cần ít nhất một bác sĩ.')
+  if (masters.doctors.length === 0 && (masters.technicians ?? []).length === 0) {
+    errors.push('Cần ít nhất một bác sĩ hoặc một KTV.')
   }
   for (const d of masters.doctors) {
     if (!d.code.trim()) errors.push('Mỗi bác sĩ cần mã (vd A, B).')

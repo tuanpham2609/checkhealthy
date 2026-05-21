@@ -123,6 +123,10 @@ export interface SchedPatient {
    * lieu trinh (admissionDate + treatmentDays - 1).
    */
   dischargeDate?: string | null
+  /** Override BS theo tung thu thuat: { [procedureId]: 'BS1,BS2' }. */
+  doctorOverrides?: Record<string, string>
+  /** Override KTV theo tung thu thuat: { [procedureId]: 'K1,K2' }. */
+  technicianOverrides?: Record<string, string>
 }
 
 export interface SchedSettings {

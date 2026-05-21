@@ -205,7 +205,6 @@ export function estimateExtraSlots(
       const per = Math.max(1, pil ?? 1)
       docBottleneck = Math.min(docBottleneck, Math.floor(free / per))
     }
-    if (mains.length === 0) docBottleneck = 0
     const estimate = Math.max(0, Math.min(capSum, docBottleneck === Number.POSITIVE_INFINITY ? capSum : docBottleneck))
     out.push({ procedureId: proc.id, name: proc.name, estimate })
   }
